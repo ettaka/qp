@@ -1,3 +1,5 @@
+#!/bin/env python
+
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -460,7 +462,13 @@ if __name__ == '__main__':
 	if channel_names: print_channel_names(filepaths)
 	if plot:
 		selected_channel_names = [(x_axis,y) for y in y_axis]
-		plot_selected_files(filepaths, selected_channel_names, plot_stress)
+		for mtbop_data in mtbop_data_list:
+			mtbop_data['selected_channel_names'] = selected_channel_names
+			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+			mtbop_data['plot_delta'] = True
+
+		plot_selected_list(mtbop_data_list)
+		plt.show()
 
 	
 
