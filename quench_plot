@@ -442,17 +442,6 @@ def find_channel_names(filepaths):
 	for mtbop_data in mtbop_data_list:
 		channel_names_list += mtbop_data['channel_names']
 	return list(set(channel_names_list))
-
-def print_channel_names(filepaths):
-	print "Channel names:"
-	channel_names = find_channel_names(filepaths)
-	channel_names_dict = {}
-	for channel_name in channel_names:
-		channel_names_dict[channel_name] = channel_name
-	print channel_names_dict
-	with open('channels.dict', 'w') as outfile:
-		json.dump(channel_names_dict, outfile, indent=4)
-
 	
 def find_files(paths):
 	filepaths=[]
@@ -462,6 +451,38 @@ def find_files(paths):
 		elif os.path.isfile(path) and ".txt" in f:
 			filepaths.append(path)
 	return filepaths
+
+def print_channel_names(filepaths):
+	print "Channel names:"
+	channel_names = find_channel_names(filepaths)
+	channel_names_dict = {}
+	for channel_name in channel_names:
+		channel_names_dict[channel_name] = {}
+		if channel_name[0:2] == 'SH':
+			channel_names_dict[channel_name]['name'] = 'Shell'
+		elif channel_name[0] == 'R': 
+			channel_names_dict[channel_name]['name'] = 'Rod ' + channel_name[1]
+		elif channel_name[0:2] == 'CO':
+			channel_names_dict[channel_name]['name'] = 'Coil ' + channel_name[2:5]
+		else:
+			channel_names_dict[channel_name]['name'] = channel_name 
+		if channel_name[-1] == 'Z':
+			channel_names_dict[channel_name]['physical_quantity'] = 'longitudinal strain'
+		elif channel_name[-1] == 'T':
+			channel_names_dict[channel_name]['physical_quantity'] = 'azimuthal strain'
+		elif channel_name == 'Current':
+			channel_names_dict[channel_name]['physical_quantity'] = 'current'
+		else:
+			channel_names_dict[channel_name]['physical_quantity'] = 'strain'
+	print "Writing channels.json"
+	with open('channels.json', 'w') as outfile:
+		json.dump(channel_names_dict, outfile, indent=4)
+
+
+def read_channels_info_json():
+	with open('channels_info.json', 'r') as f:
+		data_json = json.load(f)
+	return data_json
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
@@ -504,7 +525,6 @@ if __name__ == '__main__':
 		plot_selected_list(mtbop_data_list)
 		plt.show()
 
-	
 
 
 
