@@ -9,6 +9,7 @@ import os
 import codecs
 import argparse
 import tabulate
+import json
 
 """
  %% Compute Stress Option 
@@ -37,20 +38,48 @@ MATERIAL_DATA = {
 			}
 		}
 
+CHANNEL_NAME_REPLACEMENTS = {
+		'SHLZ' : 'Shell Azimuthal Stress'
+		}
+
 def compute_stress(strain_theta, strain_z, material, axis):
 	"""
 	stress_z     = E/(1-v**2)*(strain_z     * v * strain_theta)
 	stress_theta = E/(1-v**2)*(strain_theta * v * strain_z)
 	"""
-	E = MATERIAL_DATA[material]['elastic_modulus']
-	v = MATERIAL_DATA[material]['poisson_ratio']
+	E = float(MATERIAL_DATA[material]['elastic_modulus'])
+	v = float(MATERIAL_DATA[material]['poisson_ratio'])
 	if axis=='theta': 
 		strain_1 = strain_theta
 		strain_2 = strain_z
 	elif axis=='z': 
 		strain_1 = strain_z
 		strain_2 = strain_theta
-	return E/(1.-v**2.)*(strain_1 + v * strain_2)
+	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
+
+def find_strain_data(mtbop_data, strain_name):
+	basename = strain_name[0:-1]
+	if strain_name[-1] == 'T': 
+		name_theta = strain_name
+		name_z = basename + 'Z'
+		axis = 'theta'
+	elif strain_name[-1] == 'Z':
+		name_theta = basename + 'T'
+		name_z = strain_name
+		axis = 'z'
+	else: 
+		print "Warning: find_strain_data failed for ", strain_name
+	
+	if 'SH' in basename: material = 'aluminium'
+	elif 'R' in basename: material = 'aluminium'
+	elif 'CO' in basename: material = 'titanium'
+	else: print "Warning: find_strain_data failed"
+
+	raw_data = mtbop_data['raw_data']
+	strain_theta = raw_data[:, find_channel_index(mtbop_data['channel_names'], name_theta)]
+	strain_z =     raw_data[:, find_channel_index(mtbop_data['channel_names'], name_z)]
+
+	return strain_theta, strain_z, material, axis
 
 def timeit(func):
 	def wrapper(*args, **kwargs):
@@ -160,6 +189,7 @@ def plot_selected(mtbop_data):
 		y = plot_data[:,1]
 		plt.xlabel(axes['0 name'] + '(' + axes['0 unit'] + ')')
 		plt.ylabel(axes['1 name'] + '(' + axes['1 unit'] + ')')
+
 		if axes['0 scaling'] == 'current': 
 			print "Using current scaling for axis 1"
 			x = (x/max_current)**2. 
@@ -168,6 +198,7 @@ def plot_selected(mtbop_data):
 			print "Using current scaling for axis 2"
 			y = (y/max_current)**2. 
 			plt.ylabel('$(I/I_q)**2$')
+
 		plt.plot(x,y)
 
 @timeit
@@ -412,17 +443,16 @@ def find_channel_names(filepaths):
 		channel_names_list += mtbop_data['channel_names']
 	return list(set(channel_names_list))
 
-#def find_strain_pairs(filepaths):
-#	channel_names_list = find_channel_names(filepaths)
-#	strain_pairs_list = []
-#	for channel_name in channel_names_list:
-#		strain_pairs_list.append((channel_name, difflib.get_close_matches(channel_name, channel_names_list)))
-#	return strain_pairs_list
-
 def print_channel_names(filepaths):
 	print "Channel names:"
-	print find_channel_names(filepaths)
-	#print find_strain_pairs(filepaths)
+	channel_names = find_channel_names(filepaths)
+	channel_names_dict = {}
+	for channel_name in channel_names:
+		channel_names_dict[channel_name] = channel_name
+	print channel_names_dict
+	with open('channels.dict', 'w') as outfile:
+		json.dump(channel_names_dict, outfile, indent=4)
+
 	
 def find_files(paths):
 	filepaths=[]
@@ -441,8 +471,9 @@ if __name__ == '__main__':
 	parser.add_argument('-p', '--plot', action='store_true', default=False) 
 	parser.add_argument('-x', '--x-axis', type=str)
 	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
-	parser.add_argument('-s', '--plot-stress', nargs='+', type=str)
+	parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
 	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
+	parser.add_argument('--debug', nargs='+', type=str)
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -450,9 +481,11 @@ if __name__ == '__main__':
 	channel_names = args.channel_names
 	plot = args.plot
 	x_axis = args.x_axis
+	if x_axis == None: x_axis = 'Current'
 	y_axis = args.y_axis
 	plot_stress = args.plot_stress
 	override_pickle = args.override_pickle
+	debug = args.debug
 
 	filepaths = find_files(paths)
 
@@ -466,6 +499,7 @@ if __name__ == '__main__':
 			mtbop_data['selected_channel_names'] = selected_channel_names
 			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
 			mtbop_data['plot_delta'] = True
+			mtbop_data['plot_stress'] = plot_stress
 
 		plot_selected_list(mtbop_data_list)
 		plt.show()
