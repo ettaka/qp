@@ -57,6 +57,14 @@ def compute_stress(strain_theta, strain_z, material, axis):
 		strain_2 = strain_theta
 	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
 
+def compute_stress_simple(strain, material):
+	"""
+	stress     = E*strain
+	"""
+	E = float(MATERIAL_DATA[material]['elastic_modulus'])
+	return E * strain[:]
+
+
 def find_strain_data(mtbop_data, strain_name):
 	basename = strain_name[0:-1]
 	if strain_name[-1] == 'T': 
@@ -302,7 +310,7 @@ def find_axes(mtbop_data):
 			axes['0 name'] = pair[0]
 			axes['1 name'] = pair[1]
 			axes['0 unit'] = channel_units[first]
-			axes['1 unit'] = channel_units[second]
+			#axes['1 unit'] = channel_units[second]
 			axes_list.append(axes)
 	return axes_list
 
@@ -452,43 +460,145 @@ def find_files(paths):
 			filepaths.append(path)
 	return filepaths
 
-def print_channel_names(filepaths):
+def create_channel_data(filepaths):
 	print "Channel names:"
 	channel_names = find_channel_names(filepaths)
-	channel_names_dict = {}
+	channel_dict_list = [] 
 	for channel_name in channel_names:
-		channel_names_dict[channel_name] = {}
+		channel_dict_list.append({})
+		channel_dict = channel_dict_list[-1]
+		channel_dict['name'] = channel_name
 		if channel_name[0:2] == 'SH':
-			channel_names_dict[channel_name]['name'] = 'Shell'
+			shell_location = ''
+			if channel_name[2] == 'R': shell_location = 'Right'
+			elif channel_name[2] == 'L': shell_location = 'Left'
+			elif channel_name[2] == 'T': shell_location = 'Top'
+			elif channel_name[2] == 'B': shell_location = 'Bottom'
+			channel_dict['location'] = 'Shell ' + shell_location
+			channel_dict['physical_quantity'] = 'Strain'
 		elif channel_name[0] == 'R': 
-			channel_names_dict[channel_name]['name'] = 'Rod ' + channel_name[1]
+			channel_dict['location'] = 'Rod ' + channel_name[1]
+			channel_dict['physical_quantity'] = 'Strain'
 		elif channel_name[0:2] == 'CO':
-			channel_names_dict[channel_name]['name'] = 'Coil ' + channel_name[2:5]
-		else:
-			channel_names_dict[channel_name]['name'] = channel_name 
-		if channel_name[-1] == 'Z':
-			channel_names_dict[channel_name]['physical_quantity'] = 'longitudinal strain'
-		elif channel_name[-1] == 'T':
-			channel_names_dict[channel_name]['physical_quantity'] = 'azimuthal strain'
+			channel_dict['location'] = 'Coil ' + channel_name[2:5]
+			channel_dict['physical_quantity'] = 'Strain'
 		elif channel_name == 'Current':
-			channel_names_dict[channel_name]['physical_quantity'] = 'current'
+			channel_dict['physical_quantity'] = 'Current'
+			channel_dict['location'] = 'None'
 		else:
-			channel_names_dict[channel_name]['physical_quantity'] = 'strain'
+			channel_dict['location'] = channel_name 
+			channel_dict['physical_quantity'] = 'None'
+		if channel_name[-1] == 'Z':
+			channel_dict['direction'] = 'Longitudinal'
+		elif channel_name[-1] == 'T':
+			channel_dict['direction'] = 'Azimuthal'
+		else:
+			channel_dict['direction'] = 'None'
+
 	print "Writing channels.json"
 	with open('channels.json', 'w') as outfile:
-		json.dump(channel_names_dict, outfile, indent=4)
+		json.dump(channel_dict_list, outfile, indent=4)
+
+def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
+	channel_dict_sub = []
+	for channel_dict in channel_dict_list: 
+		if channel_dict['location'] == location and channel_dict['physical_quantity'] == physical_quantity and channel_dict['direction'] == direction:
+			   channel_dict_sub.append(channel_dict)
+	return channel_dict_sub
 
 
-def read_channels_info_json():
-	with open('channels_info.json', 'r') as f:
+def read_channels_json():
+	with open('channels.json', 'r') as f:
 		data_json = json.load(f)
 	return data_json
+
+def double_array_columns_with_zeros(array):
+	size1, size2 = np.shape(array)
+	new_array = np.zeros((size1, 2*size2))
+	new_array[:,0:size2] = array
+	return new_array
+
+def double_vector_with_zeros(vector):
+	size = np.size(vector)
+	new_vector = np.zeros(2*size)
+	new_vector[0:size] = vector
+	vector = new_vector
+
+def compute_stresses(mtbop_data, channel_dicts):
+	print "Computing stresses for:", mtbop_data['filepath']
+	raw_data = mtbop_data['raw_data']
+	size1, size2 = np.shape(raw_data)
+	mtbop_data['raw_data'] = double_array_columns_with_zeros(raw_data)
+	raw_data = mtbop_data['raw_data']
+
+	mtbop_data['filtered_array'] = double_array_columns_with_zeros(mtbop_data['filtered_array'])
+	print np.shape(mtbop_data['initial_values'])
+	mtbop_data['initial_values'] = double_vector_with_zeros(mtbop_data['initial_values'])
+	print np.shape(mtbop_data['initial_values'])
+
+	locations = list(set([channel_dict['location'] for channel_dict in channel_dicts]))
+	computed_dicts = []
+
+	channel_count = 0
+	for location in locations:
+		if not location == 'None':
+			print "location: ", location
+			azimuthal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Azimuthal')
+			if len(azimuthal_dicts) == 1: azimuthal_dict = azimuthal_dicts[0]
+			else: azimuthal_dict = None
+			longitudinal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Longitudinal')
+			if len(longitudinal_dicts) == 1: longitudinal_dict = longitudinal_dicts[0]
+			else: 
+				print "Error: longitudinal of the location was not found!"
+				exit()
+
+			longitudinal_name = longitudinal_dict['name']
+			longitudinal_index = find_channel_index(mtbop_data['channel_names'], longitudinal_name)
+
+			if 'Shell' in longitudinal_dict['location']: material = 'aluminium'
+			elif 'Rod' in longitudinal_dict['location']: material = 'aluminium'
+			elif 'Coil' in longitudinal_dict['location']: material = 'titanium'
+
+			print channel_count
+
+			if not azimuthal_dict == None:
+				azimuthal_name = azimuthal_dict['name']
+				azimuthal_index = find_channel_index(mtbop_data['channel_names'], azimuthal_name)
+				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'theta')
+				channel_count += 1
+				computed_dicts.append({})
+				channel_name = location + ' Azimuthal Stress'
+				computed_dicts[-1]['name'] = channel_name
+				computed_dicts[-1]['location'] = location
+				computed_dicts[-1]['physical_quantity'] = 'Stress'
+				computed_dicts[-1]['direction'] = 'Azimuthal'
+				mtbop_data['channel_names'].append(channel_name)
+
+				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'z')
+				channel_count += 1
+				computed_dicts.append({})
+				channel_name = location + ' Longitudinal Stress'
+				computed_dicts[-1]['name'] = channel_name
+				computed_dicts[-1]['location'] = location
+				computed_dicts[-1]['physical_quantity'] = 'Stress'
+				computed_dicts[-1]['direction'] = 'Longitudinal'
+				mtbop_data['channel_names'].append(channel_name)
+			else:
+				raw_data[:, size2+channel_count] = compute_stress_simple(raw_data[:,longitudinal_index], material)
+				channel_count += 1
+				computed_dicts.append({})
+				channel_name = location + ' Longitudinal Stress'
+				computed_dicts[-1]['name'] = channel_name
+				computed_dicts[-1]['location'] = location
+				computed_dicts[-1]['physical_quantity'] = 'Stress'
+				computed_dicts[-1]['direction'] = 'Longitudinal'
+				mtbop_data['channel_names'].append(channel_name)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
 	parser.add_argument('-i', '--info', action='store_true', default=False)
-	parser.add_argument('-c', '--channel-names', action='store_true', default=False)
+	parser.add_argument('-c', '--channel-data', action='store_true', default=False)
 	parser.add_argument('-p', '--plot', action='store_true', default=False) 
 	parser.add_argument('-x', '--x-axis', type=str)
 	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
@@ -499,7 +609,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	paths = args.paths
 	info = args.info
-	channel_names = args.channel_names
+	channel_data = args.channel_data
 	plot = args.plot
 	x_axis = args.x_axis
 	if x_axis == None: x_axis = 'Current'
@@ -512,8 +622,14 @@ if __name__ == '__main__':
 
 	mtbop_data_list = load_mtbop_list(filepaths, override_pickle)
 
+	if not debug == None: print debug
 	if info: print_mtbop_info(filepaths)
-	if channel_names: print_channel_names(filepaths)
+	if channel_data: create_channel_data(filepaths)
+	#if plot_stress:
+	channel_dicts = read_channels_json()
+	for mtbop_data in mtbop_data_list:
+		compute_stresses(mtbop_data, channel_dicts)
+
 	if plot:
 		selected_channel_names = [(x_axis,y) for y in y_axis]
 		for mtbop_data in mtbop_data_list:
@@ -524,7 +640,6 @@ if __name__ == '__main__':
 
 		plot_selected_list(mtbop_data_list)
 		plt.show()
-
 
 
 
