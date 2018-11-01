@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import pandas as pd
+#import pandas as pd
 import cPickle as pickle
 import os
 import codecs
@@ -268,12 +268,12 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	#mtbop_data['raw_data_df'] = raw_data_df
 	#mtbop_data['raw_data'] = raw_data_df.values
 	mtbop_data['raw_data'] = raw_data
-	mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
-	mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
-	detect_max_current(mtbop_data)
+	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
+	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
+	#detect_max_current(mtbop_data)
 
-	filter_indices_after_index(mtbop_data)
-	detect_first_values(mtbop_data)
+	#filter_indices_after_index(mtbop_data)
+	#detect_first_values(mtbop_data)
 	
 	cpickle_dump(mtbop_data, pickle_path)
 	return mtbop_data
@@ -445,7 +445,7 @@ def print_mtbop_info(filepaths):
 	info_table = make_info_table(mtbop_data_list)
 	print tabulate.tabulate(info_table, headers="firstrow")
 
-def find_channel_names(filepaths):
+def find_channel_names(mtbop_data_list):
 	channel_names_list = []
 	for mtbop_data in mtbop_data_list:
 		channel_names_list += mtbop_data['channel_names']
@@ -460,9 +460,8 @@ def find_files(paths):
 			filepaths.append(path)
 	return filepaths
 
-def create_channel_data(filepaths):
-	print "Channel names:"
-	channel_names = find_channel_names(filepaths)
+def create_channel_data(mtbop_data_list):
+	channel_names = find_channel_names(mtbop_data_list)
 	channel_dict_list = [] 
 	for channel_name in channel_names:
 		channel_dict_list.append({})
@@ -476,18 +475,23 @@ def create_channel_data(filepaths):
 			elif channel_name[2] == 'B': shell_location = 'Bottom'
 			channel_dict['location'] = 'Shell ' + shell_location
 			channel_dict['physical_quantity'] = 'Strain'
+			channel_dict['unit'] = 'um/um'
 		elif channel_name[0] == 'R': 
 			channel_dict['location'] = 'Rod ' + channel_name[1]
 			channel_dict['physical_quantity'] = 'Strain'
+			channel_dict['unit'] = 'um/um'
 		elif channel_name[0:2] == 'CO':
 			channel_dict['location'] = 'Coil ' + channel_name[2:5]
 			channel_dict['physical_quantity'] = 'Strain'
+			channel_dict['unit'] = 'um/um'
 		elif channel_name == 'Current':
 			channel_dict['physical_quantity'] = 'Current'
 			channel_dict['location'] = 'None'
+			channel_dict['unit'] = 'A'
 		else:
 			channel_dict['location'] = channel_name 
 			channel_dict['physical_quantity'] = 'None'
+			channel_dict['unit'] = 'None'
 		if channel_name[-1] == 'Z':
 			channel_dict['direction'] = 'Longitudinal'
 		elif channel_name[-1] == 'T':
@@ -498,6 +502,8 @@ def create_channel_data(filepaths):
 	print "Writing channels.json"
 	with open('channels.json', 'w') as outfile:
 		json.dump(channel_dict_list, outfile, indent=4)
+	
+	return channel_dict_list
 
 def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
 	channel_dict_sub = []
@@ -594,11 +600,32 @@ def compute_stresses(mtbop_data, channel_dicts):
 				computed_dicts[-1]['direction'] = 'Longitudinal'
 				mtbop_data['channel_names'].append(channel_name)
 
+def create_channel_name_dict(channel_dict_list):
+	channel_name_dict = {}
+	for channel_dict in channel_dict_list:
+		channel_name_dict[channel_dict['name']]=channel_dict
+	return channel_name_dict
+
+def create_plot_dict(paths, use_channels_json):
+	plot_dict = {}
+	plot_dict['paths'] = paths
+	plot_dict['filepaths'] = find_files(paths)
+	plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle)
+
+	if use_channels_json: 
+		plot_dict['channel_dict_list'] = read_channels_json()
+	else:
+		plot_dict['channel_dict_list'] = create_channel_data(plot_dict['mtbop_data_list'])
+
+	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
+
+	return plot_dict 
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
 	parser.add_argument('-i', '--info', action='store_true', default=False)
-	parser.add_argument('-c', '--channel-data', action='store_true', default=False)
+	parser.add_argument('-c', '--use-channels-json', action='store_true', default=False)
 	parser.add_argument('-p', '--plot', action='store_true', default=False) 
 	parser.add_argument('-x', '--x-axis', type=str)
 	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
@@ -609,7 +636,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	paths = args.paths
 	info = args.info
-	channel_data = args.channel_data
+	use_channels_json = args.use_channels_json
 	plot = args.plot
 	x_axis = args.x_axis
 	if x_axis == None: x_axis = 'Current'
@@ -618,28 +645,28 @@ if __name__ == '__main__':
 	override_pickle = args.override_pickle
 	debug = args.debug
 
-	filepaths = find_files(paths)
+	plot_dict = create_plot_dict(paths, use_channels_json)
 
-	mtbop_data_list = load_mtbop_list(filepaths, override_pickle)
+	print plot_dict['channel_dict_list']
+	print plot_dict['channel_name_dict']['SHTZ']
 
-	if not debug == None: print debug
-	if info: print_mtbop_info(filepaths)
-	if channel_data: create_channel_data(filepaths)
-	#if plot_stress:
-	channel_dicts = read_channels_json()
-	for mtbop_data in mtbop_data_list:
-		compute_stresses(mtbop_data, channel_dicts)
-
-	if plot:
-		selected_channel_names = [(x_axis,y) for y in y_axis]
-		for mtbop_data in mtbop_data_list:
-			mtbop_data['selected_channel_names'] = selected_channel_names
-			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
-			mtbop_data['plot_delta'] = True
-			mtbop_data['plot_stress'] = plot_stress
-
-		plot_selected_list(mtbop_data_list)
-		plt.show()
+#	if not debug == None: print debug
+#	if info: print_mtbop_info(filepaths)
+#	#if plot_stress:
+#	channel_dicts = read_channels_json()
+#	for mtbop_data in mtbop_data_list:
+#		compute_stresses(mtbop_data, channel_dicts)
+#
+#	if plot:
+#		selected_channel_names = [(x_axis,y) for y in y_axis]
+#		for mtbop_data in mtbop_data_list:
+#			mtbop_data['selected_channel_names'] = selected_channel_names
+#			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+#			mtbop_data['plot_delta'] = True
+#			mtbop_data['plot_stress'] = plot_stress
+#
+#		plot_selected_list(mtbop_data_list)
+#		plt.show()
 
 
 
