@@ -509,7 +509,7 @@ def add_stress_channel_data(plot_dict):
             added_dicts.append(dict(channel_dict))
             added_dict = added_dicts[-1]
             added_dict['physical_quantity'] = 'Stress'
-            added_dict['long_name'] = channel_longname(channel_dict)
+            added_dict['long_name'] = channel_longname(added_dict)
             added_dict['name'] = added_dict['long_name'] 
     plot_dict['channel_dict_list'] += added_dicts
 
@@ -730,7 +730,6 @@ if __name__ == '__main__':
             exit()
 
         check_selected_channels(selected_channel_names, x_axis, y_axis)
-
 
 	if plot:
             plot_data(plot_dict)
