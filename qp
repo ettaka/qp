@@ -38,10 +38,6 @@ MATERIAL_DATA = {
 			}
 		}
 
-CHANNEL_NAME_REPLACEMENTS = {
-		'SHLZ' : 'Shell Azimuthal Stress'
-		}
-
 def compute_stress(strain_theta, strain_z, material, axis):
 	"""
 	stress_z     = E/(1-v**2)*(strain_z     * v * strain_theta)
@@ -116,7 +112,6 @@ def detect_max_current(mtbop_data):
 
 def detect_first_values(mtbop_data):
 	raw_data = mtbop_data['raw_data']
-	filtered_array = mtbop_data['filtered_array']
 	initial_values = None
 	for i, row in enumerate(raw_data):
 		if np.all(filtered_array[i]==0): 
@@ -187,18 +182,19 @@ def select_mtbop_data(mtbop_data, selected_axes):
 
 @timeit
 def plot_mtbop_data(mtbop_data):
+        max_current_index = mtbop_data['max_current_index']
 	raw_data = mtbop_data['raw_data']
         x_axis_dict = mtbop_data['x_axis']
         y_axis_dict = mtbop_data['y_axis']
 
         ax_dicts = [x_axis_dict, y_axis_dict]
         for ax_dict in ax_dicts:
-            ax_dict['raw_data'] = raw_data[:,ax_dict['index']]
+            ax_dict['raw_data'] = raw_data[:max_current_index,ax_dict['index']]
             if ax_dict['name'].lower() == 'current':
                 ax_dict['raw_data'] = ax_dict['raw_data']**2.
-                ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + ')**2'
+                ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
             else:
-                ax_dict['label'] = ax_dict['longname'] + '(' + ax_dict['unit'] + ')'
+                ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
 
         plt.xlabel(x_axis_dict['label'])
         plt.ylabel(y_axis_dict['label'])
@@ -648,23 +644,24 @@ def print_plot_info(plot_dict):
 
 def plot_data(plot_dict):
     x_axis = plot_dict['x_axis']
-    y_axis = plot_dict['y_axis']
-    if y_axis == None: 
+    y_axis_list = plot_dict['y_axis']
+    if y_axis_list == None: 
         print "You didn't choose any channels on y-axis, exiting..."
         exit()
-    y_axis = y_axis[0]
 
-    for mtbop_data in plot_dict['mtbop_data_list']:
-        mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
-        mtbop_data['y_axis'] = plot_dict['channel_name_dict'][y_axis]
-        channel_names = mtbop_data['channel_names']
-        x_axis = mtbop_data['x_axis']['name']
-        y_axis = mtbop_data['y_axis']['name']
-        if x_axis in channel_names and y_axis in channel_names: 
-            mtbop_data['x_axis']['index']= channel_names.index(x_axis)
-            mtbop_data['y_axis']['index']= channel_names.index(y_axis)
-            plot_mtbop_data(mtbop_data)
-        
+    for y_axis in y_axis_list:
+        for mtbop_data in plot_dict['mtbop_data_list']:
+            detect_max_current(mtbop_data)
+            mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
+            mtbop_data['y_axis'] = plot_dict['channel_name_dict'][y_axis]
+            channel_names = mtbop_data['channel_names']
+            x_axis = mtbop_data['x_axis']['name']
+            y_axis = mtbop_data['y_axis']['name']
+            if x_axis in channel_names and y_axis in channel_names: 
+                mtbop_data['x_axis']['index']= channel_names.index(x_axis)
+                mtbop_data['y_axis']['index']= channel_names.index(y_axis)
+                plot_mtbop_data(mtbop_data)
+            
 
  
 if __name__ == '__main__':
