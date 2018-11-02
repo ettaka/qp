@@ -499,11 +499,17 @@ def create_channel_data(mtbop_data_list):
 		else:
 			channel_dict['direction'] = 'None'
 
+                channel_dict['longname'] = channel_longname(channel_dict)
+
 	print "Writing channels.json"
 	with open('channels.json', 'w') as outfile:
 		json.dump(channel_dict_list, outfile, indent=4)
 	
 	return channel_dict_list
+
+def channel_longname(channel_dict):
+    return channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
+
 
 def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
 	channel_dict_sub = []
@@ -625,7 +631,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
 	parser.add_argument('-i', '--info', action='store_true', default=False)
-	parser.add_argument('-c', '--channels-json', nargs='?', default='', type=str)
+	parser.add_argument('-c', '--channels-json', nargs='?', type=str)
 	parser.add_argument('-p', '--plot', action='store_true', default=False) 
 	parser.add_argument('-x', '--x-axis', type=str)
 	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
