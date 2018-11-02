@@ -198,7 +198,10 @@ def plot_mtbop_data(mtbop_data):
 
         plt.xlabel(x_axis_dict['label'])
         plt.ylabel(y_axis_dict['label'])
-        plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], 'g')
+        if mtbop_data['no_markers']:
+            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], mtbop_data['color']+'-')
+        else:
+            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], mtbop_data['color']+mtbop_data['marker']+'-', markevery=mtbop_data['markevery'])
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -649,8 +652,13 @@ def plot_data(plot_dict):
         print "You didn't choose any channels on y-axis, exiting..."
         exit()
 
-    for y_axis in y_axis_list:
-        for mtbop_data in plot_dict['mtbop_data_list']:
+    colors = ['b','g','r','c','m','y','k']
+    markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
+
+    for j, y_axis in enumerate(y_axis_list):
+        for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
+            mtbop_data['color'] = colors[i%len(colors)]
+            mtbop_data['marker'] = markers[j%len(markers)]
             detect_max_current(mtbop_data)
             mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
             mtbop_data['y_axis'] = plot_dict['channel_name_dict'][y_axis]
@@ -660,9 +668,9 @@ def plot_data(plot_dict):
             if x_axis in channel_names and y_axis in channel_names: 
                 mtbop_data['x_axis']['index']= channel_names.index(x_axis)
                 mtbop_data['y_axis']['index']= channel_names.index(y_axis)
+                mtbop_data['markevery'] = plot_dict['markevery']
+                mtbop_data['no_markers'] = plot_dict['no_markers']
                 plot_mtbop_data(mtbop_data)
-            
-
  
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
@@ -674,7 +682,7 @@ if __name__ == '__main__':
 	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
 	parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
 	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
-	parser.add_argument('--debug', nargs='+', type=str)
+	parser.add_argument('-m', '--markevery', type=int) 
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -686,12 +694,18 @@ if __name__ == '__main__':
 	y_axis = args.y_axis
 	plot_stress = args.plot_stress
 	override_pickle = args.override_pickle
-	debug = args.debug
+        markevery = args.markevery
 
         if x_axis == None: x_axis = 'Current'
 	plot_dict = create_plot_dict(paths, channels_json)
         plot_dict['x_axis'] = x_axis
         plot_dict['y_axis'] = y_axis
+        plot_dict['markevery'] = markevery
+        if markevery == None:
+            plot_dict['no_markers'] = True
+        else:
+            plot_dict['no_markers'] = False
+
         selected_channel_names = get_selected_channel_names(plot_dict)
         
 	if info: 
