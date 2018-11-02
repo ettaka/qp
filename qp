@@ -661,18 +661,17 @@ if __name__ == '__main__':
 	if x_axis == None: x_axis = 'Current'
         if not x_axis in selected_channel_names:
             print "I did't find the channel that you chose with -x (or default 'Current' if you didn't select)"
-            print "These are the available channels that you selected with -c (" + channels_json + "):", selected_channel_names
+            print "These are the available channels that you selected with -c (" + channels_json + "):"
+            print '\n'.join(selected_channel_names)
             exit()
 
         if not y_axis == None:
             for selected_y in y_axis:
                 if not selected_y in selected_channel_names:
-                    print "I did't find the channel that you chose with -y"
+                    print "I did't find the channel", selected_y, "that you chose with -y"
                     print "These are the available channels that you selected with -c (" + channels_json + "):"
                     print '\n'.join(selected_channel_names)
                     exit()
-
-
 
         #print plot_dict['channel_dict_list']
 	#print plot_dict['channel_name_dict'][plot_dict['channel_dict_list'][0]['name']]
