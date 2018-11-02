@@ -501,6 +501,18 @@ def create_channel_data(mtbop_data_list):
 	
 	return channel_dict_list
 
+def add_stress_channel_data(plot_dict):
+    added_dicts = []
+    channel_dict_list = plot_dict['channel_dict_list']
+    for channel_dict in channel_dict_list:
+        if channel_dict['physical_quantity'] == 'Strain':
+            added_dicts.append(dict(channel_dict))
+            added_dict = added_dicts[-1]
+            added_dict['physical_quantity'] = 'Stress'
+            added_dict['long_name'] = channel_longname(channel_dict)
+            added_dict['name'] = added_dict['long_name'] 
+    plot_dict['channel_dict_list'] += added_dicts
+
 def channel_longname(channel_dict):
     return channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
 
@@ -606,16 +618,21 @@ def create_channel_name_dict(channel_dict_list):
 		channel_name_dict[channel_dict['name']]=channel_dict
 	return channel_name_dict
 
-def create_plot_dict(paths, channels_json):
+def create_plot_dict(paths, channels_json, plot_stress=False):
 	plot_dict = {}
 	plot_dict['paths'] = paths
 	plot_dict['filepaths'] = find_files(paths)
 	plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle)
+	plot_dict['plot_stress'] = plot_stress
 
 	if not channels_json == None: 
 		plot_dict['channel_dict_list'] = read_channels_json(channels_json)
 	else:
 		plot_dict['channel_dict_list'] = create_channel_data(plot_dict['mtbop_data_list'])
+
+        if plot_stress:
+            add_stress_channel_data(plot_dict)
+            #compute_stresses(mtbop_data, channel_dicts)
 
 	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
@@ -697,7 +714,7 @@ if __name__ == '__main__':
         markevery = args.markevery
 
         if x_axis == None: x_axis = 'Current'
-	plot_dict = create_plot_dict(paths, channels_json)
+	plot_dict = create_plot_dict(paths, channels_json, plot_stress)
         plot_dict['x_axis'] = x_axis
         plot_dict['y_axis'] = y_axis
         plot_dict['markevery'] = markevery
@@ -707,7 +724,7 @@ if __name__ == '__main__':
             plot_dict['no_markers'] = False
 
         selected_channel_names = get_selected_channel_names(plot_dict)
-        
+
 	if info: 
             print_plot_info(plot_dict)
             exit()
@@ -715,7 +732,6 @@ if __name__ == '__main__':
         check_selected_channels(selected_channel_names, x_axis, y_axis)
 
 
-#		compute_stresses(mtbop_data, channel_dicts)
 	if plot:
             plot_data(plot_dict)
             plt.show()
