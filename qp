@@ -198,7 +198,7 @@ def plot_mtbop_data(mtbop_data):
 
         plt.xlabel(x_axis_dict['label'])
         plt.ylabel(y_axis_dict['label'])
-        plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'])
+        plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], 'g')
 
 @timeit
 def plot_selected_list(plot_dict):
