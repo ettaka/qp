@@ -627,6 +627,9 @@ def create_plot_dict(paths, channels_json):
 
 	return plot_dict 
 
+def get_selected_channel_names(plot_dict):
+    returnj [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
@@ -663,8 +666,9 @@ if __name__ == '__main__':
 #	for mtbop_data in mtbop_data_list:
 #		compute_stresses(mtbop_data, channel_dicts)
 #
-#	if plot:
-#		selected_channel_names = [(x_axis,y) for y in y_axis]
+	if plot:
+		selected_channel_names = get_selected_channel_names(plot_dict)
+                print selected_channel_names
 #		for mtbop_data in mtbop_data_list:
 #			mtbop_data['selected_channel_names'] = selected_channel_names
 #			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
