@@ -190,21 +190,19 @@ def plot_mtbop_data(mtbop_data):
 	raw_data = mtbop_data['raw_data']
         x_axis_dict = mtbop_data['x_axis']
         y_axis_dict = mtbop_data['y_axis']
-        x = raw_data[:,x_axis_dict['index']]
-        y = raw_data[:,y_axis_dict['index']]
-        plt.xlabel(x_axis_dict['name'] + '(' + x_axis_dict['unit'] + ')')
-        plt.ylabel(y_axis_dict['name'] + '(' + y_axis_dict['unit'] + ')')
 
-#        if axes['0 scaling'] == 'current': 
-#                print "Using current scaling for axis 1"
-#                x = (x/max_current)**2. 
-#                plt.xlabel('$(I/I_q)^2$')
-#        if axes['1 scaling'] == 'current': 
-#                print "Using current scaling for axis 2"
-#                y = (y/max_current)**2. 
-#                plt.ylabel('$(I/I_q)**2$')
+        ax_dicts = [x_axis_dict, y_axis_dict]
+        for ax_dict in ax_dicts:
+            ax_dict['raw_data'] = raw_data[:,ax_dict['index']]
+            if ax_dict['name'].lower() == 'current':
+                ax_dict['raw_data'] = ax_dict['raw_data']**2.
+                ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + ')**2'
+            else:
+                ax_dict['label'] = ax_dict['longname'] + '(' + ax_dict['unit'] + ')'
 
-        plt.plot(x,y)
+        plt.xlabel(x_axis_dict['label'])
+        plt.ylabel(y_axis_dict['label'])
+        plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'])
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -625,7 +623,8 @@ def create_plot_dict(paths, channels_json):
 	return plot_dict 
 
 def get_selected_channel_names(plot_dict):
-    return [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
+    plot_dict['selected_channel_names'] = [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
+    return plot_dict['selected_channel_names']
 
 def check_selected_channels(selected_channel_names, x_axis, y_axis):
     if not x_axis in selected_channel_names:
@@ -642,6 +641,32 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis):
                 print '\n'.join(selected_channel_names)
                 exit()
 
+def print_plot_info(plot_dict):
+    print "Plot info:"
+    print "Selected channel names:"
+    print '\n'.join(plot_dict['selected_channel_names'])
+
+def plot_data(plot_dict):
+    x_axis = plot_dict['x_axis']
+    y_axis = plot_dict['y_axis']
+    if y_axis == None: 
+        print "You didn't choose any channels on y-axis, exiting..."
+        exit()
+    y_axis = y_axis[0]
+
+    for mtbop_data in plot_dict['mtbop_data_list']:
+        mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
+        mtbop_data['y_axis'] = plot_dict['channel_name_dict'][y_axis]
+        channel_names = mtbop_data['channel_names']
+        x_axis = mtbop_data['x_axis']['name']
+        y_axis = mtbop_data['y_axis']['name']
+        if x_axis in channel_names and y_axis in channel_names: 
+            mtbop_data['x_axis']['index']= channel_names.index(x_axis)
+            mtbop_data['y_axis']['index']= channel_names.index(y_axis)
+            plot_mtbop_data(mtbop_data)
+        
+
+ 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
@@ -666,41 +691,22 @@ if __name__ == '__main__':
 	override_pickle = args.override_pickle
 	debug = args.debug
 
+        if x_axis == None: x_axis = 'Current'
 	plot_dict = create_plot_dict(paths, channels_json)
+        plot_dict['x_axis'] = x_axis
+        plot_dict['y_axis'] = y_axis
         selected_channel_names = get_selected_channel_names(plot_dict)
         
-        if x_axis == None: x_axis = 'Current'
+	if info: 
+            print_plot_info(plot_dict)
+            exit()
+
         check_selected_channels(selected_channel_names, x_axis, y_axis)
 
-#	if not debug == None: print debug
-#	if info: print_mtbop_info(filepaths)
-#	#if plot_stress:
-#	channel_dicts = read_channels_json()
-#	for mtbop_data in mtbop_data_list:
+
 #		compute_stresses(mtbop_data, channel_dicts)
-#
 	if plot:
-            if y_axis == None: 
-                print "You didn't choose any channels on y-axis, exiting..."
-                exit()
-            y_axis = y_axis[0]
-
-            for mtbop_data in plot_dict['mtbop_data_list']:
-                mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
-                mtbop_data['y_axis'] = plot_dict['channel_name_dict'][y_axis]
-                channel_names = mtbop_data['channel_names']
-                x_axis = mtbop_data['x_axis']['name']
-                y_axis = mtbop_data['y_axis']['name']
-		if x_axis in channel_names and y_axis in channel_names: 
-                    mtbop_data['x_axis']['index']= channel_names.index(x_axis)
-                    mtbop_data['y_axis']['index']= channel_names.index(y_axis)
-                    plot_mtbop_data(mtbop_data)
-                
-
-                
-                #mtbop_data['plot_delta'] = True
-                #mtbop_data['plot_stress'] = plot_stress
-
+            plot_data(plot_dict)
             plt.show()
 
 
