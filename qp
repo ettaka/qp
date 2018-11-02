@@ -210,7 +210,8 @@ def plot_selected(mtbop_data):
 		plt.plot(x,y)
 
 @timeit
-def plot_selected_list(mtbop_data_list):
+def plot_selected_list(plot_dict):
+        mtbop_data_list = plot_dict['mtbop_data_list']
 	for mtbop_data in mtbop_data_list:
 		plot_selected(mtbop_data)
 
@@ -628,7 +629,7 @@ def create_plot_dict(paths, channels_json):
 	return plot_dict 
 
 def get_selected_channel_names(plot_dict):
-    returnj [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
+    return [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
@@ -646,18 +647,35 @@ if __name__ == '__main__':
 	paths = args.paths
 	info = args.info
 	channels_json = args.channels_json
+        if channels_json == None: channels_json = 'channels.json'
 	plot = args.plot
 	x_axis = args.x_axis
-	if x_axis == None: x_axis = 'Current'
 	y_axis = args.y_axis
 	plot_stress = args.plot_stress
 	override_pickle = args.override_pickle
 	debug = args.debug
 
 	plot_dict = create_plot_dict(paths, channels_json)
+        selected_channel_names = get_selected_channel_names(plot_dict)
+        
+	if x_axis == None: x_axis = 'Current'
+        if not x_axis in selected_channel_names:
+            print "I did't find the channel that you chose with -x (or default 'Current' if you didn't select)"
+            print "These are the available channels that you selected with -c (" + channels_json + "):", selected_channel_names
+            exit()
 
-	print plot_dict['channel_dict_list']
-	print plot_dict['channel_name_dict'][plot_dict['channel_dict_list'][0]['name']]
+        if not y_axis == None:
+            for selected_y in y_axis:
+                if not selected_y in selected_channel_names:
+                    print "I did't find the channel that you chose with -y"
+                    print "These are the available channels that you selected with -c (" + channels_json + "):"
+                    print '\n'.join(selected_channel_names)
+                    exit()
+
+
+
+        #print plot_dict['channel_dict_list']
+	#print plot_dict['channel_name_dict'][plot_dict['channel_dict_list'][0]['name']]
 
 #	if not debug == None: print debug
 #	if info: print_mtbop_info(filepaths)
@@ -667,16 +685,15 @@ if __name__ == '__main__':
 #		compute_stresses(mtbop_data, channel_dicts)
 #
 	if plot:
-		selected_channel_names = get_selected_channel_names(plot_dict)
                 print selected_channel_names
-#		for mtbop_data in mtbop_data_list:
-#			mtbop_data['selected_channel_names'] = selected_channel_names
-#			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
-#			mtbop_data['plot_delta'] = True
-#			mtbop_data['plot_stress'] = plot_stress
-#
-#		plot_selected_list(mtbop_data_list)
-#		plt.show()
+		for mtbop_data in plot_dict['mtbop_data_list']:
+			mtbop_data['selected_channel_names'] = selected_channel_names
+			#mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+			#mtbop_data['plot_delta'] = True
+			#mtbop_data['plot_stress'] = plot_stress
+
+		plot_selected_list(plot_dict)
+		#plt.show()
 
 
 
