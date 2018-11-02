@@ -193,7 +193,7 @@ def plot_mtbop_data(mtbop_data):
         x = raw_data[:,x_axis_dict['index']]
         y = raw_data[:,y_axis_dict['index']]
         plt.xlabel(x_axis_dict['name'] + '(' + x_axis_dict['unit'] + ')')
-        plt.xlabel(y_axis_dict['name'] + '(' + y_axis_dict['unit'] + ')')
+        plt.ylabel(y_axis_dict['name'] + '(' + y_axis_dict['unit'] + ')')
 
 #        if axes['0 scaling'] == 'current': 
 #                print "Using current scaling for axis 1"
