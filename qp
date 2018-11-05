@@ -568,8 +568,9 @@ def add_stress_data_to_dicts(channel_dict_list):
             channel_dict['strain']['azimuthal'] = strain_azimuthal
 
 def get_raw_data_by_name(mtbop_data, channel_name):
-    index = mtbop_data['channel_names'].index(channel_name) 
-    return mtbop_data['raw_data'][:,index]
+    if channel_name in mtbop_data['channel_names']:
+        index = mtbop_data['channel_names'].index(channel_name) 
+        return mtbop_data['raw_data'][:,index]
 
 def add_column_to_mtbop_raw_data(mtbop_data, data, name):
     mtbop_data['channel_names'].append(name)
@@ -587,14 +588,18 @@ def compute_stresses(plot_dict):
                 material = channel_dict['material']
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
-                if not azimuthal_dict == None:
-                    azimuthal_strain = get_raw_data_by_name(mtbop_data, azimuthal_dict['name']) 
-                    longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                    stress_data = compute_stress(azimuthal_strain, longitudinal_strain, material, channel_dict['direction'])
-                else:
-                    longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                    stress_data = compute_stress_simple(longitudinal_strain, material)
-                add_column_to_mtbop_raw_data(mtbop_data, stress_data, channel_dict['name'])
+
+                try:
+                    if not azimuthal_dict == None:
+                            azimuthal_strain = get_raw_data_by_name(mtbop_data, azimuthal_dict['name']) 
+                            longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
+                            stress_data = compute_stress(azimuthal_strain, longitudinal_strain, material, channel_dict['direction'])
+                    else:
+                        longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
+                        stress_data = compute_stress_simple(longitudinal_strain, material)
+                    add_column_to_mtbop_raw_data(mtbop_data, stress_data, channel_dict['name'])
+                except:
+                    pass
     return
 
 #	raw_data = mtbop_data['raw_data']
