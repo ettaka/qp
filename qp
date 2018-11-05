@@ -764,9 +764,10 @@ if __name__ == '__main__':
 	info = args.info
 	channels_json = args.channels_json
         #if channels_json == None: channels_json = 'channels.json'
-	plot = args.plot
 	x_axis = args.x_axis
 	y_axis = args.y_axis
+	plot = args.plot
+        if not y_axis == None: plot = True
 	plot_stress = args.plot_stress
 	override_pickle = args.override_pickle
         markevery = args.markevery
