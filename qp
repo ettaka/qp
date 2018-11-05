@@ -29,11 +29,11 @@ import json
 """
 MATERIAL_DATA = { 
 		'titanium' : {
-			'elastic_modulus':'130e9',
+			'elastic_modulus':str(130e9/1e6/1e6),
 			'poisson_ratio':'0.30'
 			},
 		'aluminium' : {
-			'elastic_modulus':'79e6',
+			'elastic_modulus':str(79e9/1e6/1e6),
 			'poisson_ratio':'0.34'
 			}
 		}
@@ -45,10 +45,10 @@ def compute_stress(strain_theta, strain_z, material, axis):
 	"""
 	E = float(MATERIAL_DATA[material]['elastic_modulus'])
 	v = float(MATERIAL_DATA[material]['poisson_ratio'])
-	if axis=='theta': 
+	if axis.lower()=='azimuthal': 
 		strain_1 = strain_theta
 		strain_2 = strain_z
-	elif axis=='z': 
+	elif axis.lower()=='longitudinal': 
 		strain_1 = strain_z
 		strain_2 = strain_theta
 	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
@@ -470,14 +470,17 @@ def create_channel_data(mtbop_data_list):
 			channel_dict['location'] = 'Shell ' + shell_location
 			channel_dict['physical_quantity'] = 'Strain'
 			channel_dict['unit'] = 'um/um'
+                        channel_dict['material'] = 'aluminium'
 		elif channel_name[0] == 'R': 
 			channel_dict['location'] = 'Rod ' + channel_name[1]
 			channel_dict['physical_quantity'] = 'Strain'
 			channel_dict['unit'] = 'um/um'
+                        channel_dict['material'] = 'aluminium'
 		elif channel_name[0:2] == 'CO':
 			channel_dict['location'] = 'Coil ' + channel_name[2:5]
 			channel_dict['physical_quantity'] = 'Strain'
 			channel_dict['unit'] = 'um/um'
+                        channel_dict['material'] = 'titanium'
 		elif channel_name == 'Current':
 			channel_dict['physical_quantity'] = 'Current'
 			channel_dict['location'] = 'None'
@@ -503,14 +506,21 @@ def create_channel_data(mtbop_data_list):
 
 def add_stress_channel_data(plot_dict):
     added_dicts = []
+    #location_dict = {}
     channel_dict_list = plot_dict['channel_dict_list']
     for channel_dict in channel_dict_list:
         if channel_dict['physical_quantity'] == 'Strain':
             added_dicts.append(dict(channel_dict))
             added_dict = added_dicts[-1]
             added_dict['physical_quantity'] = 'Stress'
-            added_dict['long_name'] = channel_longname(added_dict)
-            added_dict['name'] = added_dict['long_name'] 
+            added_dict['longname'] = channel_longname(added_dict)
+            added_dict['name'] = added_dict['longname'] 
+            added_dict['material'] = channel_dict['material'] 
+            added_dict['unit'] = 'MPa'
+    #        if not added_dict['location'] in location_dict:
+    #            location_dict[added_dict['location']] = {}
+    #            if not added_
+
     plot_dict['channel_dict_list'] += added_dicts
 
 def channel_longname(channel_dict):
@@ -542,75 +552,118 @@ def double_vector_with_zeros(vector):
 	new_vector[0:size] = vector
 	vector = new_vector
 
-def compute_stresses(mtbop_data, channel_dicts):
+def search_channel_dict(channel_dict_list, location, direction, physical_quantity):
+    for channel_dict in channel_dict_list:
+        if channel_dict['location'].lower() == location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
+    return None
+
+def add_stress_data_to_dicts(channel_dict_list):
+    print "Add strain dicts to stress channel dictionaries:"
+    for channel_dict in channel_dict_list:
+        if channel_dict['physical_quantity'].lower() == 'stress':
+            strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain')
+            strain_azimuthal = search_channel_dict(channel_dict_list, channel_dict['location'], 'azimuthal', 'strain')
+            channel_dict['strain'] = {}
+            channel_dict['strain']['longitudinal'] = strain_longitudinal
+            channel_dict['strain']['azimuthal'] = strain_azimuthal
+
+def get_raw_data_by_name(mtbop_data, channel_name):
+    index = mtbop_data['channel_names'].index(channel_name) 
+    return mtbop_data['raw_data'][:,index]
+
+def add_column_to_mtbop_raw_data(mtbop_data, data, name):
+    mtbop_data['channel_names'].append(name)
+    mtbop_data['raw_data'] = np.c_[mtbop_data['raw_data'], data]
+
+def compute_stresses(plot_dict):
+    mtbop_data_list = plot_dict['mtbop_data_list'] 
+    channel_dict_list = plot_dict['channel_dict_list']
+    add_stress_data_to_dicts(channel_dict_list)
+    for mtbop_data in mtbop_data_list:
 	print "Computing stresses for:", mtbop_data['filepath']
-	raw_data = mtbop_data['raw_data']
-	size1, size2 = np.shape(raw_data)
-	mtbop_data['raw_data'] = double_array_columns_with_zeros(raw_data)
-	raw_data = mtbop_data['raw_data']
+        for channel_dict in channel_dict_list:
+            if channel_dict['physical_quantity'].lower() == 'stress':
+                raw_data = mtbop_data['raw_data']
+                material = channel_dict['material']
+                azimuthal_dict = channel_dict['strain']['azimuthal']
+                longitudinal_dict = channel_dict['strain']['longitudinal']
+                if not azimuthal_dict == None:
+                    azimuthal_strain = get_raw_data_by_name(mtbop_data, azimuthal_dict['name']) 
+                    longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
+                    stress_data = compute_stress(azimuthal_strain, longitudinal_strain, material, channel_dict['direction'])
+                else:
+                    longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
+                    stress_data = compute_stress_simple(longitudinal_strain, material)
+                add_column_to_mtbop_raw_data(mtbop_data, stress_data, channel_dict['name'])
+    return
 
-	mtbop_data['filtered_array'] = double_array_columns_with_zeros(mtbop_data['filtered_array'])
-	print np.shape(mtbop_data['initial_values'])
-	mtbop_data['initial_values'] = double_vector_with_zeros(mtbop_data['initial_values'])
-	print np.shape(mtbop_data['initial_values'])
-
-	locations = list(set([channel_dict['location'] for channel_dict in channel_dicts]))
-	computed_dicts = []
-
-	channel_count = 0
-	for location in locations:
-		if not location == 'None':
-			print "location: ", location
-			azimuthal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Azimuthal')
-			if len(azimuthal_dicts) == 1: azimuthal_dict = azimuthal_dicts[0]
-			else: azimuthal_dict = None
-			longitudinal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Longitudinal')
-			if len(longitudinal_dicts) == 1: longitudinal_dict = longitudinal_dicts[0]
-			else: 
-				print "Error: longitudinal of the location was not found!"
-				exit()
-
-			longitudinal_name = longitudinal_dict['name']
-			longitudinal_index = find_channel_index(mtbop_data['channel_names'], longitudinal_name)
-
-			if 'Shell' in longitudinal_dict['location']: material = 'aluminium'
-			elif 'Rod' in longitudinal_dict['location']: material = 'aluminium'
-			elif 'Coil' in longitudinal_dict['location']: material = 'titanium'
-
-			print channel_count
-
-			if not azimuthal_dict == None:
-				azimuthal_name = azimuthal_dict['name']
-				azimuthal_index = find_channel_index(mtbop_data['channel_names'], azimuthal_name)
-				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'theta')
-				channel_count += 1
-				computed_dicts.append({})
-				channel_name = location + ' Azimuthal Stress'
-				computed_dicts[-1]['name'] = channel_name
-				computed_dicts[-1]['location'] = location
-				computed_dicts[-1]['physical_quantity'] = 'Stress'
-				computed_dicts[-1]['direction'] = 'Azimuthal'
-				mtbop_data['channel_names'].append(channel_name)
-
-				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'z')
-				channel_count += 1
-				computed_dicts.append({})
-				channel_name = location + ' Longitudinal Stress'
-				computed_dicts[-1]['name'] = channel_name
-				computed_dicts[-1]['location'] = location
-				computed_dicts[-1]['physical_quantity'] = 'Stress'
-				computed_dicts[-1]['direction'] = 'Longitudinal'
-				mtbop_data['channel_names'].append(channel_name)
-			else:
-				raw_data[:, size2+channel_count] = compute_stress_simple(raw_data[:,longitudinal_index], material)
-				channel_count += 1
-				computed_dicts.append({})
-				channel_name = location + ' Longitudinal Stress'
-				computed_dicts[-1]['name'] = channel_name
-				computed_dicts[-1]['location'] = location
-				computed_dicts[-1]['physical_quantity'] = 'Stress'
-				computed_dicts[-1]['direction'] = 'Longitudinal'
-				mtbop_data['channel_names'].append(channel_name)
+#	raw_data = mtbop_data['raw_data']
+#	size1, size2 = np.shape(raw_data)
+#	mtbop_data['raw_data'] = double_array_columns_with_zeros(raw_data)
+#	raw_data = mtbop_data['raw_data']
+#
+#	mtbop_data['filtered_array'] = double_array_columns_with_zeros(mtbop_data['filtered_array'])
+#	print np.shape(mtbop_data['initial_values'])
+#	mtbop_data['initial_values'] = double_vector_with_zeros(mtbop_data['initial_values'])
+#	print np.shape(mtbop_data['initial_values'])
+#
+#	locations = list(set([channel_dict['location'] for channel_dict in channel_dicts]))
+#	computed_dicts = []
+#
+#	channel_count = 0
+#	for location in locations:
+#		if not location == 'None':
+#			print "location: ", location
+#			azimuthal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Azimuthal')
+#			if len(azimuthal_dicts) == 1: azimuthal_dict = azimuthal_dicts[0]
+#			else: azimuthal_dict = None
+#			longitudinal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Longitudinal')
+#			if len(longitudinal_dicts) == 1: longitudinal_dict = longitudinal_dicts[0]
+#			else: 
+#				print "Error: longitudinal of the location was not found!"
+#				exit()
+#
+#			longitudinal_name = longitudinal_dict['name']
+#			longitudinal_index = find_channel_index(mtbop_data['channel_names'], longitudinal_name)
+#
+#			if 'Shell' in longitudinal_dict['location']: material = 'aluminium'
+#			elif 'Rod' in longitudinal_dict['location']: material = 'aluminium'
+#			elif 'Coil' in longitudinal_dict['location']: material = 'titanium'
+#
+#			print channel_count
+#
+#			if not azimuthal_dict == None:
+#				azimuthal_name = azimuthal_dict['name']
+#				azimuthal_index = find_channel_index(mtbop_data['channel_names'], azimuthal_name)
+#				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'theta')
+#				channel_count += 1
+#				computed_dicts.append({})
+#				channel_name = location + ' Azimuthal Stress'
+#				computed_dicts[-1]['name'] = channel_name
+#				computed_dicts[-1]['location'] = location
+#				computed_dicts[-1]['physical_quantity'] = 'Stress'
+#				computed_dicts[-1]['direction'] = 'Azimuthal'
+#				mtbop_data['channel_names'].append(channel_name)
+#
+#				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'z')
+#				channel_count += 1
+#				computed_dicts.append({})
+#				channel_name = location + ' Longitudinal Stress'
+#				computed_dicts[-1]['name'] = channel_name
+#				computed_dicts[-1]['location'] = location
+#				computed_dicts[-1]['physical_quantity'] = 'Stress'
+#				computed_dicts[-1]['direction'] = 'Longitudinal'
+#				mtbop_data['channel_names'].append(channel_name)
+#			else:
+#				raw_data[:, size2+channel_count] = compute_stress_simple(raw_data[:,longitudinal_index], material)
+#				channel_count += 1
+#				computed_dicts.append({})
+#				channel_name = location + ' Longitudinal Stress'
+#				computed_dicts[-1]['name'] = channel_name
+#				computed_dicts[-1]['location'] = location
+#				computed_dicts[-1]['physical_quantity'] = 'Stress'
+#				computed_dicts[-1]['direction'] = 'Longitudinal'
+#				mtbop_data['channel_names'].append(channel_name)
 
 def create_channel_name_dict(channel_dict_list):
 	channel_name_dict = {}
@@ -632,7 +685,7 @@ def create_plot_dict(paths, channels_json, plot_stress=False):
 
         if plot_stress:
             add_stress_channel_data(plot_dict)
-            #compute_stresses(mtbop_data, channel_dicts)
+            compute_stresses(plot_dict)
 
 	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
@@ -705,7 +758,7 @@ if __name__ == '__main__':
 	paths = args.paths
 	info = args.info
 	channels_json = args.channels_json
-        if channels_json == None: channels_json = 'channels.json'
+        #if channels_json == None: channels_json = 'channels.json'
 	plot = args.plot
 	x_axis = args.x_axis
 	y_axis = args.y_axis
