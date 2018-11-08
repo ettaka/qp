@@ -851,10 +851,10 @@ if __name__ == '__main__':
 
 	if plot:
             plot_data(plot_dict)
-            #plt.legend(loc='upper center', bbox_to_anchor=(0.5,-0.05), fancybox=True, shadow=True, ncol=5)
-            plt.legend()
-            plt.show()
-            plt.savefig(save_fig)
+            lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.5,1.2), fancybox=True, shadow=True, ncol=2)
+            #plt.legend()
+            #plt.show()
+            plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 
