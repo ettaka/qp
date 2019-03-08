@@ -464,8 +464,8 @@ def find_files(paths):
 	return filepaths
 
 def create_channel_data(mtbop_data_list):
-    #return create_channel_data_original(mtbop_data_list)
-    return create_channel_data_fuji(mtbop_data_list)
+    return create_channel_data_original(mtbop_data_list)
+    #return create_channel_data_fuji(mtbop_data_list)
 
 def create_channel_data_original(mtbop_data_list):
 	channel_names = find_channel_names(mtbop_data_list)
