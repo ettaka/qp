@@ -502,9 +502,13 @@ def create_channel_data_original(mtbop_data_list):
 			channel_dict['location'] = channel_name 
 			channel_dict['physical_quantity'] = 'None'
 			channel_dict['unit'] = 'None'
-		if channel_name[-1] == 'Z':
+                if '_SG' in channel_name:
+                        channel_dict['sensor type'] = 'resistive'
+                elif '_FBG' in channel_name:
+                        channel_dict['sensor type'] = 'optical'
+                if '_Z' in channel_name or channel_name[-1] == 'Z':
 			channel_dict['direction'] = 'Longitudinal'
-		elif channel_name[-1] == 'T':
+                elif '_T' in channel_name or channel_name[-1] == 'T':
 			channel_dict['direction'] = 'Azimuthal'
 		else:
 			channel_dict['direction'] = 'None'
@@ -573,8 +577,10 @@ def add_stress_channel_data(plot_dict):
     plot_dict['channel_dict_list'] += added_dicts
 
 def channel_longname(channel_dict):
-    return channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
+    longname = channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
+    if 'sensor type' in channel_dict: longname += ' ' + channel_dict['sensor type']
 
+    return longname
 
 def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
 	channel_dict_sub = []
@@ -749,10 +755,10 @@ def get_selected_channel_names(plot_dict):
     plot_dict['selected_channel_names'] = [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
     return plot_dict['selected_channel_names']
 
-def check_selected_channels(selected_channel_names, x_axis, y_axis):
+def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
     if not x_axis in selected_channel_names:
         print "I did't find the channel that you chose with -x (or default 'Current' if you didn't select)"
-        print "These are the available channels that you selected with -c (" + channels_json + "):"
+        print "These are the available channels that you selected with -c (" + x_axis + "):"
         print '\n'.join(selected_channel_names)
         exit()
 
@@ -760,7 +766,7 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis):
         for selected_y in y_axis:
             if not selected_y in selected_channel_names:
                 print "I did't find the channel", selected_y, "that you chose with -y"
-                print "These are the available channels that you selected with -c (" + channels_json + "):"
+                print "These are the available channels that you selected with -c (" + y_axis + "):"
                 print '\n'.join(selected_channel_names)
                 exit()
 
@@ -847,7 +853,7 @@ if __name__ == '__main__':
             print_plot_info(plot_dict)
             exit()
 
-        check_selected_channels(selected_channel_names, x_axis, y_axis)
+        check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict)
 
 	if plot:
             plot_data(plot_dict)
