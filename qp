@@ -53,6 +53,7 @@ def compute_stress(strain_theta, strain_z, material, axis):
 	elif axis.lower()=='longitudinal': 
 		strain_1 = strain_z
 		strain_2 = strain_theta
+
 	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
 
 def compute_stress_simple(strain, material):
@@ -77,8 +78,8 @@ def find_strain_data(mtbop_data, strain_name):
 		print "Warning: find_strain_data failed for ", strain_name
 	
 	if 'SH' in basename: material = 'aluminium'
-	elif 'R' in basename: material = 'aluminium'
 	elif 'CO' in basename: material = 'titanium'
+	elif 'R' in basename: material = 'aluminium'
 	else: print "Warning: find_strain_data failed"
 
 	raw_data = mtbop_data['raw_data']
@@ -183,7 +184,7 @@ def select_mtbop_data(mtbop_data, selected_axes):
 	return selected_data
 
 @timeit
-def plot_mtbop_data(mtbop_data):
+def plot_mtbop_data(mtbop_data, plot_delta=False):
         if x_axis == 'Current':
             max_current_index = mtbop_data['max_current_index']
 	raw_data = mtbop_data['raw_data']
@@ -205,12 +206,18 @@ def plot_mtbop_data(mtbop_data):
             else:
                 ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
 
+        if plot_delta: 
+            y0 = y_axis_dict['raw_data'][0]
+            y_axis_dict['label'] = '$\Delta$' + y_axis_dict['label']
+        else: y0 = 0
+
         plt.xlabel(x_axis_dict['label'])
         plt.ylabel(y_axis_dict['label'])
+
         if mtbop_data['no_markers']:
-            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], mtbop_data['color']+'-', label=y_axis_dict['name'])
+            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data']-y0, mtbop_data['color']+'-', label=y_axis_dict['longname'])
         else:
-            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data'], mtbop_data['color']+mtbop_data['marker']+'-', markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
+            plt.plot(x_axis_dict['raw_data'],y_axis_dict['raw_data']-y0, mtbop_data['color']+mtbop_data['marker']+'-', markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -506,8 +513,9 @@ def create_channel_data_original(mtbop_data_list):
                         channel_dict['sensor type'] = 'resistive'
                 elif '_FBG' in channel_name:
                         channel_dict['sensor type'] = 'optical'
+                else: channel_dict['sensor type'] = ''
                 if '_Z' in channel_name or channel_name[-1] == 'Z':
-			channel_dict['direction'] = 'Longitudinal'
+			channel_dict['direction'] =  'Longitudinal'
                 elif '_T' in channel_name or channel_name[-1] == 'T':
 			channel_dict['direction'] = 'Azimuthal'
 		else:
@@ -578,7 +586,7 @@ def add_stress_channel_data(plot_dict):
 
 def channel_longname(channel_dict):
     longname = channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
-    if 'sensor type' in channel_dict: longname += ' ' + channel_dict['sensor type']
+    if not channel_dict['sensor type'] == '': longname += ' ' + channel_dict['sensor type']
 
     return longname
 
@@ -607,17 +615,17 @@ def double_vector_with_zeros(vector):
 	new_vector[0:size] = vector
 	vector = new_vector
 
-def search_channel_dict(channel_dict_list, location, direction, physical_quantity):
+def search_channel_dict(channel_dict_list, location, direction, physical_quantity, sensor_type):
     for channel_dict in channel_dict_list:
-        if channel_dict['location'].lower() == location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
+        if channel_dict['sensor type'] == sensor_type and channel_dict['location'].lower() == location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
     return None
 
 def add_stress_data_to_dicts(channel_dict_list):
     print "Add strain dicts to stress channel dictionaries:"
     for channel_dict in channel_dict_list:
         if channel_dict['physical_quantity'].lower() == 'stress':
-            strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain')
-            strain_azimuthal = search_channel_dict(channel_dict_list, channel_dict['location'], 'azimuthal', 'strain')
+            strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain', channel_dict['sensor type'])
+            strain_azimuthal = search_channel_dict(channel_dict_list, channel_dict['location'], 'azimuthal', 'strain', channel_dict['sensor type'])
             channel_dict['strain'] = {}
             channel_dict['strain']['longitudinal'] = strain_longitudinal
             channel_dict['strain']['azimuthal'] = strain_azimuthal
@@ -641,8 +649,11 @@ def compute_stresses(plot_dict):
             if channel_dict['physical_quantity'].lower() == 'stress':
                 raw_data = mtbop_data['raw_data']
                 material = channel_dict['material']
+                print channel_dict['name'], channel_dict['material']
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
+                if longitudinal_dict != None:
+                    print longitudinal_dict['name']
 
                 try:
                     if not azimuthal_dict == None:
@@ -765,8 +776,8 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
     if not y_axis == None:
         for selected_y in y_axis:
             if not selected_y in selected_channel_names:
-                print "I did't find the channel", selected_y, "that you chose with -y"
-                print "These are the available channels that you selected with -c (" + y_axis + "):"
+                print "I did't find the channel '"+selected_y+"' that you chose with -y"
+                print "These are the available channels that you selected with -c (" + selected_y + "):"
                 print '\n'.join(selected_channel_names)
                 exit()
 
@@ -801,7 +812,7 @@ def plot_data(plot_dict):
                 mtbop_data['y_axis']['index']= channel_names.index(y_axis)
                 mtbop_data['markevery'] = plot_dict['markevery']
                 mtbop_data['no_markers'] = plot_dict['no_markers']
-                plot_mtbop_data(mtbop_data)
+                plot_mtbop_data(mtbop_data, plot_delta = plot_dict['plot delta'])
  
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
@@ -815,6 +826,7 @@ if __name__ == '__main__':
 	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
 	parser.add_argument('-m', '--markevery', type=int) 
 	parser.add_argument('--save-fig', type=str)
+	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -837,6 +849,7 @@ if __name__ == '__main__':
 	plot_dict = create_plot_dict(paths, channels_json, plot_stress)
         plot_dict['x_axis'] = x_axis
         plot_dict['markevery'] = markevery
+        plot_dict['plot delta'] = args.plot_delta
         if markevery == None:
             plot_dict['no_markers'] = True
         else:
