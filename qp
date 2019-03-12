@@ -290,7 +290,8 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	with codecs.open(filepath) as f:
 		raw_data = np.loadtxt(f, skiprows=header_lines)
 	mtbop_data['filepath'] = filepath
-	mtbop_data['channel_names'] = channel_names
+        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names)
+	mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
 	mtbop_data['channel_units'] = channel_units
 	#mtbop_data['raw_data_df'] = raw_data_df
 	#mtbop_data['raw_data'] = raw_data_df.values
@@ -487,8 +488,85 @@ def find_files(paths):
 	return filepaths
 
 def create_channel_data(mtbop_data_list):
-    return create_channel_data_original(mtbop_data_list)
+    channel_dict_list = get_channel_data(mtbop_data_list)
+    print "Writing channels.json"
+    with open('channels.json', 'w') as outfile:
+        json.dump(channel_dict_list, outfile, indent=4)
+    return channel_dict_list
+    #return create_channel_data_original(mtbop_data_list)
     #return create_channel_data_fuji(mtbop_data_list)
+
+def create_channel_dict_list(channel_names):
+        channel_dict_list = []
+	for channel_name in channel_names:
+		channel_dict_list.append({})
+		channel_dict = channel_dict_list[-1]
+		channel_dict['name'] = channel_name
+                channel_dict['sensor type'] = ''
+                channel_dict['location'] = ''
+                if channel_name == 'Current':
+                    channel_dict['unit'] = 'kA'
+                    channel_dict['physical_quantity'] = 'Current'
+                elif channel_name == 'Time':
+                    channel_dict['unit'] = 's'
+                    channel_dict['physical_quantity'] = 'Time'
+                else:
+                    if channel_name[0:2] == 'SH':
+                            shell_location = ''
+                            if channel_name[2] == 'R': shell_location = 'Right'
+                            elif channel_name[2] == 'L': shell_location = 'Left'
+                            elif channel_name[2] == 'T': shell_location = 'Top'
+                            elif channel_name[2] == 'B': shell_location = 'Bottom'
+                            channel_dict['location'] = 'Shell ' + shell_location
+                            channel_dict['physical_quantity'] = 'Strain'
+                            channel_dict['unit'] = 'um/um'
+                            channel_dict['material'] = 'aluminium'
+                    elif channel_name[0] == 'R': 
+                            channel_dict['location'] = 'Rod ' + channel_name[1]
+                            channel_dict['physical_quantity'] = 'Strain'
+                            channel_dict['unit'] = 'um/um'
+                            channel_dict['material'] = 'aluminium'
+                    elif channel_name[0:2] == 'CO':
+                            channel_dict['location'] = 'Coil ' + channel_name[2:5]
+                            channel_dict['physical_quantity'] = 'Strain'
+                            channel_dict['unit'] = 'um/um'
+                            channel_dict['material'] = 'titanium'
+                    elif channel_name == 'Current':
+                            channel_dict['physical_quantity'] = 'Current'
+                            channel_dict['location'] = 'None'
+                            channel_dict['unit'] = 'A'
+                    else:
+                            channel_dict['location'] = channel_name 
+                            channel_dict['physical_quantity'] = 'None'
+                            channel_dict['unit'] = 'None'
+                    if '_SG' in channel_name:
+                            channel_dict['sensor type'] = 'resistive'
+                    elif '_FBG' in channel_name:
+                            channel_dict['sensor type'] = 'optical'
+                    else: channel_dict['sensor type'] = ''
+                    if '_Z' in channel_name or channel_name[-1] == 'Z':
+                            channel_dict['direction'] =  'Longitudinal'
+                    elif '_T' in channel_name or channel_name[-1] == 'T':
+                            channel_dict['direction'] = 'Azimuthal'
+                    else:
+                            channel_dict['direction'] = 'None'
+
+                    channel_dict['longname'] = get_channel_longname(channel_dict)
+                    channel_dict['name'] = get_channel_longname(channel_dict)
+
+	return channel_dict_list
+
+def get_channel_data(mtbop_data_list):
+    channel_names = find_channel_names(mtbop_data_list)
+    channel_dict_list = []
+    for mtbop_data in mtbop_data_list:
+        channel_dict_list += mtbop_data['channel_dict_list']
+    channel_dict_list_names = [ch_dict['name'] for ch_dict in channel_dict_list]
+    channel_names_indices_in_list = [channel_dict_list_names.index(channel_name) for channel_name in channel_names]
+    channel_dict_list_out=[]
+    channel_dict_list_out = [channel_dict_list[ind] for ind in channel_names_indices_in_list]
+
+    return channel_dict_list_out
 
 def create_channel_data_original(mtbop_data_list):
 	channel_names = find_channel_names(mtbop_data_list)
@@ -537,7 +615,8 @@ def create_channel_data_original(mtbop_data_list):
 		else:
 			channel_dict['direction'] = 'None'
 
-                channel_dict['longname'] = channel_longname(channel_dict)
+                channel_dict['longname'] = get_channel_longname(channel_dict)
+                channel_dict['name'] = get_channel_longname(channel_dict)
 
 	print "Writing channels.json"
 	with open('channels.json', 'w') as outfile:
@@ -573,7 +652,8 @@ def create_channel_data_fuji(mtbop_data_list):
                 else:
                         channel_dict['direction'] = ''
 
-                channel_dict['longname'] = channel_longname(channel_dict)
+                channel_dict['longname'] = get_channel_longname(channel_dict)
+                channel_dict['longname'] = get_channel_name(channel_dict)
 
 	print "Writing channels.json"
 	with open('channels.json', 'w') as outfile:
@@ -586,11 +666,13 @@ def add_stress_channel_data(plot_dict):
     #location_dict = {}
     channel_dict_list = plot_dict['channel_dict_list']
     for channel_dict in channel_dict_list:
+        print channel_dict['name']
+        print channel_dict.keys()
         if channel_dict['physical_quantity'] == 'Strain':
             added_dicts.append(dict(channel_dict))
             added_dict = added_dicts[-1]
             added_dict['physical_quantity'] = 'Stress'
-            added_dict['longname'] = channel_longname(added_dict)
+            added_dict['longname'] = get_channel_longname(added_dict)
             added_dict['name'] = added_dict['longname'] 
             added_dict['material'] = channel_dict['material'] 
             added_dict['unit'] = 'MPa'
@@ -600,11 +682,44 @@ def add_stress_channel_data(plot_dict):
 
     plot_dict['channel_dict_list'] += added_dicts
 
-def channel_longname(channel_dict):
+def get_average_name(y_axis_names):
+    av_set_list = [set(y_axis_name.split()) for y_axis_name in y_axis_names]
+    common_words = list(set.intersection(*av_set_list))
+    first_name = y_axis_names[0].split()
+    average_name = ' '.join([word for word in first_name if word in common_words])
+    return average_name
+
+def add_average_channel_data(plot_dict, y_axis_names):
+    print "y_axis_names:", y_axis_names
+    added_dicts = []
+    #location_dict = {}
+    channel_dict_list = [cdict for cdict in plot_dict['channel_dict_list'] if cdict['name'] in y_axis_names]
+    example_dict = channel_dict_list[0]
+    average_name = get_average_name(y_axis_names)
+
+    for suffix in [' Min', ' Max', ' Avg']:
+        added_dicts.append(dict(example_dict))
+        added_dict = added_dicts[-1]
+        added_dict['name'] = average_name + suffix
+        added_dict['longname'] = added_dict['name']
+
+    plot_dict['channel_dict_list'] += added_dicts
+
+    plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
+    return average_name
+    #        if not added_dict['location'] in location_dict:
+    #            location_dict[added_dict['location']] = {}
+    #            if not added_
+
+
+def get_channel_longname(channel_dict):
     longname = channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
     if not channel_dict['sensor type'] == '': longname += ' ' + channel_dict['sensor type']
 
     return longname
+
+def get_channel_name(channel_dict):
+    return channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
 
 def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
 	channel_dict_sub = []
@@ -797,12 +912,16 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
                 print '\n'.join(selected_channel_names)
                 exit()
 
-def compute_min_max_avg(plot_dict):
-    print plot_dict['mtbop_data_list'][0]['channel_names']
-    print 'test', plot_dict['y_axis'][0]
-    print plot_dict['mtbop_data_list'][0].keys()
+def compute_min_max_avg(plot_dict, y_axis_names):
 
-    #for mtbop_data in mtbop_data_list:
+    average_name = add_average_channel_data(plot_dict, y_axis_names)
+
+    for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
+        channel_names = mtbop_data['channel_names']
+        ch_indices = [channel_names.index(name) for name in y_axis_names if name in channel_names]
+        add_column_to_mtbop_raw_data(mtbop_data, np.min(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Min')
+        add_column_to_mtbop_raw_data(mtbop_data, np.max(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Max')
+        add_column_to_mtbop_raw_data(mtbop_data, np.average(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Avg')
 
 def print_plot_info(plot_dict):
     print "Plot info:"
@@ -852,7 +971,7 @@ if __name__ == '__main__':
 	parser.add_argument('-m', '--markevery', type=int) 
 	parser.add_argument('--save-fig', type=str)
 	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
-	parser.add_argument('--min-max-avg', action='store_true', default=False) 
+	parser.add_argument('--min-max-avg', nargs='+', type=str)
 	parser.add_argument('--normalize-x', type=str)
 
 	args = parser.parse_args()
@@ -883,6 +1002,11 @@ if __name__ == '__main__':
         else:
             plot_dict['no_markers'] = False
 
+        min_max_avg = args.min_max_avg
+        if  min_max_avg != None:
+            if min_max_avg[0] == "y": min_max_avg = y_axis
+            compute_min_max_avg(plot_dict, min_max_avg)
+
         selected_channel_names = get_selected_channel_names(plot_dict)
 
         if plot_all:
@@ -895,9 +1019,6 @@ if __name__ == '__main__':
             exit()
 
         check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict)
-
-        if args.min_max_avg:
-            compute_min_max_avg(plot_dict)
 
 	if plot:
             plot_data(plot_dict)
