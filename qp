@@ -508,19 +508,22 @@ def create_channel_data(mtbop_data_list):
     #return create_channel_data_original(mtbop_data_list)
     #return create_channel_data_fuji(mtbop_data_list)
 
-def create_channel_dict_list(channel_names):
+def create_channel_dict_list(channel_names, channel_units):
         channel_dict_list = []
-	for channel_name in channel_names:
+	for i, channel_name in enumerate(channel_names):
 		channel_dict_list.append({})
 		channel_dict = channel_dict_list[-1]
 		channel_dict['name'] = channel_name
                 channel_dict['sensor type'] = ''
                 channel_dict['location'] = ''
+                channel_dict['unit'] = channel_units[i]
+                if 'SG_' == channel_name[0:3]:
+                    channel_name = channel_name.replace('SG_','')
+                    channel_dict['sensor type'] = 'resistive'
+
                 if channel_name == 'Current':
-                    channel_dict['unit'] = 'kA'
                     channel_dict['physical_quantity'] = 'Current'
                 elif channel_name == 'Time':
-                    channel_dict['unit'] = 's'
                     channel_dict['physical_quantity'] = 'Time'
                 else:
                     if channel_name[0:2] == 'SH':
@@ -531,31 +534,28 @@ def create_channel_dict_list(channel_names):
                             elif channel_name[2] == 'B': shell_location = 'Bottom'
                             channel_dict['location'] = 'Shell ' + shell_location
                             channel_dict['physical_quantity'] = 'Strain'
-                            channel_dict['unit'] = 'um/um'
                             channel_dict['material'] = 'aluminium'
                     elif channel_name[0] == 'R': 
                             channel_dict['location'] = 'Rod ' + channel_name[1]
                             channel_dict['physical_quantity'] = 'Strain'
-                            channel_dict['unit'] = 'um/um'
                             channel_dict['material'] = 'aluminium'
                     elif channel_name[0:2] == 'CO':
                             channel_dict['location'] = 'Coil ' + channel_name[2:5]
                             channel_dict['physical_quantity'] = 'Strain'
-                            channel_dict['unit'] = 'um/um'
                             channel_dict['material'] = 'titanium'
                     elif channel_name == 'Current':
                             channel_dict['physical_quantity'] = 'Current'
                             channel_dict['location'] = 'None'
-                            channel_dict['unit'] = 'A'
                     else:
                             channel_dict['location'] = channel_name 
                             channel_dict['physical_quantity'] = 'None'
-                            channel_dict['unit'] = 'None'
-                    if '_SG' in channel_name:
-                            channel_dict['sensor type'] = 'resistive'
-                    elif '_FBG' in channel_name:
-                            channel_dict['sensor type'] = 'optical'
-                    else: channel_dict['sensor type'] = ''
+
+                    if channel_dict['sensor type'] == '':
+                        if '_SG' in channel_name in channel_name:
+                                channel_dict['sensor type'] = 'resistive'
+                        elif '_FBG' in channel_name:
+                                channel_dict['sensor type'] = 'optical'
+                        else: channel_dict['sensor type'] = ''
                     if '_Z' in channel_name or channel_name[-1] == 'Z':
                             channel_dict['direction'] =  'Longitudinal'
                     elif '_T' in channel_name or channel_name[-1] == 'T':
@@ -678,8 +678,6 @@ def add_stress_channel_data(plot_dict):
     #location_dict = {}
     channel_dict_list = plot_dict['channel_dict_list']
     for channel_dict in channel_dict_list:
-        print channel_dict['name']
-        print channel_dict.keys()
         if channel_dict['physical_quantity'] == 'Strain':
             added_dicts.append(dict(channel_dict))
             added_dict = added_dicts[-1]
@@ -702,7 +700,7 @@ def get_average_name(y_axis_names):
     return average_name
 
 def add_average_channel_data(plot_dict, y_axis_names):
-    print "y_axis_names:", y_axis_names
+    print "Average names:", y_axis_names
     added_dicts = []
     #location_dict = {}
     channel_dict_list = [cdict for cdict in plot_dict['channel_dict_list'] if cdict['name'] in y_axis_names]
@@ -792,7 +790,6 @@ def compute_stresses(plot_dict):
             if channel_dict['physical_quantity'].lower() == 'stress':
                 raw_data = mtbop_data['raw_data']
                 material = channel_dict['material']
-                print channel_dict['name'], channel_dict['material']
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
                 if longitudinal_dict != None:
