@@ -965,8 +965,13 @@ def plot_data(plot_dict):
 
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
-            mtbop_data['color'] = colors[j%len(colors)]
-            mtbop_data['marker'] = markers[i%len(markers)]
+            if plot_dict['curve coloring'] == 'filewise':
+                mtbop_data['color'] = colors[i%len(colors)]
+                mtbop_data['marker'] = markers[i%len(markers)]
+            else:
+                mtbop_data['color'] = colors[j%len(colors)]
+                mtbop_data['marker'] = markers[j%len(markers)]
+
             if x_axis == 'Current':
                 detect_max_current(mtbop_data)
             mtbop_data['x_axis'] = plot_dict['channel_name_dict'][x_axis]
@@ -1000,6 +1005,7 @@ if __name__ == '__main__':
 	parser.add_argument('--min-max-avg', nargs='+', type=str)
 	parser.add_argument('--normalize-x', type=str)
         parser.add_argument('--label-type', type=str)
+        parser.add_argument('--curve-coloring', type=str)
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -1035,6 +1041,13 @@ if __name__ == '__main__':
             compute_min_max_avg(plot_dict, min_max_avg)
 
         plot_dict['label type'] = args.label_type
+
+        curve_coloring = args.curve_coloring
+        if curve_coloring == None:
+            plot_dict['curve coloring'] = ''
+        else:
+            plot_dict['curve coloring'] = curve_coloring
+
 
         selected_channel_names = get_selected_channel_names(plot_dict)
 
