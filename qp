@@ -700,13 +700,28 @@ def get_average_name(y_axis_names):
     average_name = ' '.join([word for word in first_name if word in common_words])
     return average_name
 
+def match_words_channel_dicts(wordlist, channel_dict_list):
+    matched_dicts = []
+    matched_names = []
+    for cdict in channel_dict_list:
+        if all(word in cdict['name'] for word in wordlist):
+            matched_dicts.append(cdict)
+            matched_names.append(cdict['name'])
+
+    return matched_dicts, matched_names
+
 def add_average_channel_data(plot_dict, y_axis_names):
     print "Average names:", y_axis_names
+    wordlist = y_axis_names[0].split()
+    print "wordlist: ", wordlist
+    matched_dicts, matched_names = match_words_channel_dicts(wordlist, plot_dict['channel_dict_list'])
+    print "matched_names:", matched_names
+    
     added_dicts = []
     #location_dict = {}
-    channel_dict_list = [cdict for cdict in plot_dict['channel_dict_list'] if cdict['name'] in y_axis_names]
+    channel_dict_list = matched_dicts
     example_dict = channel_dict_list[0]
-    average_name = get_average_name(y_axis_names)
+    average_name = y_axis_names[0]
 
     for suffix in [' Min', ' Max', ' Avg']:
         added_dicts.append(dict(example_dict))
@@ -717,7 +732,7 @@ def add_average_channel_data(plot_dict, y_axis_names):
     plot_dict['channel_dict_list'] += added_dicts
 
     plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
-    return average_name
+    return average_name, matched_names
     #        if not added_dict['location'] in location_dict:
     #            location_dict[added_dict['location']] = {}
     #            if not added_
@@ -924,11 +939,11 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
 
 def compute_min_max_avg(plot_dict, y_axis_names):
 
-    average_name = add_average_channel_data(plot_dict, y_axis_names)
+    average_name, matched_names = add_average_channel_data(plot_dict, y_axis_names)
 
     for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
         channel_names = mtbop_data['channel_names']
-        ch_indices = [channel_names.index(name) for name in y_axis_names if name in channel_names]
+        ch_indices = [channel_names.index(name) for name in matched_names if name in channel_names]
         add_column_to_mtbop_raw_data(mtbop_data, np.min(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Min')
         add_column_to_mtbop_raw_data(mtbop_data, np.max(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Max')
         add_column_to_mtbop_raw_data(mtbop_data, np.average(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Avg')
