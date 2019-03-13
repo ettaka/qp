@@ -112,6 +112,7 @@ def detect_max_current(mtbop_data):
 	mtbop_data['max_current_index'] = qinx
 	mtbop_data['max_current'] = current_array[qinx]
 	mtbop_data['max_current_grad'] = grad_array[qinx]
+	print "mtbop_data['filepath']", mtbop_data['filepath']
 	print "mtbop_data['max_current_index']", mtbop_data['max_current_index']
 	print "mtbop_data['max_current_grad']", mtbop_data['max_current_grad']
 	print "mtbop_data['max_current']", mtbop_data['max_current']
@@ -233,7 +234,7 @@ def plot_mtbop_data(mtbop_data):
         if mtbop_data['label type'] == None:
             curve_label=y_axis_dict['longname']
         elif mtbop_data['label type'] == 'filename':
-            curve_label=mtbop_data['filepath']
+            curve_label=mtbop_data['filepath'].replace('.txt', '')
         if mtbop_data['no_markers']:
             ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+'-', label=curve_label)
         else:
