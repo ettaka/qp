@@ -230,8 +230,12 @@ def plot_mtbop_data(mtbop_data):
         ax.set_xlabel(x_axis_dict['label'])
         ax.set_ylabel(y_axis_dict['label'])
 
+        if mtbop_data['label type'] == None:
+            curve_label=y_axis_dict['longname']
+        elif mtbop_data['label type'] == 'filename':
+            curve_label=mtbop_data['filepath']
         if mtbop_data['no_markers']:
-            ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+'-', label=y_axis_dict['longname'])
+            ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+'-', label=curve_label)
         else:
             ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+mtbop_data['marker']+'-', markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
 
@@ -956,6 +960,7 @@ def plot_data(plot_dict):
                 mtbop_data['no_markers'] = plot_dict['no_markers']
                 mtbop_data['normalize x'] = plot_dict['normalize x']
                 mtbop_data['plot delta'] = plot_dict['plot delta']
+                mtbop_data['label type'] = plot_dict['label type']
                 plot_mtbop_data(mtbop_data)
  
 if __name__ == '__main__':
@@ -973,6 +978,7 @@ if __name__ == '__main__':
 	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
 	parser.add_argument('--min-max-avg', nargs='+', type=str)
 	parser.add_argument('--normalize-x', type=str)
+        parser.add_argument('--label-type', type=str)
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -1006,6 +1012,8 @@ if __name__ == '__main__':
         if  min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = y_axis
             compute_min_max_avg(plot_dict, min_max_avg)
+
+        plot_dict['label type'] = args.label_type
 
         selected_channel_names = get_selected_channel_names(plot_dict)
 
