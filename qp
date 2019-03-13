@@ -294,12 +294,13 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	with codecs.open(filepath) as f:
 		raw_data = np.loadtxt(f, skiprows=header_lines)
 	mtbop_data['filepath'] = filepath
-        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names)
-	mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
 	mtbop_data['channel_units'] = channel_units
+        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units)
+	mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
 	#mtbop_data['raw_data_df'] = raw_data_df
 	#mtbop_data['raw_data'] = raw_data_df.values
 	mtbop_data['raw_data'] = raw_data
+        #convert_units_to_umum(mtbop_data)
 	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
 	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
 	#detect_max_current(mtbop_data)
@@ -309,6 +310,13 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	
 	cpickle_dump(mtbop_data, pickle_path)
 	return mtbop_data
+
+def convert_units_to_umum(mtbop_data):
+    raw_data = mtbop_data['raw_data']
+    for i, channel_dict in enumerate(mtbop_data['channel_dict_list']):
+        if channel_dict['unit'] == 'um/m':
+            #raw_data[:,i] *= 1e-6
+            channel_dict['unit'] = 'um/um'
 
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38):
 	mtbop_data_list = []
