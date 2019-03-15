@@ -771,8 +771,11 @@ def add_average_channel_data(plot_dict, y_axis_names):
 
 
 def get_channel_longname(channel_dict):
-    longname = channel_dict['location'] + ' ' + channel_dict['direction'] + ' ' + channel_dict['physical_quantity']
+    longname = channel_dict['location']
+    if not channel_dict['direction'] == '': longname += ' ' + channel_dict['direction']
+    if not channel_dict['physical_quantity'] == '': longname += ' ' + channel_dict['physical_quantity']
     if not channel_dict['sensor type'] == '': longname += ' ' + channel_dict['sensor type']
+    if not channel_dict['thermal compensator'] == '': longname += ' ' + channel_dict['thermal compensator']
 
     return longname
 
