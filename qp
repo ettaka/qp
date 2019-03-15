@@ -310,6 +310,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	#mtbop_data['raw_data_df'] = raw_data_df
 	#mtbop_data['raw_data'] = raw_data_df.values
 	mtbop_data['raw_data'] = raw_data
+        signal_compensation(mtbop_data)
         #convert_units_to_umum(mtbop_data)
 	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
 	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
@@ -320,6 +321,20 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	
 	cpickle_dump(mtbop_data, pickle_path)
 	return mtbop_data
+
+def signal_compensation(mtbop_data):
+    for compensator_index, compensator_dict in enumerate(mtbop_data['channel_dict_list']):
+        if compensator_dict['thermal compensator'] == 'compensator':
+            search_terms = compensator_dict['longname'].split()
+            search_terms.pop(-1)
+            print search_terms
+            for compensated_index, compensated_dict in enumerate(mtbop_data['channel_dict_list']):
+                compensated_dict['compensation done'] = False
+                if all(search_term in compensated_dict['name'] for search_term in search_terms) and compensated_dict['thermal compensator'] == '':
+                    print "Thermal compensator (" + compensator_dict['name'] + ") found for:", compensated_dict['name']
+                    mtbop_data['raw_data'][:,compensated_index] -= mtbop_data['raw_data'][:,compensator_index]
+                    compensated_dict['compensation done']=True
+                    print "Compensation done."
 
 def convert_units_to_umum(mtbop_data):
     raw_data = mtbop_data['raw_data']
@@ -527,6 +542,13 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['sensor type'] = ''
                 channel_dict['location'] = ''
                 channel_dict['unit'] = channel_units[i]
+                channel_dict['thermal compensator'] = ''
+                channel_dict['direction'] = '' 
+                channel_dict['physical_quantity'] = ''
+                
+                if '_Comp' in channel_name: 
+                    channel_dict['thermal compensator'] = 'compensator'
+
                 if 'SG_' == channel_name[0:3]:
                     channel_name = channel_name.replace('SG_','')
                     channel_dict['sensor type'] = 'resistive'
@@ -571,7 +593,7 @@ def create_channel_dict_list(channel_names, channel_units):
                     elif '_T' in channel_name or channel_name[-1] == 'T':
                             channel_dict['direction'] = 'Azimuthal'
                     else:
-                            channel_dict['direction'] = 'None'
+                            channel_dict['direction'] = ''
 
                     channel_dict['longname'] = get_channel_longname(channel_dict)
                     channel_dict['name'] = get_channel_longname(channel_dict)
