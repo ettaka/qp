@@ -219,10 +219,8 @@ def plot_mtbop_data(mtbop_data):
             else:
                 ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
 
-        if mtbop_data['plot delta']:
-            y0 = y_axis_dict['raw_data'][0]
-            y_axis_dict['label'] = '$\Delta$' + y_axis_dict['label']
-        else: y0 = 0
+        if not mtbop_data['common location'] == '':
+            y_axis_dict['label'] = mtbop_data['common location'] + ' ' + y_axis_dict['label']
 
         if mtbop_data['normalize x'] != None:
             xdata = x_axis_dict['raw_data']/float(mtbop_data['normalize x'])
@@ -242,9 +240,9 @@ def plot_mtbop_data(mtbop_data):
                 curve_label=''
                 linestyle = '--'
         if mtbop_data['no_markers']:
-            curveline, = ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+linestyle, label=curve_label)
+            curveline, = ax.plot(xdata,y_axis_dict['raw_data'], mtbop_data['color']+linestyle, label=curve_label)
         else:
-            curveline, = ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+mtbop_data['marker']+linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
+            curveline, = ax.plot(xdata,y_axis_dict['raw_data'], mtbop_data['color']+mtbop_data['marker']+linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']:
                 curveline.set_dashes([10,20])
@@ -758,6 +756,7 @@ def add_average_channel_data(plot_dict, y_axis_names):
     matched_dicts, matched_names = match_words_channel_dicts(wordlist, plot_dict['channel_dict_list'])
     print "matched_names:", matched_names
     
+    plot_dict['matched_names'] = matched_names
     added_dicts = []
     #location_dict = {}
     channel_dict_list = matched_dicts
@@ -992,10 +991,51 @@ def compute_min_max_avg(plot_dict, y_axis_names):
         add_column_to_mtbop_raw_data(mtbop_data, np.max(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Max')
         add_column_to_mtbop_raw_data(mtbop_data, np.average(mtbop_data['raw_data'][:, ch_indices],axis=1), average_name+' Avg')
 
+def compute_channel_deltas(plot_dict):
+    added_dicts = []
+    for channel in plot_dict['channel_dict_list']:
+        delta_channel = dict(channel)
+        delta_channel['name'] = 'Delta ' + channel['name']
+        added_dicts.append(delta_channel)
+        plot_dict['channel_name_dict'][delta_channel['name']] = delta_channel
+        for mtbop_data in plot_dict['mtbop_data_list']:
+            if channel['name'] in mtbop_data['channel_names']:
+                channel_index = mtbop_data['channel_names'].index(channel['name'])
+                delta_channel_data = mtbop_data['raw_data'][:, channel_index] - mtbop_data['raw_data'][0, channel_index]
+                add_column_to_mtbop_raw_data(mtbop_data, delta_channel_data, delta_channel['name'])
+
+    plot_dict['channel_dict_list'] += added_dicts
+
+
 def print_plot_info(plot_dict):
     print "Plot info:"
     print "Selected channel names:"
     print '\n'.join(plot_dict['selected_channel_names'])
+
+def find_common_location(plot_dict):
+    used_names = plot_dict['y_axis']
+    if not plot_dict['matched_names'] == None: used_names = plot_dict['matched_names']
+    
+    print 'find common location for:', used_names
+    common_words = ''
+    selected_channels = [channel for channel in plot_dict['channel_dict_list'] if channel['name'] in used_names]
+    location_words_list = [channel['location'].split() for channel in selected_channels]
+    first_words = location_words_list.pop()
+    if len(location_words_list) != 0:
+        common_words_list = []
+        rest_of_words = list(set([word for word_list in location_words_list for word in word_list]))
+        print 'location_words_list:', location_words_list
+        print 'first_words:', first_words
+        print 'rest_of_words:', rest_of_words
+        for word in first_words:
+            if all(word in word_list for word_list in location_words_list): 
+                common_words_list.append(word)
+
+    common_words = ' '.join(common_words_list)
+
+    print 'common location:', common_words
+    plot_dict['common location'] = common_words
+
 
 def plot_data(plot_dict):
     x_axis = plot_dict['x_axis']
@@ -1007,6 +1047,7 @@ def plot_data(plot_dict):
     colors = ['b','g','r','c','m','y','k']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
+    find_common_location(plot_dict)
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
             if plot_dict['curve coloring'] == 'filewise':
@@ -1031,6 +1072,7 @@ def plot_data(plot_dict):
                 mtbop_data['normalize x'] = plot_dict['normalize x']
                 mtbop_data['plot delta'] = plot_dict['plot delta']
                 mtbop_data['label type'] = plot_dict['label type']
+                mtbop_data['common location'] = plot_dict['common location']
                 plot_mtbop_data(mtbop_data)
  
 if __name__ == '__main__':
@@ -1074,6 +1116,7 @@ if __name__ == '__main__':
         plot_dict['x_axis'] = x_axis
         plot_dict['markevery'] = markevery
         plot_dict['plot delta'] = args.plot_delta
+        if plot_dict['plot delta']: compute_channel_deltas(plot_dict)
         plot_dict['normalize x'] = args.normalize_x
         if markevery == None:
             plot_dict['no_markers'] = True
@@ -1085,6 +1128,10 @@ if __name__ == '__main__':
         filter_plot_dict(plot_dict)
 
         min_max_avg = args.min_max_avg
+        if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
+            y_axis = map(lambda name: 'Delta ' + name, y_axis)
+            min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
+
         if  min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = y_axis
             compute_min_max_avg(plot_dict, min_max_avg)
