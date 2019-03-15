@@ -257,6 +257,14 @@ def plot_selected_list_raw_current(mtbop_data_list):
 		plot_raw_current(mtbop_data)
 	ax.legend()
 
+def filter_plot_dict(plot_dict):
+    filter_words = plot_dict['filter_out_str'].split()
+    for channel in plot_dict['channel_dict_list']:
+        channel['active'] = True
+        if any(word in channel['name'] for word in filter_words):
+            channel['active'] = False
+            print channel['name'], "filtered", "|", filter_words
+
 @timeit
 def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	"""
@@ -294,6 +302,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 
 	with codecs.open(filepath) as f:
 		raw_data = np.loadtxt(f, skiprows=header_lines)
+
 	mtbop_data['filepath'] = filepath
 	mtbop_data['channel_units'] = channel_units
         mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units)
@@ -704,9 +713,10 @@ def match_words_channel_dicts(wordlist, channel_dict_list):
     matched_dicts = []
     matched_names = []
     for cdict in channel_dict_list:
-        if all(word in cdict['name'] for word in wordlist):
-            matched_dicts.append(cdict)
-            matched_names.append(cdict['name'])
+        if cdict['active']:
+            if all(word in cdict['name'] for word in wordlist):
+                matched_dicts.append(cdict)
+                matched_names.append(cdict['name'])
 
     return matched_dicts, matched_names
 
@@ -1006,6 +1016,7 @@ if __name__ == '__main__':
 	parser.add_argument('--normalize-x', type=str)
         parser.add_argument('--label-type', type=str)
         parser.add_argument('--curve-coloring', type=str)
+        parser.add_argument('--filter-out-any', type=str)
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -1035,6 +1046,10 @@ if __name__ == '__main__':
         else:
             plot_dict['no_markers'] = False
 
+        filter_out_str = args.filter_out_any
+        plot_dict['filter_out_str'] = filter_out_str
+        filter_plot_dict(plot_dict)
+
         min_max_avg = args.min_max_avg
         if  min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = y_axis
@@ -1047,7 +1062,6 @@ if __name__ == '__main__':
             plot_dict['curve coloring'] = ''
         else:
             plot_dict['curve coloring'] = curve_coloring
-
 
         selected_channel_names = get_selected_channel_names(plot_dict)
 
