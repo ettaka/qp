@@ -15,6 +15,7 @@ import datetime
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
+ax.autoscale(enable=True, axis='y', tight=True)
 
 """
  %% Compute Stress Option 
