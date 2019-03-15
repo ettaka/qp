@@ -231,14 +231,22 @@ def plot_mtbop_data(mtbop_data):
         ax.set_xlabel(x_axis_dict['label'])
         ax.set_ylabel(y_axis_dict['label'])
 
+        linestyle = '-'
+
         if mtbop_data['label type'] == None:
             curve_label=y_axis_dict['longname']
         elif mtbop_data['label type'] == 'filename':
             curve_label=mtbop_data['filepath'].replace('.txt', '')
+            if 'Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']:
+                curve_label=''
+                linestyle = '--'
         if mtbop_data['no_markers']:
-            ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+'-', label=curve_label)
+            curveline, = ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+linestyle, label=curve_label)
         else:
-            ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+mtbop_data['marker']+'-', markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
+            curveline, = ax.plot(xdata,y_axis_dict['raw_data']-y0, mtbop_data['color']+mtbop_data['marker']+linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
+        if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
+            if 'Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']:
+                curveline.set_dashes([10,20])
 
 @timeit
 def plot_selected_list(plot_dict):
