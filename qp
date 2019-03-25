@@ -1104,6 +1104,9 @@ if __name__ == '__main__':
         parser.add_argument('--label-type', type=str)
         parser.add_argument('--curve-coloring', type=str)
         parser.add_argument('--filter-out-any', type=str)
+        parser.add_argument('--set-xticks', type=str)
+        parser.add_argument('--set-yticks', type=str)
+	parser.add_argument('--grid', action='store_true', default=True) 
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -1168,6 +1171,16 @@ if __name__ == '__main__':
             exit()
 
         check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict)
+
+        if args.set_xticks != None:
+            xticks = [float(tic) for tic in args.set_xticks.split()]
+            ax.set_xticks(xticks)
+
+        if args.set_yticks != None:
+            yticks = [float(tic) for tic in args.set_yticks.split()]
+            ax.set_yticks(yticks)
+
+        ax.grid(args.grid)
 
 	if plot:
             plot_data(plot_dict)
