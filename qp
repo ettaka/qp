@@ -222,6 +222,9 @@ def plot_mtbop_data(mtbop_data):
         if not mtbop_data['common location'] == '':
             y_axis_dict['label'] = mtbop_data['common location'] + ' ' + y_axis_dict['label']
 
+        if mtbop_data['plot delta']:
+            y_axis_dict['label'] = '$\Delta$' + y_axis_dict['label']
+
         if mtbop_data['normalize x'] != None:
             xdata = x_axis_dict['raw_data']/float(mtbop_data['normalize x'])
         else:
@@ -545,6 +548,14 @@ def create_channel_dict_list(channel_names, channel_units):
 	for i, channel_name in enumerate(channel_names):
 		channel_dict_list.append({})
 		channel_dict = channel_dict_list[-1]
+
+                if '_inter' in channel_name:
+                    channel_dict['interpolation'] = True
+                    channel_name = channel_name.split('_interpolation')[0]
+                elif '_Inter' in channel_name:
+                    channel_dict['interpolation'] = True
+                    channel_name = channel_name.split('_Interpolation')[0]
+
 		channel_dict['name'] = channel_name
                 channel_dict['sensor type'] = ''
                 channel_dict['location'] = ''
@@ -552,7 +563,7 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['thermal compensator'] = ''
                 channel_dict['direction'] = '' 
                 channel_dict['physical_quantity'] = ''
-                
+
                 if '_Comp' in channel_name: 
                     channel_dict['thermal compensator'] = 'compensator'
 
@@ -1125,7 +1136,8 @@ if __name__ == '__main__':
 
         filter_out_str = args.filter_out_any
         plot_dict['filter_out_str'] = filter_out_str
-        filter_plot_dict(plot_dict)
+        if filter_out_str != None: 
+            filter_plot_dict(plot_dict)
 
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
