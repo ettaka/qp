@@ -243,7 +243,7 @@ def plot_mtbop_data(mtbop_data):
                 curve_label=''
                 linestyle = '--'
         if mtbop_data['no_markers']:
-            curveline, = ax.plot(xdata,y_axis_dict['raw_data'], mtbop_data['color']+linestyle, label=curve_label)
+            curveline, = ax.plot(xdata[1::100],y_axis_dict['raw_data'][1::100], mtbop_data['color']+linestyle, label=curve_label, linewidth=3)
         else:
             curveline, = ax.plot(xdata,y_axis_dict['raw_data'], mtbop_data['color']+mtbop_data['marker']+linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
@@ -268,12 +268,14 @@ def plot_selected_list_raw_current(mtbop_data_list):
 	ax.legend()
 
 def filter_plot_dict(plot_dict):
-    filter_words = plot_dict['filter_out_str'].split()
+    if plot_dict['filter_out_str'] != None: 
+        filter_words = plot_dict['filter_out_str'].split()
     for channel in plot_dict['channel_dict_list']:
         channel['active'] = True
-        if any(word in channel['name'] for word in filter_words):
-            channel['active'] = False
-            print channel['name'], "filtered", "|", filter_words
+        if plot_dict['filter_out_str'] != None: 
+            if any(word in channel['name'] for word in filter_words):
+                channel['active'] = False
+                print channel['name'], "filtered", "|", filter_words
 
 @timeit
 def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
@@ -548,6 +550,9 @@ def create_channel_dict_list(channel_names, channel_units):
 	for i, channel_name in enumerate(channel_names):
 		channel_dict_list.append({})
 		channel_dict = channel_dict_list[-1]
+
+                if 'Strain_' in channel_name:
+                    channel_name = channel_name.replace('Strain_','')
 
                 if '_inter' in channel_name:
                     channel_dict['interpolation'] = True
@@ -1025,13 +1030,13 @@ def print_plot_info(plot_dict):
 
 def find_common_location(plot_dict):
     used_names = plot_dict['y_axis']
-    if not plot_dict['matched_names'] == None: used_names = plot_dict['matched_names']
+    if 'matched_names' in plot_dict and not plot_dict['matched_names'] == None: used_names = plot_dict['matched_names']
     
     print 'find common location for:', used_names
-    common_words = ''
     selected_channels = [channel for channel in plot_dict['channel_dict_list'] if channel['name'] in used_names]
     location_words_list = [channel['location'].split() for channel in selected_channels]
     first_words = location_words_list.pop()
+    common_words = ' '.join(first_words)
     if len(location_words_list) != 0:
         common_words_list = []
         rest_of_words = list(set([word for word_list in location_words_list for word in word_list]))
@@ -1042,7 +1047,7 @@ def find_common_location(plot_dict):
             if all(word in word_list for word_list in location_words_list): 
                 common_words_list.append(word)
 
-    common_words = ' '.join(common_words_list)
+        common_words = ' '.join(common_words_list)
 
     print 'common location:', common_words
     plot_dict['common location'] = common_words
@@ -1139,8 +1144,7 @@ if __name__ == '__main__':
 
         filter_out_str = args.filter_out_any
         plot_dict['filter_out_str'] = filter_out_str
-        if filter_out_str != None: 
-            filter_plot_dict(plot_dict)
+        filter_plot_dict(plot_dict)
 
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
