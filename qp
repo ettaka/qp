@@ -202,9 +202,9 @@ def plot_mtbop_data(mtbop_data):
                 ax_dict['raw_data'] = raw_data[:max_current_index,ax_dict['index']]
             else:
                 ax_dict['raw_data'] = raw_data[:,ax_dict['index']]
-            if ax_dict['name'] == 'FS22SI_1_NTP_TIME':
+            if ax_dict['name'] == 'NTP Time':
                 ax_dict['raw_data'] =[datetime.datetime.fromtimestamp(stamp) for stamp in ax_dict['raw_data']]
-                ax.xticks(rotation=25)
+                plt.setp(ax.get_xticklabels(), rotation=25, horizontalalignment='right')
             if ax_dict['name'].lower() == 'current':
                 ax_dict['raw_data'] = ax_dict['raw_data']**2.
                 if mtbop_data['normalize x'] and ax_dict == x_axis_dict:
@@ -580,6 +580,11 @@ def create_channel_dict_list(channel_names, channel_units):
                     channel_dict['physical_quantity'] = 'Current'
                 elif channel_name == 'Time':
                     channel_dict['physical_quantity'] = 'Time'
+                elif 'NTP' in channel_name and 'TIME' in channel_name:
+                    channel_dict['physical_quantity'] = 'Time'
+                    channel_dict['sensor type'] = 'NTP'
+                    channel_dict['longname'] = 'NTP Time'
+                    channel_dict['name'] = 'NTP Time'
                 else:
                     if channel_name[0:2] == 'SH':
                             shell_location = ''
@@ -1188,7 +1193,10 @@ if __name__ == '__main__':
 
 	if plot:
             plot_data(plot_dict)
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
+            if x_axis == 'NTP Time':
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
+            else:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
