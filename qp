@@ -569,6 +569,14 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['direction'] = '' 
                 channel_dict['physical_quantity'] = ''
 
+                channel_dict['longitudinal location'] = ''
+                if '_LE_' in channel_name:
+                    channel_dict['longitudinal location'] = 'LE'
+                elif '_CE_' in channel_name:
+                    channel_dict['longitudinal location'] = 'CE'
+                elif '_RE_' in channel_name:
+                    channel_dict['longitudinal location'] = 'RE'
+
                 if '_Comp' in channel_name: 
                     channel_dict['thermal compensator'] = 'compensator'
 
@@ -805,6 +813,7 @@ def get_channel_longname(channel_dict):
     if not channel_dict['physical_quantity'] == '': longname += ' ' + channel_dict['physical_quantity']
     if not channel_dict['sensor type'] == '': longname += ' ' + channel_dict['sensor type']
     if not channel_dict['thermal compensator'] == '': longname += ' ' + channel_dict['thermal compensator']
+    if not channel_dict['longitudinal location'] == '': longname += ' ' + channel_dict['longitudinal location']
 
     return longname
 
