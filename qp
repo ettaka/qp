@@ -619,6 +619,15 @@ def create_channel_dict_list(channel_names, channel_units):
                     channel_dict['sensor type'] = 'NTP'
                     channel_dict['longname'] = 'NTP Time'
                     channel_dict['name'] = 'NTP Time'
+                elif 'pressure' in channel_name.lower():
+                    channel_dict['unit'] = 'Bar'
+                    channel_dict['physical_quantity'] = 'Pressure'
+                    if 'Rod' in channel_name:
+                        channel_dict['name'] = 'Piston Pressure'
+                        channel_dict['longname'] = 'Piston Pressure'
+                    elif 'bladder' in channel_name.lower():
+                        channel_dict['name'] = 'Bladder Pressure'
+                        channel_dict['longname'] = 'Bladder Pressure'
                 else:
                     if channel_name[0:2] == 'SH':
                             shell_location = ''
