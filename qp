@@ -277,6 +277,20 @@ def filter_plot_dict(plot_dict):
                 channel['active'] = False
                 print channel['name'], "filtered", "|", filter_words
 
+def get_cryocorrection(head):
+    print "Getting cryocorrection factor",
+    cryocorrection = None
+    for line in head:
+        if 'CHANNELS:' in line:
+            try:
+                cryocorrection = float(line.split('cryocorrection')[1].split('=')[1])
+                break
+            except:
+                print "...not found."
+                pass
+
+    return cryocorrection
+
 @timeit
 def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	"""
@@ -323,6 +337,8 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 	#mtbop_data['raw_data'] = raw_data_df.values
 	mtbop_data['raw_data'] = raw_data
         signal_compensation(mtbop_data)
+	mtbop_data['cryocorrection'] = get_cryocorrection(head)
+        if mtbop_data['cryocorrection'] != None: signal_cryocorrection(mtbop_data)
         #convert_units_to_umum(mtbop_data)
 	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
 	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
@@ -338,7 +354,10 @@ def signal_compensation(mtbop_data):
     for compensator_index, compensator_dict in enumerate(mtbop_data['channel_dict_list']):
         if compensator_dict['thermal compensator'] == 'compensator':
             search_terms = compensator_dict['longname'].split()
-            search_terms.pop(-1)
+            try:
+                search_terms.remove('compensator')
+            except:
+                pass
             print search_terms
             for compensated_index, compensated_dict in enumerate(mtbop_data['channel_dict_list']):
                 compensated_dict['compensation done'] = False
@@ -347,6 +366,13 @@ def signal_compensation(mtbop_data):
                     mtbop_data['raw_data'][:,compensated_index] -= mtbop_data['raw_data'][:,compensator_index]
                     compensated_dict['compensation done']=True
                     print "Compensation done."
+
+def signal_cryocorrection(mtbop_data):
+    print "cryocorrection", mtbop_data['cryocorrection']
+    for chind, channel_dict in enumerate(mtbop_data['channel_dict_list']):
+        if 'physical_quantity' in channel_dict and channel_dict['physical_quantity'] == 'Strain':
+            print "cryo correction for: ", channel_dict['name']
+            mtbop_data['raw_data'][:, chind] *= mtbop_data['cryocorrection']
 
 def convert_units_to_umum(mtbop_data):
     raw_data = mtbop_data['raw_data']
