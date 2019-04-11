@@ -598,7 +598,7 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['longitudinal location'] = ''
                 if '_LE_' in channel_name:
                     channel_dict['longitudinal location'] = 'LE'
-                elif '_CE_' or '_MI_' in channel_name:
+                elif '_CE_' in channel_name or '_MI_' in channel_name:
                     channel_dict['longitudinal location'] = 'CE'
                 elif '_RE_' in channel_name:
                     channel_dict['longitudinal location'] = 'RE'
