@@ -1184,6 +1184,8 @@ if __name__ == '__main__':
         parser.add_argument('--filter-out-any', type=str)
         parser.add_argument('--set-xticks', type=str)
         parser.add_argument('--set-yticks', type=str)
+        parser.add_argument('--set-xlim', type=str)
+        parser.add_argument('--set-ylim', type=str)
 	parser.add_argument('--grid', action='store_true', default=True) 
 
 	args = parser.parse_args()
@@ -1256,6 +1258,14 @@ if __name__ == '__main__':
         if args.set_yticks != None:
             yticks = [float(tic) for tic in args.set_yticks.split()]
             ax.set_yticks(yticks)
+
+        if args.set_xlim!= None:
+            xlim= [float(rang) for rang in args.set_xlim.split()]
+            ax.set_xlim(xlim)
+
+        if args.set_ylim!= None:
+            ylim= [float(rang) for rang in args.set_ylim.split()]
+            ax.set_ylim(ylim)
 
         ax.grid(args.grid)
 
