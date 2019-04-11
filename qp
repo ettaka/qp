@@ -620,11 +620,11 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['physical_quantity'] = ''
 
                 channel_dict['longitudinal location'] = ''
-                if '_LE_' in channel_name:
+                if '_LE' in channel_name:
                     channel_dict['longitudinal location'] = 'LE'
-                elif '_CE_' in channel_name or '_MI_' in channel_name:
+                elif '_CE' in channel_name or '_MI' in channel_name:
                     channel_dict['longitudinal location'] = 'CE'
-                elif '_RE_' in channel_name:
+                elif '_RE' in channel_name:
                     channel_dict['longitudinal location'] = 'RE'
 
                 if '_Comp' in channel_name: 
@@ -659,6 +659,8 @@ def create_channel_dict_list(channel_names, channel_units):
                             elif channel_name[2] == 'L': shell_location = 'Left'
                             elif channel_name[2] == 'T': shell_location = 'Top'
                             elif channel_name[2] == 'B': shell_location = 'Bottom'
+                            if channel_name[3] == 'Z': channel_dict['direction'] = 'Longitudinal'
+                            elif channel_name[3] == 'T': channel_dict['direction'] = 'Azimuthal'
                             channel_dict['location'] = 'Shell ' + shell_location
                             channel_dict['physical_quantity'] = 'Strain'
                             channel_dict['material'] = 'aluminium'
@@ -687,8 +689,6 @@ def create_channel_dict_list(channel_names, channel_units):
                             channel_dict['direction'] =  'Longitudinal'
                     elif '_T' in channel_name or channel_name[-1] == 'T':
                             channel_dict['direction'] = 'Azimuthal'
-                    else:
-                            channel_dict['direction'] = ''
 
                     channel_dict['longname'] = get_channel_longname(channel_dict)
                     channel_dict['name'] = get_channel_longname(channel_dict)
@@ -904,17 +904,17 @@ def double_vector_with_zeros(vector):
 	new_vector[0:size] = vector
 	vector = new_vector
 
-def search_channel_dict(channel_dict_list, location, direction, physical_quantity, sensor_type):
+def search_channel_dict(channel_dict_list, location, direction, physical_quantity, longitudinal_location, sensor_type):
     for channel_dict in channel_dict_list:
-        if channel_dict['sensor type'] == sensor_type and channel_dict['location'].lower() == location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
+        if channel_dict['sensor type'] == sensor_type and channel_dict['location'].lower() == location.lower() and channel_dict['longitudinal location'].lower() == longitudinal_location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
     return None
 
 def add_stress_data_to_dicts(channel_dict_list):
     print "Add strain dicts to stress channel dictionaries:"
     for channel_dict in channel_dict_list:
         if channel_dict['physical_quantity'].lower() == 'stress':
-            strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain', channel_dict['sensor type'])
-            strain_azimuthal = search_channel_dict(channel_dict_list, channel_dict['location'], 'azimuthal', 'strain', channel_dict['sensor type'])
+            strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain', channel_dict['longitudinal location'], channel_dict['sensor type'])
+            strain_azimuthal = search_channel_dict(channel_dict_list, channel_dict['location'], 'azimuthal', 'strain', channel_dict['longitudinal location'], channel_dict['sensor type'])
             channel_dict['strain'] = {}
             channel_dict['strain']['longitudinal'] = strain_longitudinal
             channel_dict['strain']['azimuthal'] = strain_azimuthal
@@ -1107,7 +1107,7 @@ def find_common_location(plot_dict):
     
     print 'find common location for:', used_names
     selected_channels = [channel for channel in plot_dict['channel_dict_list'] if channel['name'] in used_names]
-    location_words_list = [channel['location'].split() for channel in selected_channels]
+    location_words_list = [channel['location'].split()+[channel['longitudinal location']] for channel in selected_channels]
     first_words = location_words_list.pop()
     common_words = ' '.join(first_words)
     if len(location_words_list) != 0:
