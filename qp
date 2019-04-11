@@ -205,6 +205,8 @@ def plot_mtbop_data(mtbop_data):
             if ax_dict['name'] == 'NTP Time':
                 ax_dict['raw_data'] =[datetime.datetime.fromtimestamp(stamp) for stamp in ax_dict['raw_data']]
                 plt.setp(ax.get_xticklabels(), rotation=25, horizontalalignment='right')
+                ax.text(0, -0.2, "Start:" + str(ax_dict['raw_data'][0]), transform = ax.transAxes)
+                ax.text(0, -0.25, "End:" + str(ax_dict['raw_data'][-1]), transform = ax.transAxes)
             if ax_dict['name'].lower() == 'current':
                 ax_dict['raw_data'] = ax_dict['raw_data']**2.
                 if mtbop_data['normalize x'] and ax_dict == x_axis_dict:
