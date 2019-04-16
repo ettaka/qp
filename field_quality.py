@@ -73,9 +73,14 @@ def find_center_position(main_field):
     print "integral until center position", cent_pos_integral
     print "center integral ratio", cent_pos_integral/tot_integral
 
-#def add_centered_coordinates(main_field):
+def add_centered_z(main_field):
     #z_dict = fetch_row_dict('z', main_field)
-
+    z_dict = main_field['z']
+    z_centered_dict = {}
+    main_field['z centered'] = z_centered_dict
+    z_centered_dict['name'] = 'z centered'
+    z_centered_dict['values'] = z_dict['values'] - z_dict['center']
+    z_centered_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(main_field['pos']['values'], z_centered_dict['values'],k=1)
 
 def read_case(casedir, args):
     #meta not read
@@ -91,7 +96,7 @@ def read_case(casedir, args):
     add_interp_to_row_dicts(normal_multipoles, main_field['pos']['values'])
     add_interp_to_row_dicts(skew_multipoles, main_field['pos']['values'])
     find_center_position(main_field)
-
+    add_centered_z(main_field)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot transfer function')
