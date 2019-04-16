@@ -51,6 +51,14 @@ def add_interp_to_row_dicts(row_dicts, x_vec):
         except:
             row_dict['interp'] = None
 
+def add_integrated_values(row_dicts):
+    for key in row_dicts:
+        row_dict = row_dicts[key]
+        try:
+            row_dict['integrated values'] = np.array([row_dict['interp'].integral(1,i+1)/np.size(row_dict['values']) for i,tmp in enumerate(row_dict['values'])])
+        except:
+            row_dict['integrated values'] = None
+
 def get_center_integral(pos0, pos_last, magnTFdict):
     def center_integral(pos):
         magnTFinterp = magnTFdict['interp']
@@ -122,6 +130,9 @@ def read_case(casedir, args):
     add_interp_to_row_dicts(skew_multipoles, main_field['pos']['values'])
     find_center_position(main_field)
     add_centered_z(main_field)
+    add_integrated_values(main_field)
+    add_integrated_values(normal_multipoles)
+    add_integrated_values(skew_multipoles)
     
     plot_data(data_dict, args)
 
