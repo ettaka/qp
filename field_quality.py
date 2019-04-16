@@ -94,25 +94,49 @@ def add_centered_z(main_field):
     z_centered_dict['values'] = z_dict['values'] - z_dict['center']
     z_centered_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(main_field['pos']['values'], z_centered_dict['values'],k=1)
 
+class RowPlotter:
+
+    colors = ['b','g','r','c','m','y','k']
+    markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
+
+    def __init__(self, data_dict, args):
+        self.i=0
+        self.args=args
+        self.data_dict = data_dict
+        self.main_field = data_dict['main_field']
+        self.xdata = self.main_field['z centered']['values']
+
+    def plot(self, row, plot_integrated_values=False):
+
+        self.i+=1
+        if plot_integrated_values: 
+            ydata = row['integrated values'] 
+            name = row['name'] + ' integ.'
+        else:
+            ydata = row['values'] 
+            name = row['name']
+
+        save_fig = self.data_dict['casedir'] + '_' + name + '.png'
+        ax.plot(self.xdata, ydata,'--'+self.colors[self.i]+self.markers[self.i],label=name)
+
 def plot_data(data_dict, args):
     main_field = data_dict['main_field']
-    xdata = main_field['z centered']['values']
-    ydata = main_field['TF']['values']
-
-    #pos_dict = main_field['pos']
-    #TF_dict = main_field['TF']
-    #p0 = pos_dict['values'][0]
-    #ydata = [main_field['TF']['interp'].integral(p0, x) for x in pos_dict['values']]
-
-    save_fig = data_dict['casedir'] + '.png'
-
-    ax.plot(xdata, ydata,'-bo',label='Main field')
+    row_plotter = RowPlotter(data_dict, args)
+    row_plotter.plot(main_field['TF'])
+    row_plotter.plot(main_field['TF'], True)
 
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
     else:
         plt.savefig(save_fig)
+
+    return
+
+    #pos_dict = main_field['pos']
+    #TF_dict = main_field['TF']
+    #p0 = pos_dict['values'][0]
+    #ydata = [main_field['TF']['interp'].integral(p0, x) for x in pos_dict['values']]
 
 def read_case(casedir, args):
     #meta not read
