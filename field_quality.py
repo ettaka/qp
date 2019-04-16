@@ -43,17 +43,18 @@ def fetch_row_dict(name, row_dicts):
             return row_dict 
     return None
 
-def add_interp_to_row_dicts(row_dicts, x_vec):
-    for key in row_dicts:
-        row_dict = row_dicts[key]
+def add_interp_to_row_dicts(data_dict):
+    x_vec = data_dict['data rows']['pos']['values']
+    for key in data_dict['data rows']:
+        row_dict = data_dict['data rows'][key]
         try:
             row_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(x_vec, row_dict['values'],k=1)
         except:
             row_dict['interp'] = None
 
-def add_integrated_values(row_dicts):
-    for key in row_dicts:
-        row_dict = row_dicts[key]
+def add_integrated_values(data_dicts):
+    for key in data_dicts['data rows']:
+        row_dict = data_dicts['data rows'][key]
         try:
             row_dict['integrated values'] = np.array([row_dict['interp'].integral(1,i+1)/np.size(row_dict['values']) for i,tmp in enumerate(row_dict['values'])])
         except:
@@ -65,9 +66,9 @@ def get_center_integral(pos0, pos_last, magnTFdict):
         return magnTFinterp.integral(1,pos)-magnTFinterp.integral(1,pos_last)/2.
     return center_integral
     
-def find_center_position(main_field):
-    pos_dict = main_field['pos']
-    TF_dict = main_field['TF']
+def find_center_position(data_dict):
+    pos_dict = data_dict['data rows']['pos']
+    TF_dict = data_dict['data rows']['TF']
     p0 = pos_dict['values'][0]
     p1 = pos_dict['values'][-1]
     center_integral_func = get_center_integral(p0,p1,TF_dict)
@@ -78,21 +79,21 @@ def find_center_position(main_field):
     print "center position", center_position
     pos_dict['center'] = center_position
 
-    z_dict = main_field['z']
+    z_dict = data_dict['data rows']['z']
     z_dict['center'] = z_dict['interp'](center_position)
     print "center in meters", z_dict['center']
     print "total integral", tot_integral 
     print "integral until center position", cent_pos_integral
     print "center integral ratio", cent_pos_integral/tot_integral
 
-def add_centered_z(main_field):
-    #z_dict = fetch_row_dict('z', main_field)
-    z_dict = main_field['z']
+def add_centered_z(data_dict):
+    #z_dict = fetch_row_dict('z', data_dict)
+    z_dict = data_dict['data rows']['z']
     z_centered_dict = {}
-    main_field['z centered'] = z_centered_dict
+    data_dict['data rows']['z centered'] = z_centered_dict
     z_centered_dict['name'] = 'z centered'
     z_centered_dict['values'] = z_dict['values'] - z_dict['center']
-    z_centered_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(main_field['pos']['values'], z_centered_dict['values'],k=1)
+    z_centered_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(data_dict['data rows']['pos']['values'], z_centered_dict['values'],k=1)
 
 class RowPlotter:
 
@@ -103,8 +104,7 @@ class RowPlotter:
         self.i=0
         self.args=args
         self.data_dict = data_dict
-        self.main_field = data_dict['main_field']
-        self.xdata = self.main_field['z centered']['values']
+        self.xdata = self.data_dict['data rows']['z centered']['values']
 
     def plot(self, row, plot_integrated_values=False):
 
@@ -113,17 +113,16 @@ class RowPlotter:
             ydata = row['integrated values'] 
             name = row['name'] + ' integ.'
         else:
-            ydata = row['values'] 
+            ydata = [row['interp'](pos+1) for pos,tmp in enumerate(row['values'])]
             name = row['name']
 
         save_fig = self.data_dict['casedir'] + '_' + name + '.png'
         ax.plot(self.xdata, ydata,'--'+self.colors[self.i]+self.markers[self.i],label=name)
 
 def plot_data(data_dict, args):
-    main_field = data_dict['main_field']
     row_plotter = RowPlotter(data_dict, args)
-    row_plotter.plot(main_field['TF'])
-    row_plotter.plot(main_field['TF'], True)
+    row_plotter.plot(data_dict['data rows']['TF'])
+    row_plotter.plot(data_dict['data rows']['TF'], True)
 
     ax.legend(loc=args.legend_location)
     if args.show_plot:
@@ -133,30 +132,22 @@ def plot_data(data_dict, args):
 
     return
 
-    #pos_dict = main_field['pos']
-    #TF_dict = main_field['TF']
-    #p0 = pos_dict['values'][0]
-    #ydata = [main_field['TF']['interp'].integral(p0, x) for x in pos_dict['values']]
-
 def read_case(casedir, args):
     #meta not read
     data_dict = {}
     data_dict['casedir'] = casedir
+    data_dict['data rows'] = {}
     main_field = read_value_table('main_field')
     normal_multipoles = read_value_table('normal_multipoles')
     skew_multipoles = read_value_table('skew_multipoles')
-    data_dict['main_field'] = main_field
-    data_dict['normal_multipoles'] = normal_multipoles
-    data_dict['skew_multipoles'] = skew_multipoles
+    data_dict['data rows'].update(main_field)
+    data_dict['data rows'].update(normal_multipoles)
+    data_dict['data rows'].update(skew_multipoles)
 
-    add_interp_to_row_dicts(main_field, main_field['pos']['values'])
-    add_interp_to_row_dicts(normal_multipoles, main_field['pos']['values'])
-    add_interp_to_row_dicts(skew_multipoles, main_field['pos']['values'])
-    find_center_position(main_field)
-    add_centered_z(main_field)
-    add_integrated_values(main_field)
-    add_integrated_values(normal_multipoles)
-    add_integrated_values(skew_multipoles)
+    add_interp_to_row_dicts(data_dict)
+    find_center_position(data_dict)
+    add_centered_z(data_dict)
+    add_integrated_values(data_dict)
     
     plot_data(data_dict, args)
 
