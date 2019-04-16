@@ -16,11 +16,11 @@ def read_value_table(table_name):
     with codecs.open(casedir + '/' + table_name) as f:
         rows = [line.split('\t') for line in f.read().decode('utf-8', 'ignore').replace('\r','').split('\n')]
 
-    row_dicts = []
+    row_dicts = {}
     for row in rows:
         if len(row)>3:
-            row_dicts.append({})
-            row_dict = row_dicts[-1]
+            row_dicts[row[0]]={}
+            row_dict = row_dicts[row[0]]
             row_dict['name'] = row[0]
             row_dict['unit'] = row[1]
             try:
@@ -40,7 +40,8 @@ def fetch_row_dict(name, row_dicts):
     return None
 
 def add_interp_to_row_dicts(row_dicts, x_vec):
-    for row_dict in row_dicts:
+    for key in row_dicts:
+        row_dict = row_dicts[key]
         try:
             row_dict['interp'] = scipy.interpolate.InterpolatedUnivariateSpline(x_vec, row_dict['values'],k=1)
         except:
@@ -53,8 +54,8 @@ def get_center_integral(pos0, pos_last, magnTFdict):
     return center_integral
     
 def find_center_position(main_field):
-    pos_dict = fetch_row_dict('pos', main_field)
-    TF_dict = fetch_row_dict('TF', main_field)
+    pos_dict = main_field['pos']
+    TF_dict = main_field['TF']
     p0 = pos_dict['values'][0]
     p1 = pos_dict['values'][-1]
     center_integral_func = get_center_integral(p0,p1,TF_dict)
@@ -65,23 +66,30 @@ def find_center_position(main_field):
     print "center position", center_position
     pos_dict['center'] = center_position
 
-    z_dict = fetch_row_dict('z', main_field)
+    z_dict = main_field['z']
     z_dict['center'] = z_dict['interp'](center_position)
     print "center in meters", z_dict['center']
     print "total integral", tot_integral 
     print "integral until center position", cent_pos_integral
     print "center integral ratio", cent_pos_integral/tot_integral
 
+#def add_centered_coordinates(main_field):
+    #z_dict = fetch_row_dict('z', main_field)
+
 
 def read_case(casedir, args):
-       
     #meta not read
+    data_dict = {}
     main_field = read_value_table('main_field')
     normal_multipoles = read_value_table('normal_multipoles')
     skew_multipoles = read_value_table('skew_multipoles')
-    add_interp_to_row_dicts(main_field, main_field[0]['values'])
-    add_interp_to_row_dicts(normal_multipoles, main_field[0]['values'])
-    add_interp_to_row_dicts(skew_multipoles, main_field[0]['values'])
+    data_dict['main_field'] = main_field
+    data_dict['normal_multipoles'] = normal_multipoles
+    data_dict['skew_multipoles'] = skew_multipoles
+
+    add_interp_to_row_dicts(main_field, main_field['pos']['values'])
+    add_interp_to_row_dicts(normal_multipoles, main_field['pos']['values'])
+    add_interp_to_row_dicts(skew_multipoles, main_field['pos']['values'])
     find_center_position(main_field)
 
 
