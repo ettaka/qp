@@ -117,16 +117,16 @@ def plot_tf(filepath, args):
     if single_coils:
         print "Plot single pole gauges",
         for i in range(4):
-            if not neighbour_shell_averages:
+            if neighbour_shell_averages:
                 if i==0:print "vs single shell gauges."
                 xdata = xdict['raw_data'][:,i]
-                ydata = ydict['raw_data'][:,0]
+                ydata = ydict['raw_data'][:,i]
                 label = xdict['col_names'][i]+'-'+ydict['col_names'][i]
             else:
                 if i==0:print "vs single shell gauges."
                 nof_cols = np.shape(xdict['raw_data'])[1]
                 xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
-                ydata = ydict['raw_data'][:,0]
+                ydata = ydict['raw_data'][:,i]
                 label = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]+'-'+ydict['col_names'][i]
 
             ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
