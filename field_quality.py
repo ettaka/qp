@@ -158,6 +158,24 @@ def plot_row(row_name, data_dict, args):
     row_plotter.plot(data_dict['data rows'][row_name], args.plot_integrated_values)
 
     print 'plotting', save_fig
+
+    if args.set_xticks != None:
+        xticks = [float(tic) for tic in args.set_xticks.split()]
+        ax.set_xticks(xticks)
+
+    if args.set_yticks != None:
+        yticks = [float(tic) for tic in args.set_yticks.split()]
+        ax.set_yticks(yticks)
+
+
+    if args.set_xlim!= None:
+        xlim= [float(rang) for rang in args.set_xlim.split()]
+        ax.set_xlim(xlim)
+
+    if args.set_ylim!= None:
+        ylim= [float(rang) for rang in args.set_ylim.split()]
+        ax.set_ylim(ylim)
+
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -195,6 +213,10 @@ if __name__ == '__main__':
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-ll', '--legend-location', type=str, default='best')
     parser.add_argument('-pi', '--plot-integrated-values', action='store_true', default=False)
+    parser.add_argument('--set-xlim', type=str)
+    parser.add_argument('--set-ylim', type=str)
+    parser.add_argument('--set-xticks', type=str)
+    parser.add_argument('--set-yticks', type=str)
 
     args = parser.parse_args()
     for casedir in args.casedirs:
