@@ -225,6 +225,12 @@ if __name__ == '__main__':
     parser.add_argument('-nshav', '--no-neighbour-shell-averages', action='store_false', default=True) 
     parser.add_argument('-ll', '--legend-location', type=str, default='best')
     parser.add_argument('-perm', '--coil-permutation', nargs=4, type=int)
+    parser.add_argument('--set-xticks', type=str)
+    parser.add_argument('--set-yticks', type=str)
+    parser.add_argument('--set-xlim', type=str)
+    parser.add_argument('--set-ylim', type=str)
+    parser.add_argument('--key-shell', action='store_true', default=False) 
+    parser.add_argument('--key-pole', action='store_true', default=False) 
 
     args = parser.parse_args()
     paths = args.paths
