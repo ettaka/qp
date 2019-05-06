@@ -41,24 +41,40 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
 
 def compute_data_dict_avg_min_max(data_dict):
     use_cols = []
-    for i in range(np.shape(data_dict['raw_data'])[1]):
-        if np.any(data_dict['raw_data'][:,i]!=0): use_cols.append(i)
 
-    data_dict['average'] = np.average(data_dict['raw_data'][:,use_cols], axis=1)
-    data_dict['min'] = np.min(data_dict['raw_data'][:,use_cols], axis=1)
-    data_dict['max'] = np.max(data_dict['raw_data'][:,use_cols], axis=1)
-    data_dict['error'] = np.array([data_dict['average'] - data_dict['min'], data_dict['max'] - data_dict['average']])
+    data_shape = np.shape(data_dict['raw_data'])
+    
+    if len(data_shape) == 1:
+        data_dict['average'] = np.average(data_dict['raw_data'])
+        data_dict['min'] = np.average(data_dict['raw_data'])
+        data_dict['max'] = np.average(data_dict['raw_data'])
+        data_dict['error'] = np.array([data_dict['average'] - data_dict['min'], data_dict['max'] - data_dict['average']])
+    else:
+        for i in range(data_shape[1]):
+            if np.any(data_dict['raw_data'][:,i]!=0): use_cols.append(i)
+
+        data_dict['average'] = np.average(data_dict['raw_data'][:,use_cols], axis=1)
+        data_dict['min'] = np.min(data_dict['raw_data'][:,use_cols], axis=1)
+        data_dict['max'] = np.max(data_dict['raw_data'][:,use_cols], axis=1)
+        data_dict['error'] = np.array([data_dict['average'] - data_dict['min'], data_dict['max'] - data_dict['average']])
 
 def create_pk_npk_dict(pk_npk_data_file):
-    header_lines = 3
-    with codecs.open(pk_npk_data_file) as f:
-        pk_npk_raw_data = np.loadtxt(f, skiprows=header_lines)
     pk_npk_dict = {}
-    pk_npk_dict['raw_data'] = pk_npk_raw_data
-    pk_npk_dict['pk-spole'] = pk_npk_raw_data[:,1]
-    pk_npk_dict['pk-scyl'] = pk_npk_raw_data[:,3]
-    pk_npk_dict['npk-spole'] = pk_npk_raw_data[:,5]
-    pk_npk_dict['npk-scyl'] = pk_npk_raw_data[:,7]
+    try:
+        fh = open(pk_npk_data_file)
+        header_lines = 3
+        with codecs.open(pk_npk_data_file) as f:
+            pk_npk_raw_data = np.loadtxt(f, skiprows=header_lines)
+        pk_npk_dict['raw_data'] = pk_npk_raw_data
+        pk_npk_dict['pk-spole'] = pk_npk_raw_data[:,1]
+        pk_npk_dict['pk-scyl'] = pk_npk_raw_data[:,3]
+        pk_npk_dict['npk-spole'] = pk_npk_raw_data[:,5]
+        pk_npk_dict['npk-scyl'] = pk_npk_raw_data[:,7]
+    except:
+        pk_npk_dict = None
+        pass
+
+
     return pk_npk_dict
 
 def create_data_dicts(filepath, coil_permutation=None):
