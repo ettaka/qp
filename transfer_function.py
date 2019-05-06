@@ -133,9 +133,22 @@ def plot_tf(filepath, args):
     coil_permutation = args.coil_permutation
 
     filebase = filepath.split('.txt')[0]
-    save_fig = filebase + '.png'
 
-    xdict, ydict = create_data_dicts(filepath, coil_permutation)
+    key_dict, shell_dict, coil_dict = create_data_dicts(filepath, coil_permutation)
+
+    if args.key_shell:
+        xdict = key_dict
+        ydict = shell_dict
+        save_fig = filebase + '_key_shell.png'
+    elif args.key_pole:
+        xdict = key_dict
+        ydict = coil_dict
+        save_fig = filebase + '_key_pole.png'
+    else:
+        xdict = shell_dict
+        ydict = coil_dict
+        save_fig = filebase + '.png'
+
     xdata = xdict['average']
     ydata = ydict['average']
 
