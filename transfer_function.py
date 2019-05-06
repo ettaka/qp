@@ -180,11 +180,28 @@ def plot_tf(filepath, args):
 
             ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
 
-    ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM PK')
-    ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM NPK')
-    ax.set_xlabel('Shell Azimuthal Stress (MPa)')
-    ax.set_ylabel('Pole Azimuthal Stress (MPa)')
+    if pk_npk_dict != None:
+        ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM PK')
+        ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM NPK')
+    ax.set_xlabel(xdict['axis label'])
+    ax.set_ylabel(ydict['axis label'])
     ax.grid()
+
+    if args.set_xticks != None:
+        xticks = [float(tic) for tic in args.set_xticks.split()]
+        ax.set_xticks(xticks)
+
+    if args.set_yticks != None:
+        yticks = [float(tic) for tic in args.set_yticks.split()]
+        ax.set_yticks(yticks)
+
+    if args.set_xlim!= None:
+        xlim= [float(rang) for rang in args.set_xlim.split()]
+        ax.set_xlim(xlim)
+
+    if args.set_ylim!= None:
+        ylim= [float(rang) for rang in args.set_ylim.split()]
+        ax.set_ylim(ylim)
 
     ax.legend(loc=legend_location)
     if args.show_plot:
