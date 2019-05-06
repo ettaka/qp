@@ -85,21 +85,41 @@ def create_data_dicts(filepath, coil_permutation=None):
     header_lines = 3
     with codecs.open(filepath) as f:
         head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
+
     col_names = head[2].strip('\r\n').split('\t')
+    print len(col_names)
 
     with codecs.open(filepath) as f:
         raw_data = np.loadtxt(f, skiprows=header_lines)
 
-    xdict = {}
-    xdict['raw_data'] = raw_data[:,1:5]
-    xdict['col_names'] = col_names[1:5]
-    ydict = {}
-    ypicker = map([5,6,7,8].__getitem__,coil_permutation)
-    ydict['raw_data'] = raw_data[:,ypicker]
-    ydict['col_names'] = map(col_names[5:9].__getitem__,coil_permutation)
-    compute_data_dict_avg_min_max(xdict)
-    compute_data_dict_avg_min_max(ydict)
-    return xdict, ydict
+    key_dict = {}
+    shell_dict = {}
+    coil_dict = {}
+    key_dict['axis label'] = 'Loading Key Thickness (mm)'
+    shell_dict['axis label'] = 'Shell Azimuthal Stress (MPa)'
+    coil_dict['axis label'] = 'Pole Azimuthal Stress (MPa)'
+    if len(col_names) == 9 or len(col_names) == 10:
+        key_dict['raw_data'] = raw_data[:,0]
+        key_dict['col_names'] = col_names[0]
+        shell_dict['raw_data'] = raw_data[:,1:5]
+        shell_dict['col_names'] = col_names[1:5]
+        ypicker = map([5,6,7,8].__getitem__,coil_permutation)
+        coil_dict['raw_data'] = raw_data[:,ypicker]
+        coil_dict['col_names'] = map(col_names[5:9].__getitem__,coil_permutation)
+    if len(col_names) == 12:
+        key_dict['raw_data'] = raw_data[:,0:4]
+        key_dict['col_names'] = col_names[0:4]
+        shell_dict['raw_data'] = raw_data[:,1+3:5+3]
+        shell_dict['col_names'] = col_names[1+3:5+3]
+        ypicker = map([5+3,6+3,7+3,8+3].__getitem__,coil_permutation)
+        coil_dict['raw_data'] = raw_data[:,ypicker]
+        coil_dict['col_names'] = map(col_names[5+3:9+3].__getitem__,coil_permutation)
+ 
+    compute_data_dict_avg_min_max(key_dict)
+    compute_data_dict_avg_min_max(shell_dict)
+    compute_data_dict_avg_min_max(coil_dict)
+
+    return key_dict, shell_dict, coil_dict
 
 def plot_tf(filepath, args):
 
