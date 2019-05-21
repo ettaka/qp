@@ -293,8 +293,15 @@ def get_cryocorrection(head):
 
     return cryocorrection
 
+def get_replace_channels_dict(rc_list):
+    try:
+        rdc = {rc_list[i]:rc_list[i+1] for i in range(0,len(rc_list),2)}
+    except:
+        rdc = {}
+    #print "rdc", rdc
+
 @timeit
-def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
+def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None):
 	"""
 	Loads mtbop data from txt file.
 	
@@ -314,6 +321,9 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38):
 		 channel_units = [string, .., string],
 		 raw_data = numpy.ndarray}
 	"""
+        if args != None:
+            replace_channels_dict = get_replace_channels_dict(args.replace_channels)
+
 	basename = os.path.splitext(filepath)[0]
 	pickle_path = basename + '.pickle'
 	if os.path.isfile(pickle_path) and not override_pickle:
@@ -405,10 +415,10 @@ def convert_units_to_umum(mtbop_data):
             #raw_data[:,i] *= 1e-6
             channel_dict['unit'] = 'um/um'
 
-def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38):
+def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
 	mtbop_data_list = []
 	for filepath in filepath_list:
-		mtbop_data = load_mtbop_data(filepath, override_pickle)
+		mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
 		mtbop_data_list.append(mtbop_data)
 	return mtbop_data_list
 
@@ -603,6 +613,9 @@ def create_channel_dict_list(channel_names, channel_units):
 
                 if 'Strain_' in channel_name:
                     channel_name = channel_name.replace('Strain_','')
+                if '_cryo' in channel_name:
+                    channel_name = channel_name.replace('_cryo','')
+
 
                 if '_inter' in channel_name:
                     channel_dict['interpolation'] = True
@@ -940,8 +953,6 @@ def compute_stresses(plot_dict):
                 material = channel_dict['material']
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
-                if longitudinal_dict != None:
-                    print longitudinal_dict['name']
 
                 try:
                     if not azimuthal_dict == None:
@@ -1030,11 +1041,11 @@ def create_channel_name_dict(channel_dict_list):
 		channel_name_dict[channel_dict['name']]=channel_dict
 	return channel_name_dict
 
-def create_plot_dict(paths, channels_json, plot_stress=False):
+def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
 	plot_dict = {}
 	plot_dict['paths'] = paths
 	plot_dict['filepaths'] = find_files(paths)
-	plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle)
+	plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle, args=args)
 	plot_dict['plot_stress'] = plot_stress
 
 	if not channels_json == None: 
@@ -1187,6 +1198,8 @@ if __name__ == '__main__':
         parser.add_argument('--set-xlim', type=str)
         parser.add_argument('--set-ylim', type=str)
 	parser.add_argument('--grid', action='store_true', default=True) 
+        parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
+        parser.add_argument('-rc', '--replace-channels', nargs='+', type=str)
 
 	args = parser.parse_args()
 	paths = args.paths
@@ -1206,7 +1219,7 @@ if __name__ == '__main__':
         if save_fig == None: save_fig = 'plot.png'
 
         if x_axis == None: x_axis = 'Current'
-	plot_dict = create_plot_dict(paths, channels_json, plot_stress)
+	plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
         plot_dict['x_axis'] = x_axis
         plot_dict['markevery'] = markevery
         plot_dict['plot delta'] = args.plot_delta
@@ -1224,7 +1237,8 @@ if __name__ == '__main__':
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
             y_axis = map(lambda name: 'Delta ' + name, y_axis)
-            min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
+            if not min_max_avg == None:
+                min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
 
         if  min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = y_axis
@@ -1269,7 +1283,7 @@ if __name__ == '__main__':
 
         ax.grid(args.grid)
 
-	if plot:
+        if plot or args.show_plot:
             plot_data(plot_dict)
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
@@ -1277,7 +1291,10 @@ if __name__ == '__main__':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
-            plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if args.show_plot:
+                plt.show()
+            else:
+                plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 
