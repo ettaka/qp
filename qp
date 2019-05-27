@@ -353,6 +353,12 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         if mtbop_data['cryocorrection'] != None: signal_cryocorrection(mtbop_data)
         reconstruct_ntp_time(mtbop_data)
         
+        add_column_to_mtbop_raw_data(mtbop_data, np.arange(np.size(mtbop_data['raw_data'][:,1]))+1, 'Data Point')
+        data_point_channel_dict = {}
+        data_point_channel_dict['name'] = 'Data Point'
+        data_point_channel_dict['longname'] = 'Data Point'
+        mtbop_data['channel_dict_list'].append(data_point_channel_dict)
+
         #convert_units_to_umum(mtbop_data)
 	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
 	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
