@@ -1108,8 +1108,10 @@ def compute_channel_deltas(plot_dict):
 
 
 def print_plot_info(plot_dict):
-    print "Plot info:"
-    print "Selected channel names:"
+    print "!!!!! ----------------------------------------------------------------!!!!!"
+    print "!!!!!                            Plot Info                            !!!!!"
+    print "!!!!! ----------------------------------------------------------------!!!!!"
+    print "Available channel names:"
     print '\n'.join(plot_dict['selected_channel_names'])
 
 def find_common_location(plot_dict):
@@ -1173,7 +1175,8 @@ def plot_data(plot_dict):
                 mtbop_data['plot delta'] = plot_dict['plot delta']
                 mtbop_data['label type'] = plot_dict['label type']
                 mtbop_data['common location'] = plot_dict['common location']
-                plot_mtbop_data(mtbop_data)
+                mtbop_data['show_min_max_labels'] = plot_dict['show_min_max_labels']
+                plot_mtbop_data(mtbop_data, args)
  
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
@@ -1186,9 +1189,11 @@ if __name__ == '__main__':
 	parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
 	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
 	parser.add_argument('-m', '--markevery', type=int) 
+	parser.add_argument('--no-current-squared', action='store_true', default=False) 
 	parser.add_argument('--save-fig', type=str)
 	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
 	parser.add_argument('--min-max-avg', nargs='+', type=str)
+	parser.add_argument('--show-min-max-labels', action='store_true', default=False) 
 	parser.add_argument('--normalize-x', type=str)
         parser.add_argument('--label-type', type=str)
         parser.add_argument('--curve-coloring', type=str)
@@ -1240,9 +1245,10 @@ if __name__ == '__main__':
             if not min_max_avg == None:
                 min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
 
-        if  min_max_avg != None:
+        if min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = y_axis
             compute_min_max_avg(plot_dict, min_max_avg)
+        plot_dict['show_min_max_labels'] = args.show_min_max_labels
 
         plot_dict['label type'] = args.label_type
 
@@ -1261,6 +1267,9 @@ if __name__ == '__main__':
 
 	if info: 
             print_plot_info(plot_dict)
+            print "!!!!! ----------------------------------------------------------------!!!!!"
+            print "!!!!! NOTE! I didn't plot anything because you used -i or --info flag !!!!!"
+            print "!!!!! ----------------------------------------------------------------!!!!!"
             exit()
 
         check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict)
