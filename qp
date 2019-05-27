@@ -366,6 +366,13 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         data_point_channel_dict = {}
         data_point_channel_dict['name'] = 'Data Point'
         data_point_channel_dict['longname'] = 'Data Point'
+        data_point_channel_dict['sensor type'] = ''
+        data_point_channel_dict['location'] = ''
+        data_point_channel_dict['thermal compensator'] = ''
+        data_point_channel_dict['direction'] = '' 
+        data_point_channel_dict['physical_quantity'] = ''
+        data_point_channel_dict['longitudinal location'] = ''
+        data_point_channel_dict['unit'] = ''
         mtbop_data['channel_dict_list'].append(data_point_channel_dict)
 
         #convert_units_to_umum(mtbop_data)
