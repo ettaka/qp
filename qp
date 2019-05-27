@@ -189,7 +189,7 @@ def select_mtbop_data(mtbop_data, selected_axes):
 	return selected_data
 
 @timeit
-def plot_mtbop_data(mtbop_data):
+def plot_mtbop_data(mtbop_data, args=None):
         if x_axis == 'Current':
             max_current_index = mtbop_data['max_current_index']
 	raw_data = mtbop_data['raw_data']
@@ -208,16 +208,21 @@ def plot_mtbop_data(mtbop_data):
                 ax.text(0, -0.2, "Start:" + str(ax_dict['raw_data'][0]), transform = ax.transAxes)
                 ax.text(0, -0.25, "End:" + str(ax_dict['raw_data'][-1]), transform = ax.transAxes)
             if ax_dict['name'].lower() == 'current':
-                ax_dict['raw_data'] = ax_dict['raw_data']**2.
-                if mtbop_data['normalize x'] and ax_dict == x_axis_dict:
-                    ax_dict['label'] = '$(I/I_\mathrm{Ult})^2$'
-                    ax.axvline(x=0.8, color='black', linestyle='dashed')
-                    ax.axvline(x=1.0, color='black', linestyle='dashed')
-                    ax.set_xlim((0,1.2))
-                    ax.text(0.633, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
-                    ax.text(0.8, 0.2, 'Ultimate', rotation=90, transform = ax.transAxes)
+                if not args.no_current_squared:
+                    ax_dict['raw_data'] = ax_dict['raw_data']**2.
+                    if mtbop_data['normalize x'] and ax_dict == x_axis_dict:
+                        ax_dict['label'] = '$(I/I_\mathrm{Ult})^2$'
+                        ax.axvline(x=0.8, color='black', linestyle='dashed')
+                        ax.axvline(x=1.0, color='black', linestyle='dashed')
+                        ax.set_xlim((0,1.2))
+                        ax.text(0.633, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
+                        ax.text(0.8, 0.2, 'Ultimate', rotation=90, transform = ax.transAxes)
+                    else:
+                        ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
-                    ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
+                    ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
+            elif ax_dict['name'].lower() == 'data point': 
+                ax_dict['label'] = 'Data Point'
             else:
                 ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
 
@@ -1145,7 +1150,7 @@ def find_common_location(plot_dict):
     plot_dict['common location'] = common_words
 
 
-def plot_data(plot_dict):
+def plot_data(plot_dict, args=None):
     x_axis = plot_dict['x_axis']
     y_axis_list = plot_dict['y_axis']
     if y_axis_list == None: 
@@ -1299,7 +1304,7 @@ if __name__ == '__main__':
         ax.grid(args.grid)
 
         if plot or args.show_plot:
-            plot_data(plot_dict)
+            plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
             else:
