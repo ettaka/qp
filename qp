@@ -302,12 +302,38 @@ def get_cryocorrection(head):
 
     return cryocorrection
 
-def get_replace_channels_dict(rc_list):
+def replace_raw_data_channels(mtbop_data):
+    print "Trying to replace channels..."
     try:
-        rdc = {rc_list[i]:rc_list[i+1] for i in range(0,len(rc_list),2)}
+        raw_data = mtbop_data['raw_data']
+        channel_names = mtbop_data['channel_names']
+        for replacement in mtbop_data['channel_replacements']['index_list']:
+            replacer_ch = replacement[0]
+            replaced_ch = replacement[1]
+            raw_data[:,replaced_ch] = raw_data[:,replacer_ch]
+            print "channel replacement:", channel_names[replacer_ch], "->", channel_names[replaced_ch]
+        print "done."
     except:
-        rdc = {}
-    #print "rdc", rdc
+        print "Channel replacement not done."
+    print "If you want to modify the channel replacements, you need to do it in the data file (AND RERUN THE PICKLE)."
+
+def get_channel_replacements(mtbop_data, head, channel_names):
+    mtbop_data['channel_replacements'] = {}
+    chrep = mtbop_data['channel_replacements'] 
+    print "Getting replacement channels data",
+    replacements_list=None
+    for line in head:
+        if 'channel_replacements:' in line:
+            try:
+                print line.split('channel_replacements:')[1]
+                chrep['string_list'] = [line.rstrip().split(':')[1].split(',')]
+                chrep['index_list'] = [[channel_names.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
+                print "Corresponds to channel numbers:", chrep['index_list'] 
+                break
+            except:
+                print "...not found."
+                pass
+    return replacements_list
 
 @timeit
 def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None):
@@ -330,9 +356,6 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 		 channel_units = [string, .., string],
 		 raw_data = numpy.ndarray}
 	"""
-        if args != None:
-            replace_channels_dict = get_replace_channels_dict(args.replace_channels)
-
 	basename = os.path.splitext(filepath)[0]
 	pickle_path = basename + '.pickle'
 	if os.path.isfile(pickle_path) and not override_pickle:
@@ -343,6 +366,8 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 	with codecs.open(basename + '.txt') as f:
 		head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
 	channel_names = head[8].strip('\r\n').split('\t')
+        get_channel_replacements(mtbop_data, head, channel_names)
+
 	channel_names = [name.split()[0].replace('_cryo','') for name in channel_names]
 	channel_units = head[9].strip('\r\n').split('\t')
 	#raw_data_df = pd.read_csv(filepath, sep = '\t', skiprows=header_lines, names=channel_names)
@@ -441,6 +466,11 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
 	mtbop_data_list = []
 	for filepath in filepath_list:
 		mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
+                if not args == None:
+                    if args.replace_channels:
+                        replace_raw_data_channels(mtbop_data)
+                    if args.print_max_current: 
+                        detect_max_current(mtbop_data)
 		mtbop_data_list.append(mtbop_data)
 	return mtbop_data_list
 
@@ -1214,6 +1244,7 @@ if __name__ == '__main__':
 	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
 	parser.add_argument('-m', '--markevery', type=int) 
 	parser.add_argument('--no-current-squared', action='store_true', default=False) 
+	parser.add_argument('--print-max-current', action='store_true', default=False) 
 	parser.add_argument('--save-fig', type=str)
 	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
 	parser.add_argument('--min-max-avg', nargs='+', type=str)
@@ -1228,7 +1259,7 @@ if __name__ == '__main__':
         parser.add_argument('--set-ylim', type=str)
 	parser.add_argument('--grid', action='store_true', default=True) 
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
-        parser.add_argument('-rc', '--replace-channels', nargs='+', type=str)
+        parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
 
 	args = parser.parse_args()
 	paths = args.paths
