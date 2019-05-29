@@ -505,7 +505,9 @@ def cpickle_load(pickle_path):
 	return mtbop_data
 
 def print_max_current(mtbop_data):
-	print mtbop_data['filepath'], mtbop_data['max_current']
+    print "!!!!! ---------------------------MAX CURRENT--------------------------!!!!!"
+    print mtbop_data['filepath'], mtbop_data['max_current'],
+    print "!!!!! ----------------------------------------------------------------!!!!!"
 
 def make_info_table(mtbop_data_list):
 	info_table = [['File path', 'Max Current']]
