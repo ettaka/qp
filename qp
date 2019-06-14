@@ -199,7 +199,7 @@ def plot_mtbop_data(mtbop_data, args=None):
         ax_dicts = [x_axis_dict, y_axis_dict]
         for ax_dict in ax_dicts:
             if x_axis == 'Current':
-                ax_dict['raw_data'] = raw_data[:max_current_index,ax_dict['index']]
+                ax_dict['raw_data'] = raw_data[:max_current_index+1,ax_dict['index']]
             else:
                 ax_dict['raw_data'] = raw_data[:,ax_dict['index']]
             if ax_dict['name'] == 'NTP Time':
@@ -242,6 +242,9 @@ def plot_mtbop_data(mtbop_data, args=None):
 
         linestyle = '-'
 
+        jump_points = 100
+        if len(xdata) <= 10000: jump_points = 1
+
         if mtbop_data['label type'] == None:
             if 'longname' in y_axis_dict: 
                 curve_label=y_axis_dict['longname']
@@ -254,7 +257,7 @@ def plot_mtbop_data(mtbop_data, args=None):
                 curve_label=''
                 linestyle = '--'
         if mtbop_data['no_markers']:
-            curveline, = ax.plot(xdata[0::100],y_axis_dict['raw_data'][0::100], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=3)
+            curveline, = ax.plot(xdata[0::jump_points],y_axis_dict['raw_data'][0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=3)
         else:
             curveline, = ax.plot(xdata,y_axis_dict['raw_data'], color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
