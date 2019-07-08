@@ -213,6 +213,17 @@ def plot_tf(times_called, filepath, args):
 
             ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
 
+    if args.fit:
+        lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
+        lower_index = np.argwhere(xdata>13.4)[0][0]
+        upper_index = np.argwhere(xdata<=14.8)[-1][0]
+        #print xdata, ydata
+        #print lower_limit, upper_limit
+        #print lower_index, upper_index
+        #print xdata, lower_limit, lower_index, upper_limit, upper_index   
+        fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+        ax.plot(xdata,fit(xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=3)
+
     ax.set_xlabel(xdict['axis label'])
     ax.set_ylabel(ydict['axis label'])
     ax.grid()
