@@ -160,6 +160,13 @@ def plot_tf(times_called, filepath, args):
         ydict = coil_dict
         plotname = filebase
 
+    if args.print_final_stresses:
+        print "Final stresses:"
+        print "---------------"
+        print "\tmin\tmax\taverage"
+        print "shell\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1])
+        print "coil\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
+
     if args.remove_coil_deltas != None:
         plotname += "_remove_coil_deltas" + args.remove_coil_deltas.replace(' ', '_')
 
@@ -235,6 +242,9 @@ if __name__ == '__main__':
     parser.add_argument('--key-pole', action='store_true', default=False) 
     parser.add_argument('--remove-coil-deltas', type=str)
     parser.add_argument('--label-type', type=str)
+    parser.add_argument('--print-final-stresses', action='store_true', default=False) 
+    parser.add_argument('--fit', action='store_true', default=False)
+    parser.add_argument('--fit-range', type=str)
 
     args = parser.parse_args()
     paths = args.paths
