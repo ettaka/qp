@@ -66,10 +66,10 @@ def create_pk_npk_dict(pk_npk_data_file):
         with codecs.open(pk_npk_data_file) as f:
             pk_npk_raw_data = np.loadtxt(f, skiprows=header_lines)
         pk_npk_dict['raw_data'] = pk_npk_raw_data
-        pk_npk_dict['pk-spole'] = pk_npk_raw_data[:,1]
-        pk_npk_dict['pk-scyl'] = pk_npk_raw_data[:,3]
-        pk_npk_dict['npk-spole'] = pk_npk_raw_data[:,5]
-        pk_npk_dict['npk-scyl'] = pk_npk_raw_data[:,7]
+        pk_npk_dict['npk-spole'] = pk_npk_raw_data[:,1]
+        pk_npk_dict['npk-scyl'] = pk_npk_raw_data[:,3]
+        pk_npk_dict['pk-spole'] = pk_npk_raw_data[:,5]
+        pk_npk_dict['pk-scyl'] = pk_npk_raw_data[:,7]
     except:
         pk_npk_dict = None
         pass
@@ -77,7 +77,7 @@ def create_pk_npk_dict(pk_npk_data_file):
 
     return pk_npk_dict
 
-def create_data_dicts(filepath, coil_permutation=None):
+def create_data_dicts(filepath, args, coil_permutation=None):
     print "Creating data dictionaries."
     if coil_permutation == None: coil_permutation = [1,2,3,4]
     print "Permuting coils with", coil_permutation
@@ -106,7 +106,7 @@ def create_data_dicts(filepath, coil_permutation=None):
         ypicker = map([5,6,7,8].__getitem__,coil_permutation)
         coil_dict['raw_data'] = raw_data[:,ypicker]
         coil_dict['col_names'] = map(col_names[5:9].__getitem__,coil_permutation)
-    if len(col_names) == 12:
+    elif len(col_names) == 12:
         key_dict['raw_data'] = raw_data[:,0:4]
         key_dict['col_names'] = col_names[0:4]
         shell_dict['raw_data'] = raw_data[:,1+3:5+3]
@@ -114,6 +114,18 @@ def create_data_dicts(filepath, coil_permutation=None):
         ypicker = map([5+3,6+3,7+3,8+3].__getitem__,coil_permutation)
         coil_dict['raw_data'] = raw_data[:,ypicker]
         coil_dict['col_names'] = map(col_names[5+3:9+3].__getitem__,coil_permutation)
+    else:
+        print "You have", str(col_names), "columns in your datafile! (it should be 9, 10 or 12)"
+        exit()
+
+    if args.remove_coil_deltas != None:
+        print "removing coil deltas of points with indices:", args.remove_coil_deltas 
+        for ind in args.remove_coil_deltas.split():
+            index = int(ind) - 1
+            if index < np.shape(coil_dict['raw_data'])[0]:
+                for i in range(4):
+                    dy = coil_dict['raw_data'][index,i] - coil_dict['raw_data'][index-1,i]
+                    coil_dict['raw_data'][index:, i] -= dy
  
     compute_data_dict_avg_min_max(key_dict)
     compute_data_dict_avg_min_max(shell_dict)
@@ -121,45 +133,59 @@ def create_data_dicts(filepath, coil_permutation=None):
 
     return key_dict, shell_dict, coil_dict
 
-def plot_tf(filepath, args):
+def plot_tf(times_called, filepath, args):
 
     tr_type = args.type
     pk_npk_file = args.pk_npk_file
     single_coils = args.single_coils
     no_plot_average = args.no_average
     no_plot_average_error = args.no_average_error
-    legend_location = args.legend_location
     neighbour_shell_averages = not args.no_neighbour_shell_averages
     coil_permutation = args.coil_permutation
 
     filebase = filepath.split('.txt')[0]
 
-    key_dict, shell_dict, coil_dict = create_data_dicts(filepath, coil_permutation)
+    key_dict, shell_dict, coil_dict = create_data_dicts(filepath, args, coil_permutation)
 
     if args.key_shell:
         xdict = key_dict
         ydict = shell_dict
-        save_fig = filebase + '_key_shell.png'
+        plotname = filebase + '_key_shell'
     elif args.key_pole:
         xdict = key_dict
         ydict = coil_dict
-        save_fig = filebase + '_key_pole.png'
+        plotname = filebase + '_key_pole'
     else:
         xdict = shell_dict
         ydict = coil_dict
-        save_fig = filebase + '.png'
+        plotname = filebase
+
+    if args.remove_coil_deltas != None:
+        plotname += "_remove_coil_deltas" + args.remove_coil_deltas.replace(' ', '_')
 
     xdata = xdict['average']
     ydata = ydict['average']
-
+ 
     pk_npk_dict = create_pk_npk_dict(pk_npk_file)
 
-    colors = ['b','g','r','c','m','y','k']
+    colors = ['r','g','b','c','m','y','k']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
+
+    if times_called < 1 and pk_npk_dict != None:
+        ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK')
+        ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK')
+
+    if args.label_type == 'filename':
+        data_label=filepath.replace('.txt','')
+    else:
+        data_label='Meas. Av.'
+
+    data_color=colors[times_called%len(colors)]
+    data_marker=markers[times_called%len(markers)]
 
     if no_plot_average:
         print "Plot average of all shell vs pole gauges."
-        ax.plot(xdata,ydata,'--ro',label='Meas. Avg.')
+        ax.plot(xdata,ydata,'--'+data_marker,color=data_color,label=data_label)
         if no_plot_average_error:
             _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
 
@@ -180,37 +206,13 @@ def plot_tf(filepath, args):
 
             ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
 
-    if pk_npk_dict != None:
-        ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM PK')
-        ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM NPK')
     ax.set_xlabel(xdict['axis label'])
     ax.set_ylabel(ydict['axis label'])
     ax.grid()
 
-    if args.set_xticks != None:
-        xticks = [float(tic) for tic in args.set_xticks.split()]
-        ax.set_xticks(xticks)
-
-    if args.set_yticks != None:
-        yticks = [float(tic) for tic in args.set_yticks.split()]
-        ax.set_yticks(yticks)
-
-    if args.set_xlim!= None:
-        xlim= [float(rang) for rang in args.set_xlim.split()]
-        ax.set_xlim(xlim)
-
-    if args.set_ylim!= None:
-        ylim= [float(rang) for rang in args.set_ylim.split()]
-        ax.set_ylim(ylim)
-
-    ax.legend(loc=legend_location)
-    if args.show_plot:
-        plt.show()
-    else:
-        plt.savefig(save_fig)
-
     #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
-    #plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    return plotname
 
 
 if __name__ == '__main__':
@@ -231,11 +233,35 @@ if __name__ == '__main__':
     parser.add_argument('--set-ylim', type=str)
     parser.add_argument('--key-shell', action='store_true', default=False) 
     parser.add_argument('--key-pole', action='store_true', default=False) 
+    parser.add_argument('--remove-coil-deltas', type=str)
+    parser.add_argument('--label-type', type=str)
 
     args = parser.parse_args()
     paths = args.paths
-    for filepath in paths:
-        plt.cla()
-        plot_tf(filepath, args)
+    for i, filepath in enumerate(paths):
+        #plt.cla()
+        plotname = plot_tf(i, filepath, args)
     
+    if args.set_xticks != None:
+        xticks = [float(tic) for tic in args.set_xticks.split()]
+        ax.set_xticks(xticks)
+
+    if args.set_yticks != None:
+        yticks = [float(tic) for tic in args.set_yticks.split()]
+        ax.set_yticks(yticks)
+
+    if args.set_xlim!= None:
+        xlim= [float(rang) for rang in args.set_xlim.split()]
+        ax.set_xlim(xlim)
+
+    if args.set_ylim!= None:
+        ylim= [float(rang) for rang in args.set_ylim.split()]
+        ax.set_ylim(ylim)
+
+    ax.legend(loc=args.legend_location)
+    if args.show_plot:
+        plt.show()
+    else:
+        plt.savefig(plotname + '.png')
+
 
