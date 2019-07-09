@@ -215,8 +215,8 @@ def plot_tf(times_called, filepath, args):
 
     if args.fit:
         lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
-        lower_index = np.argwhere(xdata>13.4)[0][0]
-        upper_index = np.argwhere(xdata<=14.8)[-1][0]
+        lower_index = np.argwhere(xdata>lower_limit)[0][0]
+        upper_index = np.argwhere(xdata<=upper_limit)[-1][0]
         #print xdata, ydata
         #print lower_limit, upper_limit
         #print lower_index, upper_index
