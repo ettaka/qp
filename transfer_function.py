@@ -126,7 +126,12 @@ def create_data_dicts(filepath, args, coil_permutation=None):
                 for i in range(4):
                     dy = coil_dict['raw_data'][index,i] - coil_dict['raw_data'][index-1,i]
                     coil_dict['raw_data'][index:, i] -= dy
- 
+
+    if args.pick_only_last_points:
+        coil_dict['raw_data']=np.array([coil_dict['raw_data'][-1, :]])
+        key_dict['raw_data']=np.array([key_dict['raw_data'][-1]])
+        shell_dict['raw_data']=np.array([shell_dict['raw_data'][-1, :]])
+
     compute_data_dict_avg_min_max(key_dict)
     compute_data_dict_avg_min_max(shell_dict)
     compute_data_dict_avg_min_max(coil_dict)
@@ -256,12 +261,19 @@ if __name__ == '__main__':
     parser.add_argument('--print-final-stresses', action='store_true', default=False) 
     parser.add_argument('--fit', action='store_true', default=False)
     parser.add_argument('--fit-range', type=str)
+    parser.add_argument('--fit-plot-lower', type=float, default=13.2)
+    parser.add_argument('--pick-only-last-points', action='store_true', default=False) 
+    parser.add_argument('--markersize', type=str)
+    parser.add_argument('--legend-outside', action='store_true', default=False) 
 
     args = parser.parse_args()
     paths = args.paths
+    plotnames = []
     for i, filepath in enumerate(paths):
         #plt.cla()
+        print "filepath", filepath
         plotname = plot_tf(i, filepath, args)
+        plotnames.append(plotname)
     
     if args.set_xticks != None:
         xticks = [float(tic) for tic in args.set_xticks.split()]
