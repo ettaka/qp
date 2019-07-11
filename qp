@@ -214,7 +214,7 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax_dict['label'] = '$(I/I_\mathrm{Ult})^2$'
                         ax.axvline(x=0.8, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
-                        ax.set_xlim((0,1.6))
+                        ax.set_xlim((0,1.2))
                         ax.text(0.633, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
                         ax.text(0.8, 0.2, 'Ultimate', rotation=90, transform = ax.transAxes)
                     else:
