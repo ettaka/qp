@@ -170,71 +170,85 @@ def plot_tf(times_called, filepath, args):
         print "---------------"
         print "\tmin\tmax\taverage"
         print "shell\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1])
-        print "coil\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
-
-    if args.remove_coil_deltas != None:
-        plotname += "_remove_coil_deltas" + args.remove_coil_deltas.replace(' ', '_')
-
-    xdata = xdict['average']
-    ydata = ydict['average']
+        print "pole\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
+        print "---------------"
+        print "::filepath\tshell min\tshell max\tshell average\tpole min\tpole max\tpole average"
+        print ":" + filepath + "\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1]) + "\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
+        print "---------------"
  
-    pk_npk_dict = create_pk_npk_dict(pk_npk_file)
-
-    colors = ['r','g','b','c','m','y','k']
-    markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
-
-    if times_called < 1 and pk_npk_dict != None:
-        ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK')
-        ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK')
-
-    if args.label_type == 'filename':
-        data_label=filepath.replace('.txt','')
     else:
-        data_label='Meas. Av.'
 
-    data_color=colors[times_called%len(colors)]
-    data_marker=markers[times_called%len(markers)]
+        if args.remove_coil_deltas != None:
+            plotname += "_remove_coil_deltas" + args.remove_coil_deltas.replace(' ', '_')
 
-    if no_plot_average:
-        print "Plot average of all shell vs pole gauges."
-        ax.plot(xdata,ydata,'--'+data_marker,color=data_color,label=data_label)
-        if no_plot_average_error:
-            _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
+        xdata = xdict['average']
+        ydata = ydict['average']
+     
+        pk_npk_dict = create_pk_npk_dict(pk_npk_file)
 
-    if single_coils:
-        print "Plot single pole gauges",
-        for i in range(4):
-            if neighbour_shell_averages:
-                if i==0:print "vs single shell gauges."
-                xdata = xdict['raw_data'][:,i]
-                ydata = ydict['raw_data'][:,i]
-                label = xdict['col_names'][i]+'-'+ydict['col_names'][i]
-            else:
-                if i==0:print "vs single shell gauges."
-                nof_cols = np.shape(xdict['raw_data'])[1]
-                xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
-                ydata = ydict['raw_data'][:,i]
-                label = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]+'-'+ydict['col_names'][i]
+        colors = ['r','g','b','c','m','y','k']
+        markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
-            ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
+        if times_called < 1 and pk_npk_dict != None:
+            ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK')
+            ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK')
 
-    if args.fit:
-        lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
-        lower_index = np.argwhere(xdata>lower_limit)[0][0]
-        upper_index = np.argwhere(xdata<=upper_limit)[-1][0]
-        #print xdata, ydata
-        #print lower_limit, upper_limit
-        #print lower_index, upper_index
-        #print xdata, lower_limit, lower_index, upper_limit, upper_index   
-        fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
-        ax.plot(xdata,fit(xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=3)
+        if args.label_type == 'filename':
+            data_label=filepath.replace('.txt','').replace('TRANSFER1_','')
+        else:
+            data_label='Meas. Av.'
 
-    ax.set_xlabel(xdict['axis label'])
-    ax.set_ylabel(ydict['axis label'])
-    ax.grid()
+        data_color=colors[times_called%len(colors)]
+        data_marker=markers[times_called%len(markers)]
 
-    #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
-    #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        if not args.markersize == None: markersize = args.markersize
+        else: markersize = 5
+
+        linestyle = '--'
+        if args.pick_only_last_points:
+            linestyle = ''
+
+        if no_plot_average:
+            print "Plot average of all shell vs pole gauges."
+            ax.plot(xdata,ydata,linestyle+data_marker,markersize=markersize, color=data_color,label=data_label)
+            if no_plot_average_error:
+                _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
+
+        if single_coils:
+            print "Plot single pole gauges",
+            for i in range(4):
+                if neighbour_shell_averages:
+                    if i==0:print "vs single shell gauges."
+                    xdata = xdict['raw_data'][:,i]
+                    ydata = ydict['raw_data'][:,i]
+                    label = xdict['col_names'][i]+'-'+ydict['col_names'][i]
+                else:
+                    if i==0:print "vs single shell gauges."
+                    nof_cols = np.shape(xdict['raw_data'])[1]
+                    xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
+                    ydata = ydict['raw_data'][:,i]
+                    label = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]+'-'+ydict['col_names'][i]
+
+                ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
+
+        if args.fit:
+            lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
+            lower_index = np.argwhere(xdata>lower_limit)[0][0]
+            upper_index = np.argwhere(xdata<=upper_limit)[-1][0]
+            fit_plot_xdata = np.insert(xdata, 0, [args.fit_plot_lower])
+            #print xdata, ydata
+            #print lower_limit, upper_limit
+            #print lower_index, upper_index
+            #print xdata, lower_limit, lower_index, upper_limit, upper_index   
+            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+            ax.plot(fit_plot_xdata,fit(fit_plot_xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=3)
+
+        ax.set_xlabel(xdict['axis label'])
+        ax.set_ylabel(ydict['axis label'])
+        ax.grid()
+
+        #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
+        #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
     return plotname
 
 
@@ -291,10 +305,19 @@ if __name__ == '__main__':
         ylim= [float(rang) for rang in args.set_ylim.split()]
         ax.set_ylim(ylim)
 
-    ax.legend(loc=args.legend_location)
-    if args.show_plot:
-        plt.show()
-    else:
-        plt.savefig(plotname + '.png')
+    if not args.print_final_stresses:
+        ax.legend(loc=args.legend_location)
+        if args.show_plot:
+            plt.show()
+        else:
+            imagename = '_'.join(plotnames)
+            if 'TRANSFER1' in imagename:
+                imagename = '_'.join(plotnames).replace('TRANSFER1_MQXF','')
+                imagename = 'TRANSFER1_MQXF' + imagename
+            if args.legend_outside:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
+            else:
+                plt.savefig(imagename + '.png')
 
 
