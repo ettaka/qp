@@ -278,6 +278,48 @@ def plot_tf(times_called, filepath, args):
         #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
     return plotname
 
+def set_ax_parameters(ax, args):
+    name_suffix = ''
+    ax.legend(loc=args.legend_location, numpoints=1)
+
+    if args.no_xaxis:
+        ax.get_xaxis().set_visible()
+        name_suffix += '_no-xaxis'
+    if args.no_yaxis:
+        ax.get_yaxis().set_visible()
+        name_suffix += '_no-yaxis'
+    if args.no_xticklabels: 
+        ax.set_xticklabels([])
+        name_suffix += '_no-xticklabels'
+    if args.no_yticklabels: 
+        ax.set_yticklabels([])
+        name_suffix += '_no-yticklabels'
+    if args.no_xlabel: 
+        ax.set_xlabel('')
+        name_suffix += '_no-xlabel'
+    if args.no_ylabel: 
+        ax.set_ylabel('')
+        name_suffix += '_no-ylabel'
+    ax.grid()
+
+    if args.set_xticks != None:
+        xticks = [float(tic) for tic in args.set_xticks.split()]
+        ax.set_xticks(xticks)
+
+    if args.set_yticks != None:
+        yticks = [float(tic) for tic in args.set_yticks.split()]
+        ax.set_yticks(yticks)
+
+    if args.set_xlim!= None:
+        xlim= [float(rang) for rang in args.set_xlim.split()]
+        ax.set_xlim(xlim)
+
+    if args.set_ylim!= None:
+        ylim= [float(rang) for rang in args.set_ylim.split()]
+        ax.set_ylim(ylim)
+
+    return name_suffix
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot transfer function')
@@ -332,59 +374,22 @@ if __name__ == '__main__':
     fig.set_figheight(args.fig_height)
     fig.set_figwidth(args.fig_width)
 
-    name_suffix = ''
-    ax.legend(loc=args.legend_location, numpoints=1)
-
-    if args.no_xaxis:
-        ax.get_xaxis().set_visible()
-        name_suffix += '_no-xaxis'
-    if args.no_yaxis:
-        ax.get_yaxis().set_visible()
-        name_suffix += '_no-yaxis'
-    if args.no_xticklabels: 
-        ax.set_xticklabels([])
-        name_suffix += '_no-xticklabels'
-    if args.no_yticklabels: 
-        ax.set_yticklabels([])
-        name_suffix += '_no-yticklabels'
-    if args.no_xlabel: 
-        ax.set_xlabel('')
-        name_suffix += '_no-xlabel'
-    if args.no_ylabel: 
-        ax.set_ylabel('')
-        name_suffix += '_no-ylabel'
-    ax.grid()
-
-    if args.set_xticks != None:
-        xticks = [float(tic) for tic in args.set_xticks.split()]
-        ax.set_xticks(xticks)
-
-    if args.set_yticks != None:
-        yticks = [float(tic) for tic in args.set_yticks.split()]
-        ax.set_yticks(yticks)
-
-    if args.set_xlim!= None:
-        xlim= [float(rang) for rang in args.set_xlim.split()]
-        ax.set_xlim(xlim)
-
-    if args.set_ylim!= None:
-        ylim= [float(rang) for rang in args.set_ylim.split()]
-        ax.set_ylim(ylim)
-
     plt.rcParams.update({'font.size':args.font_size})
 
     plt.title(args.title)
+    name_suffix = set_ax_parameters(ax, args)
 
     if not args.print_final_stresses:
         if args.show_plot:
             plt.show()
         else:
+            imagename = '_'.join(plotnames)
             if 'TRANSFER1' in imagename:
                 imagename = '_'.join(plotnames).replace('TRANSFER1_MQXF','')
                 imagename = 'TRANSFER1_MQXF' + imagename
             imagename += name_suffix
             if args.image_name != '':
-                imagename = '_'.join(plotnames)
+                imagename = args.image_name
             print "creating image file", imagename+'.png'
             if args.legend_outside:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
