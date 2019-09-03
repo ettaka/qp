@@ -199,12 +199,9 @@ def read_case(casedir, args):
     add_centered_z(data_dict)
     add_total_integral_to_row_dicts(data_dict)
     add_integrated_values(data_dict)
+    data_dict['row_names'] = ['b' + str(k) for k in range(3,16)]
 
-    row_names = ['b' + str(k) for k in range(3,16)]
-    
-    for row_name in row_names:
-        plt.cla()
-        plot_row(row_name, data_dict, args)
+    return data_dict
 
 
 if __name__ == '__main__':
@@ -220,5 +217,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     for casedir in args.casedirs:
-        read_case(casedir, args)
+        data_dict = read_case(casedir, args)
     
+        for row_name in data_dict['row_names']:
+            #plt.cla()
+            plot_row(row_name, data_dict, args)
+
+
