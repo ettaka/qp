@@ -88,8 +88,8 @@ def read_coil_size_dicts(args):
 def plot_coil_sizes(coil_size_dicts, args):
     for i,coil_size_dict in enumerate(coil_size_dicts):
         add_interp_to_coil_dict(coil_size_dict)
-        xdata = coil_size_dict['raw_data'][:,0]
-        ydata = coil_size_dict['raw_data'][:,1]
+        xdata = coil_size_dict['raw_data'][:,0] * args.xunit_plot_scaling
+        ydata = coil_size_dict['raw_data'][:,1] * args.yunit_plot_scaling
         label = coil_size_dict['filepath'] + coil_size_dict['column_names'][1]
         ax.plot(xdata,ydata,'--'+colors[i]+markers[i],label=label)
     plt.show()
@@ -103,14 +103,14 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
         if i==0: xdata = coil_size_dict['raw_data'][:,xind]
         ydata = coil_size_dict['interp'][col_inds['L+R']](xdata)
         label = coil_size_dict['filepath'].replace('.size','') + coil_size_dict['column_names'][1]
-        ax.plot(xdata,ydata,'--'+colors[i]+markers[i],label=label)
+        ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
     if av_interp != None:
-        ax.plot(xdata,av_interp(xdata),'-b'+markers[totnum],label='av', linewidth=5)
+        ax.plot(xdata* args.xunit_plot_scaling,av_interp(xdata)* args.yunit_plot_scaling,'-b'+markers[totnum],label='av', linewidth=5)
     if shimmed_av_interp != None:
-        ax.plot(xdata,shimmed_av_interp(xdata),'-r'+markers[totnum],label='av+shim', linewidth=5)
-    if shimmed_rsr_av_interp != None:
-        ax.plot(xdata,shimmed_rsr_av_interp(xdata),'-y'+markers[totnum],label='av+shim-rsr', linewidth=5)
+        ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,'-r'+markers[totnum],label='av+shim', linewidth=5)
+    if shimmed_rsr_av_interp != None and args.radial_size_reduction != 0:
+        ax.plot(xdata* args.xunit_plot_scaling,shimmed_rsr_av_interp(xdata)* args.yunit_plot_scaling,'-y'+markers[totnum],label='av+shim-rsr', linewidth=5)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -142,8 +142,11 @@ if __name__ == '__main__':
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-ll', '--legend-location', type=str, default='best')
     parser.add_argument('-us', '--unit-scaling', type=float, default=0.001)
+    parser.add_argument('-xus', '--xunit-plot-scaling', type=float, default=1)
+    parser.add_argument('-yus', '--yunit-plot-scaling', type=float, default=1e6)
     parser.add_argument('-nc', '--no-centering', action='store_false', default=True) 
     parser.add_argument('-rsr', '--radial-size-reduction', type=float, default=0.)
+    parser.add_argument('--fit', action='store_true', default=False)
 
     args = parser.parse_args()
     print "read coil sizes"
@@ -161,7 +164,9 @@ if __name__ == '__main__':
     print "Store shimmed coil size to average_shimmed_coil.size"
     avshimdata = np.c_[av_xdata, average_coil_size_shim_interp(av_xdata)]
     np.savetxt('average_shimmed_coil.size', avshimdata, header='Y\n Average shimmed coil size')
-    print "Store shimmed coil size with radial size reduction to average_shimmed_coil_rsr.size"
-    avshimrsrdata = np.c_[av_xdata, average_coil_size_shim_rsr_interp(av_xdata)]
-    np.savetxt('average_shimmed_coil_rsr.size', avshimrsrdata, header='Y\n Average shimmed rsr coil size')
+
+    if args.radial_size_reduction != 0:
+        print "Store shimmed coil size with radial size reduction to average_shimmed_coil_rsr.size"
+        np.savetxt('average_shimmed_coil_rsr.size', avshimrsrdata, header='Y\n Average shimmed rsr coil size')
+        avshimrsrdata = np.c_[av_xdata, average_coil_size_shim_rsr_interp(av_xdata)]
 
