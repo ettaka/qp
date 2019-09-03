@@ -1,6 +1,7 @@
 #!env python
 
 import numpy as np
+#import matplotlib
 import matplotlib.pyplot as plt
 import time
 #import pandas as pd
@@ -77,6 +78,19 @@ def create_pk_npk_dict(pk_npk_data_file):
 
     return pk_npk_dict
 
+def fix_zero_cols_with_average(cols):
+    zero_col_indx=[]
+    average = np.zeros_like(cols[:,0])
+    for i, col in enumerate(cols.T):
+        if np.count_nonzero(col) == 0:
+            zero_col_indx.append(i)
+            print 'Column', i, 'detected as a zero column'
+        else:
+            average+=col
+    average /= i
+    for indx in zero_col_indx:
+        cols[:,indx]=average
+
 def create_data_dicts(filepath, args, coil_permutation=None):
     print "Creating data dictionaries."
     if coil_permutation == None: coil_permutation = [1,2,3,4]
@@ -117,6 +131,12 @@ def create_data_dicts(filepath, args, coil_permutation=None):
     else:
         print "You have", str(col_names), "columns in your datafile! (it should be 9, 10 or 12)"
         exit()
+
+    if args.fix_gauges_with_average:
+        print "Fixing shell gauges with average value"
+        fix_zero_cols_with_average(shell_dict['raw_data'])
+        print "Fixing coil gauges with average value"
+        fix_zero_cols_with_average(coil_dict['raw_data'])
 
     if args.remove_coil_deltas != None:
         print "removing coil deltas of points with indices:", args.remove_coil_deltas 
@@ -190,8 +210,8 @@ def plot_tf(times_called, filepath, args):
         markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
         if times_called < 1 and pk_npk_dict != None:
-            ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK')
-            ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK')
+            ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK', markersize=args.marker_size, linewidth=args.line_width)
+            ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK', markersize=args.marker_size, linewidth=args.line_width)
 
         if args.label_type == 'filename':
             data_label=filepath.replace('.txt','').replace('TRANSFER1_','')
@@ -201,16 +221,13 @@ def plot_tf(times_called, filepath, args):
         data_color=colors[times_called%len(colors)]
         data_marker=markers[times_called%len(markers)]
 
-        if not args.markersize == None: markersize = args.markersize
-        else: markersize = 5
-
         linestyle = '--'
         if args.pick_only_last_points:
             linestyle = ''
 
         if no_plot_average:
             print "Plot average of all shell vs pole gauges."
-            ax.plot(xdata,ydata,linestyle+data_marker,markersize=markersize, color=data_color,label=data_label)
+            ax.plot(xdata,ydata,linestyle+data_marker, color=data_color,label=data_label, markersize=args.marker_size, linewidth=args.line_width)
             if no_plot_average_error:
                 _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
 
@@ -229,7 +246,7 @@ def plot_tf(times_called, filepath, args):
                     ydata = ydict['raw_data'][:,i]
                     label = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]+'-'+ydict['col_names'][i]
 
-                ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label)
+                ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label, markersize=args.marker_size, linewidth=args.line_width)
 
         if args.fit:
             lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
@@ -240,12 +257,22 @@ def plot_tf(times_called, filepath, args):
             #print lower_limit, upper_limit
             #print lower_index, upper_index
             #print xdata, lower_limit, lower_index, upper_limit, upper_index   
+
             fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
-            ax.plot(fit_plot_xdata,fit(fit_plot_xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=3)
+            ax.plot(fit_plot_xdata,fit(fit_plot_xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
+
+            fit_label = 'Fitted initial thickness = {:2.1f}'.format(fit.r[0])+' mm\n'
+            fit_label += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
+            #ax.text(0.1, 0.1, fit_label, transform = ax.transAxes)
+            fitfilename = plotname + '.fit'
+            fitfile = open(fitfilename, 'w')
+            print "writing fit parameters to file: ", fitfilename
+            fitfile.write(fit_label)
+
 
         ax.set_xlabel(xdict['axis label'])
         ax.set_ylabel(ydict['axis label'])
-        ax.grid()
+
 
         #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
         #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
@@ -277,8 +304,21 @@ if __name__ == '__main__':
     parser.add_argument('--fit-range', type=str)
     parser.add_argument('--fit-plot-lower', type=float, default=13.2)
     parser.add_argument('--pick-only-last-points', action='store_true', default=False) 
-    parser.add_argument('--markersize', type=str)
     parser.add_argument('--legend-outside', action='store_true', default=False) 
+    parser.add_argument('--no-xaxis', action='store_true', default=False) 
+    parser.add_argument('--no-yaxis', action='store_true', default=False) 
+    parser.add_argument('--no-xticklabels', action='store_true', default=False) 
+    parser.add_argument('--no-yticklabels', action='store_true', default=False) 
+    parser.add_argument('--no-xlabel', action='store_true', default=False) 
+    parser.add_argument('--no-ylabel', action='store_true', default=False) 
+    parser.add_argument('--font-size', type=float, default=16)
+    parser.add_argument('--marker-size', type=float, default=8)
+    parser.add_argument('--line-width', type=float, default=1.5)
+    parser.add_argument('--fig-height', type=float, default=8)
+    parser.add_argument('--fig-width', type=float, default=8)
+    parser.add_argument('--title', type=str, default='')
+    parser.add_argument('--image-name', type=str, default='')
+    parser.add_argument('-fgwa', '--fix-gauges-with-average', action='store_true', default=False) 
 
     args = parser.parse_args()
     paths = args.paths
@@ -289,6 +329,32 @@ if __name__ == '__main__':
         plotname = plot_tf(i, filepath, args)
         plotnames.append(plotname)
     
+    fig.set_figheight(args.fig_height)
+    fig.set_figwidth(args.fig_width)
+
+    name_suffix = ''
+    ax.legend(loc=args.legend_location, numpoints=1)
+
+    if args.no_xaxis:
+        ax.get_xaxis().set_visible()
+        name_suffix += '_no-xaxis'
+    if args.no_yaxis:
+        ax.get_yaxis().set_visible()
+        name_suffix += '_no-yaxis'
+    if args.no_xticklabels: 
+        ax.set_xticklabels([])
+        name_suffix += '_no-xticklabels'
+    if args.no_yticklabels: 
+        ax.set_yticklabels([])
+        name_suffix += '_no-yticklabels'
+    if args.no_xlabel: 
+        ax.set_xlabel('')
+        name_suffix += '_no-xlabel'
+    if args.no_ylabel: 
+        ax.set_ylabel('')
+        name_suffix += '_no-ylabel'
+    ax.grid()
+
     if args.set_xticks != None:
         xticks = [float(tic) for tic in args.set_xticks.split()]
         ax.set_xticks(xticks)
@@ -305,19 +371,25 @@ if __name__ == '__main__':
         ylim= [float(rang) for rang in args.set_ylim.split()]
         ax.set_ylim(ylim)
 
+    plt.rcParams.update({'font.size':args.font_size})
+
+    plt.title(args.title)
+
     if not args.print_final_stresses:
-        ax.legend(loc=args.legend_location)
         if args.show_plot:
             plt.show()
         else:
-            imagename = '_'.join(plotnames)
             if 'TRANSFER1' in imagename:
                 imagename = '_'.join(plotnames).replace('TRANSFER1_MQXF','')
                 imagename = 'TRANSFER1_MQXF' + imagename
+            imagename += name_suffix
+            if args.image_name != '':
+                imagename = '_'.join(plotnames)
+            print "creating image file", imagename+'.png'
             if args.legend_outside:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
                 plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
             else:
-                plt.savefig(imagename + '.png')
+                plt.savefig(imagename + '.png', bbox_inches='tight')
 
 
