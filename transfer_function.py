@@ -11,11 +11,6 @@ import codecs
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
-
-fig = plt.figure()
-ax = fig.add_subplot(111)
-ax.autoscale(enable=True, axis='y', tight=True)
-
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
                      edgecolor='None', alpha=0.5):
 
@@ -158,7 +153,7 @@ def create_data_dicts(filepath, args, coil_permutation=None):
 
     return key_dict, shell_dict, coil_dict
 
-def plot_tf(times_called, filepath, args):
+def plot_tf(ax, times_called, filepath, args):
 
     tr_type = args.type
     pk_npk_file = args.pk_npk_file
@@ -318,7 +313,12 @@ def set_ax_parameters(ax, args):
         ylim= [float(rang) for rang in args.set_ylim.split()]
         ax.set_ylim(ylim)
 
-    return name_suffix
+    if args.legend_outside:
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
+    else:
+        lgd = ax.legend()
+
+    return lgd, name_suffix
 
 
 if __name__ == '__main__':
@@ -362,22 +362,26 @@ if __name__ == '__main__':
     parser.add_argument('--image-name', type=str, default='')
     parser.add_argument('-fgwa', '--fix-gauges-with-average', action='store_true', default=False) 
 
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.autoscale(enable=True, axis='y', tight=True)
+
     args = parser.parse_args()
+    fig.set_figheight(args.fig_height)
+    fig.set_figwidth(args.fig_width)
+    plt.rcParams.update({'font.size':args.font_size})
+    plt.title(args.title)
+
     paths = args.paths
     plotnames = []
     for i, filepath in enumerate(paths):
         #plt.cla()
         print "filepath", filepath
-        plotname = plot_tf(i, filepath, args)
+        plotname = plot_tf(ax, i, filepath, args)
         plotnames.append(plotname)
     
-    fig.set_figheight(args.fig_height)
-    fig.set_figwidth(args.fig_width)
-
-    plt.rcParams.update({'font.size':args.font_size})
-
-    plt.title(args.title)
-    name_suffix = set_ax_parameters(ax, args)
+    lgd, name_suffix = set_ax_parameters(ax, args)
 
     if not args.print_final_stresses:
         if args.show_plot:
@@ -388,11 +392,9 @@ if __name__ == '__main__':
                 imagename = '_'.join(plotnames).replace('TRANSFER1_MQXF','')
                 imagename = 'TRANSFER1_MQXF' + imagename
             imagename += name_suffix
-            if args.image_name != '':
-                imagename = args.image_name
+            if args.image_name != '': imagename = args.image_name
             print "creating image file", imagename+'.png'
             if args.legend_outside:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
                 plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
             else:
                 plt.savefig(imagename + '.png', bbox_inches='tight')
