@@ -41,7 +41,7 @@ MATERIAL_DATA = {
 		'aluminium' : {
 			'elastic_modulus':str(79e9/1e6/1e6),
 			'poisson_ratio':'0.34'
-			}
+			},
         	'stainless steel' : {
 			'elastic_modulus':str(210e9/1e6/1e6),
 			'poisson_ratio':'0.28'
