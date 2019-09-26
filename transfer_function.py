@@ -201,15 +201,32 @@ def plot_tf(ax, times_called, filepath, args):
      
         pk_npk_dict = create_pk_npk_dict(pk_npk_file)
 
-        colors = ['r','g','b','c','m','y','k']
-        markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
+        if args.curve_colors==None:
+            colors = ['r','g','b','c','m','y','k']
+        else:
+            colors = args.curve_colors
+
+        if args.curve_markers==None:
+            markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
+        else:
+            markers = args.curve_markers
 
         if times_called < 1 and pk_npk_dict != None:
-            ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label='FEM3D PK', markersize=args.marker_size, linewidth=args.line_width)
-            ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label='FEM3D NPK', markersize=args.marker_size, linewidth=args.line_width)
+            if args.no_pk_legend:
+                pklabel = ''
+                npklabel = ''
+            else:
+                pklabel = 'PK'
+                npklabel = 'NPK'
+            ax.plot(pk_npk_dict['pk-scyl'],pk_npk_dict['pk-spole'],'-bo',label=pklabel, markersize=args.marker_size, linewidth=args.line_width)
+            ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label=npklabel, markersize=args.marker_size, linewidth=args.line_width)
 
         if args.label_type == 'filename':
             data_label=filepath.replace('.txt','').replace('TRANSFER1_','')
+        elif args.label_type == 'imagename':
+            data_label=args.image_name
+        elif args.meas_legend_label != '':
+            data_label=args.meas_legend_label
         else:
             data_label='Meas. Av.'
 
@@ -243,26 +260,20 @@ def plot_tf(ax, times_called, filepath, args):
 
                 ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label, markersize=args.marker_size, linewidth=args.line_width)
 
-        if args.fit:
-            lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
-            lower_index = np.argwhere(xdata>lower_limit)[0][0]
-            upper_index = np.argwhere(xdata<=upper_limit)[-1][0]
-            fit_plot_xdata = np.insert(xdata, 0, [args.fit_plot_lower])
-            #print xdata, ydata
-            #print lower_limit, upper_limit
-            #print lower_index, upper_index
-            #print xdata, lower_limit, lower_index, upper_limit, upper_index   
+        if args.fit: fit = fit_data(ax, xdata, ydata, args.fit_range, data_label+' fit', args)
+        if args.fit2: fit = fit_data(ax, xdata, ydata, args.fit2_range, data_label+' fit 2', args)
 
-            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
-            ax.plot(fit_plot_xdata,fit(fit_plot_xdata), color='black', linestyle='--', label=data_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
-
-            fit_label = 'Fitted initial thickness = {:2.1f}'.format(fit.r[0])+' mm\n'
-            fit_label += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
-            #ax.text(0.1, 0.1, fit_label, transform = ax.transAxes)
+        if args.fit or args.fit2:
+            if args.key_shell or args.key_pole:
+                fit_text = 'Fitted initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
+                fit_text += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
+            else: 
+                fit_text = 'Fitted initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
+                fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
             fitfilename = plotname + '.fit'
             fitfile = open(fitfilename, 'w')
             print "writing fit parameters to file: ", fitfilename
-            fitfile.write(fit_label)
+            fitfile.write(fit_text)
 
 
         ax.set_xlabel(xdict['axis label'])
@@ -273,10 +284,17 @@ def plot_tf(ax, times_called, filepath, args):
         #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
     return plotname
 
+def fit_data(ax, xdata, ydata, fit_range, fit_label, args):
+    lower_limit, upper_limit = tuple(float(s) for s in fit_range.split())
+    lower_index = np.argwhere(xdata>lower_limit)[0][0]
+    upper_index = np.argwhere(xdata<=upper_limit)[-1][0]
+    fit_plot_xdata = np.insert(xdata, 0, [args.fit_plot_lower])
+    fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+    ax.plot(fit_plot_xdata,fit(fit_plot_xdata), color='black', linestyle='--', label=fit_label, linewidth=args.line_width, markersize=args.marker_size)
+    return fit
+ 
 def set_ax_parameters(ax, args):
     name_suffix = ''
-    ax.legend(loc=args.legend_location, numpoints=1)
-
     if args.no_xaxis:
         ax.get_xaxis().set_visible()
         name_suffix += '_no-xaxis'
@@ -313,10 +331,17 @@ def set_ax_parameters(ax, args):
         ylim= [float(rang) for rang in args.set_ylim.split()]
         ax.set_ylim(ylim)
 
-    if args.legend_outside:
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
+#    if args.legend_outside:
+#        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2, numpoints=1)
+#    else:
+#        lgd = ax.legend(loc='best')
+
+    if args.legend_location == 'right outside':
+        lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
+    elif args.legend_location == 'bottom outside':
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
     else:
-        lgd = ax.legend()
+        lgd = ax.legend(loc=args.legend_location, numpoints=1)
 
     return lgd, name_suffix
 
@@ -344,6 +369,8 @@ if __name__ == '__main__':
     parser.add_argument('--print-final-stresses', action='store_true', default=False) 
     parser.add_argument('--fit', action='store_true', default=False)
     parser.add_argument('--fit-range', type=str)
+    parser.add_argument('--fit2', action='store_true', default=False)
+    parser.add_argument('--fit2-range', type=str)
     parser.add_argument('--fit-plot-lower', type=float, default=13.2)
     parser.add_argument('--pick-only-last-points', action='store_true', default=False) 
     parser.add_argument('--legend-outside', action='store_true', default=False) 
@@ -361,13 +388,27 @@ if __name__ == '__main__':
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--image-name', type=str, default='')
     parser.add_argument('-fgwa', '--fix-gauges-with-average', action='store_true', default=False) 
-
+    parser.add_argument('--no-pk-legend', action='store_true', default=False) 
+    parser.add_argument('--no-legend', action='store_true', default=False) 
+    parser.add_argument('--legend-ncol', type=int, default=2)
+    parser.add_argument('--meas-legend-label', type=str, default='')
+    parser.add_argument('--plot-style', type=str, default='')
+    parser.add_argument('--curve-colors', nargs='+', type=str, default=None)
+    parser.add_argument('--curve-markers', nargs='+', type=str, default=None)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.autoscale(enable=True, axis='y', tight=True)
 
     args = parser.parse_args()
+
+    if args.plot_style == 'TF paper':
+        args.set_xlim = "0 120"
+        args.set_ylim = "-140 0" 
+        args.font_size = 30 
+        args.no_pk_legend = True
+        args.fig_width = 12
+        
     fig.set_figheight(args.fig_height)
     fig.set_figwidth(args.fig_width)
     plt.rcParams.update({'font.size':args.font_size})
@@ -383,6 +424,8 @@ if __name__ == '__main__':
     
     lgd, name_suffix = set_ax_parameters(ax, args)
 
+    if args.no_legend: lgd.remove()
+
     if not args.print_final_stresses:
         if args.show_plot:
             plt.show()
@@ -395,8 +438,8 @@ if __name__ == '__main__':
             if args.image_name != '': imagename = args.image_name
             print "creating image file", imagename+'.png'
             if args.legend_outside:
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight')
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
             else:
-                plt.savefig(imagename + '.png', bbox_inches='tight')
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
 
 
