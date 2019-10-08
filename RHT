@@ -1,0 +1,1135 @@
+#!env python
+
+import numpy as np
+import pandas as pd
+#import matplotlib
+import matplotlib.pyplot as plt
+import time
+#import pandas as pd
+import argparse
+import codecs
+import cPickle as pickle
+
+import csv
+import datetime
+import os
+
+from cmd import Cmd
+
+note_x_rel_pos = 0.75
+linewidth = 3
+class Plotter:
+
+    def __init__(self):
+        self.clear()
+        self.colors = ['r','g','b','y','c','k','m']
+        self.markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
+        self.fig_counter = 0
+
+    def clear(self):
+        self.plot_counter = 0
+        self.fig = plt.figure(figsize=(35,10))
+        self.ax = self.fig.add_subplot(111)
+        self.ax.autoscale(enable=True, axis='y', tight=True)
+        self.ax.set_zorder(11)
+        #self.ax.patch.set_visible(False)
+        self.plots = []
+
+    def set_lim_args(self, args):
+        if args != None:
+            if args.xlim != None: 
+                self.ax.set_xlim(max(args.xlim, self.ax.get_xlim()))
+            if args.ylim != None: self.ax.set_ylim(args.ylim)
+
+    def savefig(self, fig_filename, suffix = '', args=None):
+        self.fig_counter += 1
+        self.set_lim_args(args)
+        fig_filename_fixed = fig_filename + '_IMG' + str(self.fig_counter).zfill(2) + suffix
+        print "Saving", fig_filename_fixed
+        plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
+        self.clear()
+
+    def set_xlabel(self, label):
+        self.ax.set_xlabel(label)
+
+    def set_ylabel(self, label):
+        self.ax.set_ylabel(label)
+
+    def set_ylabel2(self, label):
+        self.ax2.set_ylabel(label)
+
+    def set_ax2(self):
+        self.ax2 = self.ax.twinx()
+        self.ax2.set_zorder(12)
+
+    def show(self, args=None):
+        self.set_lim_args(args)
+        plt.show()
+        self.clear()
+
+    def get_color(self):
+        return self.colors[self.plot_counter%len(self.colors)]
+
+    def get_marker(self):
+        return self.markers[self.plot_counter%len(self.markers)]
+
+    def plot_ax(self, *args, **kwargs):
+        self.plot_counter += 1
+        kwargs['color'] = self.get_color()
+        kwargs['linewidth'] = linewidth
+        self.plots += self.ax.plot(*args, **kwargs)
+
+    def plot_ax2(self, *args, **kwargs):
+        self.plot_counter += 1
+        kwargs['color'] = self.get_color()
+        kwargs['linewidth'] = linewidth
+        self.plots += self.ax2.plot(*args, **kwargs)
+
+    def legend(self, *args, **kwargs):
+        self.plot_labels = [ax.get_label() for ax in self.plots]
+        self.lgd = self.ax.legend(self.plots, self.plot_labels, **kwargs)
+
+    def text(self, *args, **kwargs):
+        ax = self.ax
+        if hasattr(self, 'ax2'):
+            ax = self.ax2
+        text = ax.text(*args, **kwargs)
+        text.set_zorder(100)
+
+    def rel_pos(self, xrel, coordinate='x'):
+        if coordinate=='x':
+            xmin, xmax = plotter.ax.get_xlim()
+        elif coordinate=='y':
+            xmin, xmax = plotter.ax.get_ylim()
+        elif coordinate=='y2':
+            xmin, xmax = plotter.ax2.get_ylim()
+        else:
+            print "rel_pos: unknown coordinate! Exiting..."
+        x = xmin + xrel * (xmax - xmin)
+        return x
+
+
+        
+
+plotter = Plotter()
+
+def timeit(func):
+    def wrapper(*args, **kwargs):
+        time_start = time.time()
+        o=func(*args, **kwargs)
+        print 'timeit: ', func.__name__, ':{0:0.2f}s'.format(time.time()-time_start)
+        return o
+    return wrapper
+
+class RHT_CSV_Reader:
+
+    def __init__(self, delimiter=';'):
+        self.CSV_DELIMITER = delimiter
+        self.mode('','')
+        self.skip_empty_lines = False
+
+    def set_skip_empty_lines(self):
+        if not self.skip_empty_lines:
+            self.skip_empty_lines = True
+            print "Reader set to skip empty lines"
+
+    def unset_skip_empty_lines(self):
+        if self.skip_empty_lines:
+            self.skip_empty_lines = False
+            print "Reader unset skip empty lines"
+
+    def reader_mode_is(self, mode_str):
+        return self.reader_mode_str == mode_str
+
+    def update_reader_mode_str(self):
+        self.reader_mode_str = '-'.join(self.reader_mode)
+
+    def print_changed_mode(self):
+        print "Reader mode changed to:", self.reader_mode_str
+
+    def mode_0(self, mode0):
+        self.reader_mode[0] = mode0
+        self.update_reader_mode_str()
+        self.print_changed_mode()
+
+    def mode_1(self, mode1):
+        self.reader_mode[1] = mode1
+        self.update_reader_mode_str()
+        self.print_changed_mode()
+
+    def mode(self, mode0, mode1):
+        self.reader_mode = ['','']
+        self.reader_mode[0] = mode0
+        self.reader_mode[1] = mode1
+        self.update_reader_mode_str()
+        self.print_changed_mode()
+
+    def empty(self, row): return len(row)==0 or (len(row)==2 and (row[0].strip() == '' and row[1].strip() == ''))
+
+    def to_float_str(self, f): 
+        try:
+            out = f.replace(',','.')
+            return out 
+        except:
+            return f
+
+    def to_name(self, header_entry):
+        try:
+            split_str = ' ['
+            if not ' [' in header_entry: 
+                split_str = '['
+            out = header_entry.split(split_str)[0]
+            if out[0] == ' ': out = out[1:] 
+            return out
+        except:
+            return ''
+
+    def to_unit(self, header_entry):
+        try:
+            split_str = ' ['
+            if not ' [' in header_entry: split_str = '['
+            return header_entry.split(split_str)[1].replace(']','') 
+        except:
+            return ''
+
+    def read_RHT_file(self, args, path, override_pickle=False):
+        basename = os.path.splitext(path)[0]
+	pickle_path = basename +'.pickle'
+	if os.path.isfile(pickle_path) and not override_pickle:
+		print "Found a pickle:", pickle_path, "for", basename, "using that instead."
+		return cpickle_load(pickle_path)
+
+        RHTdata = {}
+        RHTdata['program'] = {}
+        RHTdata['program']['values'] = []
+        RHTdata['batch_info'] = {}
+        RHTdata['data_loggings'] = []
+        RHTdata['data_logging'] = {}
+        RHTdata['data_logging']['values'] = []
+        RHTdata['leaktest'] = {}
+        RHTdata['onlines'] = []
+
+        self.reader_mode = ['','']
+        with open(path) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=self.CSV_DELIMITER)
+            line_count = 0
+            
+            for i, row in enumerate(csv_reader):
+                if not self.reader_mode_is('data_logging-values'):
+                    while '' in row: row.remove('')
+                    while ' ' in row: row.remove(' ')
+                if self.empty(row): 
+                    if self.reader_mode_is('online-values'):
+                        RHTdata['data_loggings'].append({})
+                        latest_logging = RHTdata['data_loggings'][-1]
+                        latest_logging['values'] = []
+                        self.mode('data_logging','header')
+                    elif not self.skip_empty_lines:
+                        self.mode('','')
+                else:
+                    if i <= 5:
+                        RHTdata[row[0].replace(':','')] = row[1]
+                    elif i < 43:
+                        if len(row) >= 1:
+                            if row[0] == 'Program': self.mode_0('program')
+                            elif row[0] == 'Step': self.mode_1('header')
+
+                    if self.reader_mode_is('program-header'):
+                        RHTdata['program']['variables'] = [self.to_name(header_entry) for header_entry in row]
+                        RHTdata['program']['units'] = [self.to_unit(header_entry) for header_entry in row]
+                        self.mode_1('values')
+                    elif self.reader_mode_is('program-values'):
+                        RHTdata['program']['values'] += [[self.to_float_str(value) for value in row]]
+                    elif self.reader_mode_is('batch_info-header'):
+                        RHTdata['batch_info']['variables'] = row
+                        self.mode_1('values')
+                    elif row[0] == 'batch:': 
+                        self.mode('batch_info', 'header')
+                    elif self.reader_mode_is('batch_info-values'):
+                        RHTdata['batch_info']['values'] = row
+                        self.mode('', '')
+                    elif row[0] == 'data logging:' or self.reader_mode_is('data_logging-init'): 
+                        RHTdata['data_loggings'].append({})
+                        latest_logging = RHTdata['data_loggings'][-1]
+                        latest_logging['values'] = []
+                        self.mode('data_logging','header')
+                    elif self.reader_mode_is('data_logging-header'):
+                        if not 'variables' in RHTdata['data_logging'].keys():
+                            RHTdata['data_logging']['variables'] = [self.to_name(header_entry) for header_entry in row]
+                            RHTdata['data_logging']['units'] = [self.to_unit(header_entry) for header_entry in row]
+                        latest_logging['variables'] = [self.to_name(header_entry) for header_entry in row]
+                        latest_logging['units'] = [self.to_unit(header_entry) for header_entry in row]
+                        self.mode_1('values')
+                    elif self.reader_mode_is('data_logging-values'):
+                        #if len(RHTdata['data_loggings']) == 2:
+                            #print i, row
+                        self.unset_skip_empty_lines()
+                        #print len(row), len(RHTdata['data_logging']['variables'])
+                        #if len(row) != 135: print i, row, len(row),len(RHTdata['data_logging']['variables'])
+                        latest_logging['values'] += [[self.to_float_str(value) for value in row]]
+                        RHTdata['data_logging']['values'] += [[self.to_float_str(value) for value in row]]
+                    elif row[0] == 'Leckrate Lecktest': 
+                        RHTdata['leaktest']['variables'] = row
+                        self.mode('leaktest','values')
+                    elif self.reader_mode_is('leaktest-values'):
+                        RHTdata['leaktest']['values'] = row
+                        self.mode('data_logging', 'values')
+                        self.set_skip_empty_lines()
+                    elif row[0] == 'online:': 
+                        if len(latest_logging['values']) == 0:
+                            print "No values read! Removing the latest data_logging and online change..."
+                            RHTdata['data_loggings'].pop()
+                            RHTdata['onlines'].pop()
+                        self.mode('online','prog_header')
+                    elif self.reader_mode_is('online-prog_header'):
+                        RHTdata['onlines'].append({})
+                        latest_online = RHTdata['onlines'][-1]
+                        latest_online['variables'] = row
+                        latest_online['values'] = []
+                        self.mode_1('header')
+                        self.set_skip_empty_lines()
+                    elif self.reader_mode_is('online-header'):
+                        self.unset_skip_empty_lines()
+                        latest_online['variables'] = [self.to_name(header_entry) for header_entry in row]
+                        latest_online['units'] = [self.to_unit(header_entry) for header_entry in row]
+                        self.mode_1('values')
+                        self.set_skip_empty_lines()
+                    elif self.reader_mode_is('online-values'):
+                        self.unset_skip_empty_lines()
+                        latest_online['values'] += [[self.to_float_str(value) for value in row]]
+                    
+        RHTdata['program']['DataFrame'] = to_DataFrame(RHTdata['program']['variables'],RHTdata['program']['values'])
+
+        RHTdata['data_logging']['DataFrame'] = to_DataFrame(RHTdata['data_logging']['variables'],RHTdata['data_logging']['values'])
+
+        for i,logging in enumerate(RHTdata['data_loggings']):
+            logging['DataFrame'] = to_DataFrame(logging['variables'], logging['values'])
+        for online in RHTdata['onlines']:
+            online['DataFrame'] = to_DataFrame(online['variables'], online['values'])
+            # here we deal with a bug that is in MQXF furnace CSV format:
+            online['DataFrame']['Time'] = online['DataFrame']['Offset zone B8'] 
+       
+	cpickle_dump(RHTdata, pickle_path)
+        return RHTdata
+
+def parameters_str(args):
+#            print "dtdev = dwell target deviation"
+#            print "dthom = dwell target homogenity"
+#            print "dthomhalf = dwell target homogenity half band"
+#            print "dhtol = dwell heat_rate tolerance"
+#            print "dtdev\tdthom\tdthomhalf\tdhtol"
+#            print 
+    return "dtdev{}-dthomhalf{}-dhtol{}".format(args.dwell_target_deviation, args.dwell_target_homogenity_half_band, args.dwell_heat_rate_tolerance)
+
+def parameters_dict(args):
+    params = {'dtdev':args.dwell_target_deviation,
+              'dthomhalf':args.dwell_target_homogenity_half_band, 
+              'dhtol':args.dwell_heat_rate_tolerance}
+    return params
+
+def to_DataFrame(variables, values):
+
+    if len(values) > 0:
+        #variables = RHTdata['data_logging']['variables']
+        #values = np.array(RHTdata['data_logging']['values'])
+        #RHTdata['data_logging']['DataFrame'] = pd.DataFrame({variable:values[:,i] for i,variable in enumerate(variables)})
+        values = np.array(values)
+        #print variables, values
+        DataFrame = pd.DataFrame({variable:values[:,i] for i,variable in enumerate(variables)})
+        for i, col in enumerate(DataFrame.keys()):
+            try:
+                DataFrame[col] = pd.to_numeric(DataFrame[col])
+            except:
+                pass
+        if 'date' in DataFrame.keys() and 'time' in DataFrame.keys():
+            DataFrame['datetime'] = to_datetime(DataFrame['date'], DataFrame['time'])
+            DataFrame['seconds'] = (DataFrame['datetime'] - DataFrame['datetime'][0]).dt.total_seconds()
+            DataFrame['hours'] = DataFrame['seconds']/3600
+    else:
+        print "to_DataFrame: no values to be converted! returning 'None'"
+        DataFrame = None
+
+    return DataFrame
+
+@timeit
+def cpickle_dump(data, pickle_path):
+	with open(pickle_path, 'wb') as handle:
+		pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+@timeit
+def cpickle_load(pickle_path):
+	with open(pickle_path, 'rb') as handle:
+		mtbop_data = pickle.load(handle)
+	return mtbop_data
+
+def to_datetime(dates, times):
+    datetimes = []
+    for i, date in enumerate(dates):
+        dateparts = date.split('.')[::-1]
+        datetimes.append(datetime.datetime.strptime('-'.join(dateparts) + 'T' + times[i], '%Y-%m-%dT%H:%M:%S'))
+#datetimeObj = datetime.strptime('2018-09-11T15::11::45.456777', '%Y-%m-%dT%H::%M::%S.%f')
+    return datetimes
+
+def abs_diff_filter(logging_df, TC_all_df, diff_max=500., only_ramp_ups=True):
+    TC_mean = TC_all_df.mean(axis=1)
+    TC_mean_rate = np.gradient(TC_mean, logging_df['seconds'])
+    accepted_TC_keys = []
+    for key in TC_all_df.keys():
+        if only_ramp_ups:
+            TC_Ramp_ups = TC_all_df[TC_mean_rate>0]
+            diff = TC_Ramp_ups[key]-TC_mean
+        else:
+            diff = TC_all_df[key]-TC_mean
+            
+        if not (diff.abs() > diff_max).any():
+            accepted_TC_keys.append(key)
+
+    return accepted_TC_keys
+
+def abs_diff_filters(logging_df, TC_all_df, tdf_list = [500., 30.], only_ramp_ups=True):
+    print "tdf_list", tdf_list
+    accepted_TC_df_list = TC_all_df
+    accepted_keys_rounds = []
+    for tdf in tdf_list:
+        accepted_keys = abs_diff_filter(logging_df, accepted_TC_df_list, tdf, only_ramp_ups)
+        accepted_TC_df_list = TC_all_df[accepted_keys]
+        accepted_keys_rounds.append(accepted_keys)
+
+    if len(accepted_keys) == 0:
+        print "abs_diff_filters: None of the y-axis variables were accepted! Exiting..."
+        exit()
+
+    rejected_keys = list(set(TC_all_df).difference(set(accepted_keys)))
+
+    return accepted_keys, rejected_keys, accepted_keys_rounds
+
+@timeit
+def find_dwells(logging, args):
+    logging_df = logging['DataFrame']
+    accepted_TC_keys = logging['accepted_TC_keys']
+    dwells = []
+    for i, target in enumerate(args.dwell_target_temperatures):
+        dwells.append({})
+        dwell = dwells[-1]
+        dwell['n'] = i + 1
+        dwell['DataFrame'] = logging_df.copy(deep=True)
+        dwell_df = dwell['DataFrame']
+        for key in accepted_TC_keys: 
+            diff = dwell_df[key]-target
+            dwell_df = dwell_df[diff.abs()<args.dwell_target_deviation]
+            dwell_df = dwell_df[dwell_df['dy_mean_dt'].abs()<args.dwell_heat_rate_tolerance]
+        dwell['DataFrame'] = dwell_df
+
+    if args.dwell_target_homogenity_half_band != None:
+        args.dwell_target_homogenity = 2.* args.dwell_target_homogenity_half_band
+
+    if args.dwell_target_homogenity != None:
+        args.dwell_target_homogenity_half_band = args.dwell_target_homogenity/2.
+        dwells_tmp = []
+        for i, dwell in enumerate(dwells):
+            dwell_df = dwell['DataFrame']
+            #print i, dwell_df[accepted_TC_keys].min, dwell_df[accepted_TC_keys].max
+            accepted_values = dwell_df[accepted_TC_keys]
+            diff = accepted_values.min(1)-accepted_values.max(1)
+            dwell_df = dwell_df[diff.abs()<args.dwell_target_homogenity]
+            dwell['DataFrame'] = dwell_df 
+            dwells_tmp.append(dwell)
+
+    dwells = []
+    for i, dwell in enumerate(dwells_tmp):
+        dwell_df = dwell['DataFrame']
+        if dwell_df['hours'].size > 0:
+            dwell['duration'] = dwell_df['hours'].iloc[-1] - dwell_df['hours'].iloc[0]
+            dwell['Tmean'] = dwell_df[accepted_TC_keys].mean().mean()
+            dwell['Tmin'] = dwell_df[accepted_TC_keys].min().min()
+            dwell['Tmax'] = dwell_df[accepted_TC_keys].max().max()
+            dwell['Max_Homogenity'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
+            dwell['Max_Homogenity_half_band'] = dwell['Max_Homogenity']/2.
+            dwells.append(dwell)
+    return dwells
+
+def print_dwells(dwells, args):
+    print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
+    for i, dwell in enumerate(dwells):
+        dwell_df = dwell['DataFrame']
+        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(i+1, dwell['duration'], dwell['Tmax'], dwell['Tmean'], dwell['Tmin'], dwell['Max_Homogenity_half_band'])
+
+def fetch_dwell_by_number(dwells, n):
+    for dwell in dwells:
+        if n == dwell['n']:
+            return dwell
+        else:
+            return None
+
+def print_parameters_and_dwells(dwells, args):
+    dwell_line = "Target H/2\tTarget dev\tTarget HR\t"
+    for i, target in enumerate(args.dwell_target_temperatures):
+        n=i+1
+        dwell = fetch_dwell_by_number(dwells, n)
+        if dwell != None:
+            dwell_line += str(n) + ". Tmean (C)\t" + str(n) + ". dt"  + "(h)\t" + str(n) + ". Max H/2 (h)\t"
+        else:
+            dwell_line += str(n) + ". Tmean (C)\t" + str(n) + ". dt"  + "(h)\t" + str(n) + ". Max H/2 (h)\t"
+#         print "dtdev = dwell target deviation"
+#            print "dthom = dwell target homogenity"
+#            print "dthomhalf = dwell target homogenity half band"
+#            print "dhtol = dwell heat_rate tolerance"
+#            print "dtdev\tdthom\tdthomhalf\tdhtol"
+    print "dl:", dwell_line
+
+    p = parameters_dict(args)
+    dwell_line = "{:3.1f}\t{:3.1f}\t{:3.4f}\t".format(p['dthomhalf'], p['dtdev'], p['dhtol'])
+    for i, dwell in enumerate(dwells):
+        n=i+1
+        dwell = fetch_dwell_by_number(dwells, n)
+        if dwell != None:
+            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmean'], dwell['duration'], dwell['Max_Homogenity_half_band'])
+        else:
+            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(-1., -1., -1.)
+    print "dl:", dwell_line
+
+
+def find_dwells_target_temperatures(program_df, args):
+    program_df[program_df['Time hours'].le(args.dwell_duration_min)]
+
+def regenerate_program_data(program_df):
+    program_df['Time hours'] = program_df['Time']/60.
+    program_df['hours from'] = program_df['Time hours'].cumsum()-program_df['Time hours']
+    program_df['hours to'] = program_df['Time hours'].cumsum()
+
+def find_program_step_using_datetime(logging_df, dt):
+    ind = pd.Index(logging_df['datetime']).get_loc(dt, method='nearest')
+    return logging_df['Step'][ind]
+ 
+def regenerate_online_data(RHTdata):
+    program = RHTdata['program']
+    program_df = RHTdata['program']['DataFrame']
+    regenerate_program_data(program_df)
+
+    #plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
+
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+
+    latest_program = program
+    program['activation datetime'] = RHTdata['data_loggings'][0]['DataFrame']['datetime'][0]
+    program['activation seconds'] = (program['activation datetime'] - logging_df['datetime'][0]).total_seconds()
+    program['activation hours'] = program['activation seconds']/3600.
+    program['activation_step'] = find_program_step_using_datetime(logging_df, program['activation datetime'])
+    for i, online in enumerate(RHTdata['onlines']):
+        latest_program_df = latest_program['DataFrame']
+        online_df = online['DataFrame']
+        online['activation datetime'] = RHTdata['data_loggings'][i+1]['DataFrame']['datetime'][0]
+        online['activation seconds'] = (online['activation datetime'] - RHTdata['data_loggings'][0]['DataFrame']['datetime'][0]).total_seconds()
+        online['activation hours'] = online['activation seconds']/3600.
+        online['activation_step'] = find_program_step_using_datetime(logging_df, online['activation datetime'])
+        latest_program['deactivation datetime'] = online['activation datetime'] 
+        latest_program['deactivation seconds'] = online['activation seconds'] 
+        latest_program['deactivation hours'] = online['activation hours'] 
+        for key in latest_program_df.keys():
+            if key not in online_df.keys():
+                online_df[key]=latest_program_df[key]
+        
+        online['change'] = latest_program_df.ne(online_df)
+        regenerate_program_data(online_df)
+        latest_program = online
+
+@timeit
+def analyze(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+
+    if args.list_variables:
+        print "Variable list:"
+        print "--------------"
+        for key in logging_df.keys():
+            print key  
+
+    x = logging_df['hours']
+    if not args.y_axis == None:
+        TC_all_df = logging_df[args.y_axis]
+    else:
+        TC_all_df = logging_df[[y for y in logging_df.keys() if ('MT' in y and 'PV' in y and 'TC' in y)]]
+
+    RHTdata['TC_all_df'] = TC_all_df
+    logging['accepted_TC_keys'], logging['rejected_TC_keys'], logging['accepted_keys_rounds'] = abs_diff_filters(logging_df, TC_all_df, args.temperature_deviation_filters)
+     
+    accepted_TC_df_list = logging_df[logging['accepted_TC_keys']]
+
+    logging_df['y_mean'] = accepted_TC_df_list.mean(axis=1)
+    logging_df['y_min'] = accepted_TC_df_list.min(axis=1)
+    logging_df['y_max'] = accepted_TC_df_list.max(axis=1)
+    logging_df['y_homogenity'] = logging_df['y_max'] - logging_df['y_min'] 
+    logging_df['dy_mean_dt'] = np.gradient(logging_df['y_mean'], logging_df['seconds'])
+
+    #dwell_target_temperatures = find_dwells_target_temperatures(program_df, args)
+
+    RHTdata['duration_based_target_temperatures'] = False
+    if not args.dwell_duration_minimum == None:
+        RHTdata['duration_based_target_temperatures'] = True
+        args.dwell_target_temperatures = sorted(list(set(program_df[program_df['Time hours'].ge(args.dwell_duration_minimum)]['From Tp zone B3'])))
+    dwells = find_dwells(logging, args)
+    print_dwells(dwells, args)
+    print_parameters_and_dwells(dwells, args)
+    RHTdata['dwells'] = dwells
+
+def plot_all_TC(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    TC_all_df = RHTdata['TC_all_df'] 
+
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+    for key in TC_all_df.keys():
+        plotter.plot_ax(logging_df['hours'], TC_all_df[key], label=key)
+
+    plotter.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=8)
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = '-'.join(paths).replace('.csv','') 
+        plotter.savefig(fig_filename, '_all_TC_' + parameters_str(args) + '.png', args=args)
+
+def plot_accepted_TC(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+
+    #plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
+
+    for i, keys in enumerate(logging['accepted_keys_rounds']):
+        plotter.set_xlabel('Time (h)')
+        plotter.set_ylabel('Temperature ($\degree$C)')
+        plotter.plot_ax(logging_df['hours'], logging_df[keys].mean(axis=1), label='mean(T)', linewidth=linewidth)
+        for key in keys:
+            plotter.plot_ax(logging_df['hours'], logging_df[key], label=key)
+
+        plotter.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=8)
+
+        if args.show_plot:
+            plotter.show(args)
+        else:
+            fig_filename = '-'.join(paths).replace('.csv','') 
+            plotter.savefig(fig_filename, '_accepted_TC_round_' + parameters_str(args) + '_' + str(i) + '.png', args=args)
+
+def plot_Ar(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
+
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Flow (l/h)')
+    plotter.plot_ax(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.0 Ar retort'], label='Ar retort')
+    plotter.plot_ax(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
+
+    plotter.set_ax2()
+    plotter.set_ylabel2('Temperature ($\degree$C)')
+    plotter.plot_ax2(logging_df['hours'],logging_df['y_mean'], label='mean(T)')
+    for i, dwell in enumerate(dwells):
+        dwell_df = dwell['DataFrame']
+        if len(dwell_df) >= 2:
+            dwell_len = dwell['duration']
+            dwell_Tmean = dwell['Tmean']
+            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
+            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
+            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.2, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
+            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+
+    for i, online in enumerate(RHTdata['onlines']):
+        online_df = online['DataFrame']
+        plotter.text(online['activation hours'], plotter.rel_pos(0.8,'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
+
+    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
+
+    
+    #if len(logging['accepted_TC_keys'])>0:
+    if False:
+        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
+        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
+                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
+
+    if len(logging['rejected_TC_keys'])>0:
+    #if False:
+        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
+        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
+                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
+
+    dwells_note = 'Dwells:\n'
+    if len(args.dwell_target_temperatures)>0:
+        if RHTdata['duration_based_target_temperatures']:
+            dwells_note += 'program set targets '
+        else:
+            dwells_note += 'user selected targets '
+        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
+
+    nc = 0
+    if args.dwell_target_deviation != None:
+        nc += 1
+        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
+    if args.dwell_target_homogenity != None:
+        nc += 1
+        if nc >1: dwells_note += 'and '
+        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
+    if nc == 1:
+        dwells_note += ' criterion'
+    elif nc > 1:
+        dwells_note += ' criteria'
+
+    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y'), dwells_note, style='italic',
+            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = '-'.join(paths).replace('.csv','') 
+        plotter.savefig(fig_filename, '_Ar_' + parameters_str(args) + '.png', args=args)
+
+def plot_homogenity(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
+
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+    plotter.plot_ax(logging_df['hours'],logging_df['y_homogenity']/2., label='H(T)/2')
+    plotter.set_ax2()
+    plotter.set_ylabel2('Flow (l/h)')
+    #plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.0 Ar retort'], label='Ar retort')
+    plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
+    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    for i, dwell in enumerate(dwells):
+        dwell_df = dwell['DataFrame']
+        if len(dwell_df) >= 2:
+            dwell_len = dwell['duration']
+            dwell_Tmean = dwell['Tmean']
+            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
+            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
+            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.2, 'y2'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
+            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+
+    for i, online in enumerate(RHTdata['onlines']):
+        online_df = online['DataFrame']
+        plotter.text(online['activation hours'], plotter.rel_pos(0.8,'y2'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
+
+    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
+
+    
+    #if len(logging['accepted_TC_keys'])>0:
+    if False:
+        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
+        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y2'), accepted_y_keys_note, style='italic',
+                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
+
+    if len(logging['rejected_TC_keys'])>0:
+    #if False:
+        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
+        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y2'), rejected_y_keys_note, style='italic',
+                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
+
+    dwells_note = 'Dwells:\n'
+    if len(args.dwell_target_temperatures)>0:
+        if RHTdata['duration_based_target_temperatures']:
+            dwells_note += 'program set targets '
+        else:
+            dwells_note += 'user selected targets '
+        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
+
+    nc = 0
+    if args.dwell_target_deviation != None:
+        nc += 1
+        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
+    if args.dwell_target_homogenity != None:
+        nc += 1
+        if nc >1: dwells_note += 'and '
+        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
+    if nc == 1:
+        dwells_note += ' criterion'
+    elif nc > 1:
+        dwells_note += ' criteria'
+
+    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y2'), dwells_note, style='italic',
+            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = '-'.join(paths).replace('.csv','') 
+        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args)
+
+def plot(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
+
+    plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
+
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+    plotter.plot_ax(logging_df['hours'],logging_df['y_min'], label='min(T)')
+    plotter.plot_ax(logging_df['hours'],logging_df['y_mean'], label='mean(T)')
+    plotter.plot_ax(logging_df['hours'],logging_df['y_max'], label='max(T)')
+    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    for i, dwell in enumerate(dwells):
+        dwell_df = dwell['DataFrame']
+        if len(dwell_df) >= 2:
+            dwell_len = dwell['duration']
+            dwell_Tmean = dwell['Tmean']
+            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
+            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
+            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.1, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
+            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+
+    for i, online in enumerate(RHTdata['onlines']):
+        online_df = online['DataFrame']
+        plotter.text(online['activation hours'], 0.8*logging_df['y_max'].max(), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
+        plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
+
+    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
+
+    
+    #if len(logging['accepted_TC_keys'])>0:
+    if False:
+        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
+        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
+                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
+
+    if len(logging['rejected_TC_keys'])>0:
+    #if False:
+        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
+        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+ 
+        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
+                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
+
+    dwells_note = 'Dwells:\n'
+    if len(args.dwell_target_temperatures)>0:
+        if RHTdata['duration_based_target_temperatures']:
+            dwells_note += 'program set targets '
+        else:
+            dwells_note += 'user selected targets '
+        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
+
+    nc = 0
+    if args.dwell_target_deviation != None:
+        nc += 1
+        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
+    if args.dwell_target_homogenity != None:
+        nc += 1
+        if nc >1: dwells_note += 'and '
+        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
+    if nc == 1:
+        dwells_note += ' criterion'
+    elif nc > 1:
+        dwells_note += ' criteria'
+
+    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y'), dwells_note, style='italic',
+            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = '-'.join(paths).replace('.csv','') 
+        plotter.savefig(fig_filename, '_' + parameters_str(args) + '.png', args=args)
+
+class RHTPrompt(Cmd):
+    prompt = 'RHT> '
+    intro  = "Welcome to RHT command line interface"
+
+    def do_load(self, inp):
+        RHT_csv_reader = RHT_CSV_Reader()
+        self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+
+    def help_load(self):
+        print "Load the data file that is defined with RHT command"
+
+    def do_exit(self, inp):
+        print "Exiting..."
+        return True
+
+    def do_q(self, inp):
+        print "Exiting..."
+        return True
+
+    def do_xlim(self, inp):
+        print "Setting plot xlim:", inp
+        try:
+            words = inp.split()
+            if len(words) == 2:
+                args.xlim = [float(s) for s in words]
+            else:
+                print "It didn't work because you didn't give me 2 values..."
+        except:
+            print "command failed!"
+
+    def help_xlim(self):
+        print "Set plot x-axis limits: min max"
+
+    def do_ylim(self, inp):
+        print "Setting plot ylim:", inp
+        try:
+            words = inp.split()
+            if len(words) == 2:
+                args.ylim = [float(s) for s in words]
+            else:
+                print "It didn't work because you didn't give me 2 values..."
+        except:
+            print "command failed!"
+
+    def help_ylim(self):
+        print "Set plot y-axis limits: min max"
+
+    def do_tdf(self, inp):
+        print "Setting temperature deviation filters:", inp
+        try:
+            args.temperature_deviation_filters = [float(s) for s in inp.split()]
+        except:
+            print "command failed!"
+
+    def help_tdf(self):
+        print "Set temperature deviation filters (as many as needed): first_filter second_filter ..."
+
+    def do_dt(self, inp):
+        print "Setting dwell target temperatures:", inp
+        try:
+            args.dwell_target_temperatures = [float(s) for s in inp.split()]
+        except:
+            print "command failed!"
+
+    def help_dt(self):
+        print "Set dwell target temperature: T_first_dwell T_second_dwell ..."
+
+    def do_ddmin(self, inp):
+        print "Setting minimum dwell duration:", inp
+        try:
+            args.dwell_duration_minimum = float(inp)
+        except:
+            print "command failed!"
+
+    def help_ddmin(self):
+        print "Set minimum dwell duration (if program plateaus are used as dwell targets)."
+
+    def do_dtdev(self, inp):
+        print "Setting dwell target deviation:", inp
+        try:
+            args.dwell_target_deviation = float(inp)
+        except:
+            print "command failed!"
+
+    def help_dtdev(self):
+        print "Set dwell target deviation."
+
+    def do_dthom(self, inp):
+        print "Setting dwell target homogenity:", inp
+        try:
+            args.dwell_target_homogenity = float(inp)
+        except:
+            print "command failed!"
+
+    def help_dthom(self):
+        print "Set dwell homogenity tolerance."
+
+    def do_dthomhalf(self, inp):
+        print "Setting dwell target homogenity half band:", inp
+        try:
+            args.dwell_target_homogenity_half_band = float(inp)
+        except:
+            print "command failed!"
+
+    def help_dthomhalf(self):
+        print "Set dwell homogenity tolerance half band."
+
+    def do_dhtol(self, inp):
+        print "Setting dwell heat rate tolerance:", inp
+        try:
+            args.dwell_heat_rate_tolerance = float(inp)
+        except:
+            print "command failed!"
+
+    def help_dhtol(self):
+        print "Set dwell heat rate tolerance."
+     
+    def do_plot_accepted_TC(self, inp):
+        plot_accepted_TC(self.RHTdata, args)
+
+    def help_plot_accepted_TC(self):
+        print "Plot the accepted thermo-couples."
+
+    def do_plot_homogenity(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        regenerate_online_data(self.RHTdata)
+        analyze(self.RHTdata, args)
+        plot_homogenity(self.RHTdata, args)
+
+    def help_plot_homogenity(self):
+        print "Plot the homogenity of accepted thermo-couples."
+
+    def do_plot_Ar(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        regenerate_online_data(self.RHTdata)
+        analyze(self.RHTdata, args)
+        plot_Ar(self.RHTdata, args)
+
+    def help_plot_Ar(self):
+        print "Plot the Ar flows in the tooling and retort."
+
+
+    def do_plot_all_TC(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        regenerate_online_data(self.RHTdata)
+        analyze(self.RHTdata, args)
+        plot_all_TC(self.RHTdata, args)
+
+    def help_plot_all_TC(self):
+        print "Plot all thermo-couples."
+
+    def do_plot(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        regenerate_online_data(self.RHTdata)
+        analyze(self.RHTdata, args)
+        plot_all_TC(self.RHTdata, args)
+        plot_accepted_TC(self.RHTdata, args)
+        plot(self.RHTdata, args)
+
+    def help_plot(self):
+        print "Plot all thermo-couples, plot accepted thermo-couples and plot dwells."
+
+    def do_plot(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        regenerate_online_data(self.RHTdata)
+        analyze(self.RHTdata, args)
+        plot(self.RHTdata, args)
+
+    def help_plot(self):
+        print "Plot only the dwell plot."
+
+    def do_print_dwells(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        print_dwells(self.RHTdata, args)
+
+    def help_print_dwells(self):
+        print "Print dwell information."
+
+    def do_analyze(self, inp):
+        if not hasattr(self, 'RHTdata'): 
+            RHT_csv_reader = RHT_CSV_Reader()
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        analyze(self.RHTdata, args)
+
+    def help_analyze(self):
+        print "Analyze the loaded data."
+
+    def do_parameters(self, inp):
+        try:
+            print "dtdev = dwell target deviation"
+            print "dthom = dwell target homogenity"
+            print "dthomhalf = dwell target homogenity half band"
+            print "dhtol = dwell heat_rate tolerance"
+            print "dtdev\tdthom\tdthomhalf\tdhtol"
+            print "{}\t{}\t{}\t{}".format(args.dwell_target_deviation, args.dwell_target_homogenity, args.dwell_target_homogenity_half_band, args.dwell_heat_rate_tolerance)
+        except:
+            print "command failed!"
+
+    def help_parameters(self):
+        print "Print all active parameters"
+
+    def do_set_show_plot(self, inp):
+        if inp.lower()=='true':
+            print "Setting show plot on"
+            args.show_plot = True
+        elif inp.lower()=='false':
+            print "Setting show plot off"
+            args.show_plot = False
+        else:
+            print "Usage: set_savefig True/False"
+
+    def help_set_show_plot(self, inp):
+        print "Setting show plot on/off (and savefig off/on)"
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Plot mtbop strain data')
+    parser.add_argument('paths', nargs='+', type=str)
+    parser.add_argument('-v', '--variables', nargs='?', type=str)
+    parser.add_argument('-x', '--x-axis', type=str)
+    parser.add_argument('-y', '--y-axis', nargs='+', type=str)
+    parser.add_argument('--xlim', nargs=2, type=float, default=[0,300])
+    parser.add_argument('--ylim', nargs=2, type=float)
+    parser.add_argument('-tdf', '--temperature-deviation-filters', nargs='+', type=float, default=[500,70,50])
+    parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
+    parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
+    parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10.)
+    parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
+    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5.)
+    parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
+    parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
+    parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
+    parser.add_argument('-cli', '--command-line', action='store_true', default=False) 
+
+    global args 
+    args = parser.parse_args()
+    paths = args.paths
+
+    #logging = RHTdata['data_logging']
+    #logging_df = logging['DataFrame']
+
+    if args.command_line:
+        RHTPrompt().cmdloop()
+    else:
+        RHT_csv_reader = RHT_CSV_Reader()
+        read_RHT_file = RHT_csv_reader.read_RHT_file
+        RHTdata = read_RHT_file(args, paths[0], False)
+        regenerate_online_data(RHTdata)
+        analyze(RHTdata, args)
+        plot_all_TC(RHTdata, args)
+        plot_accepted_TC(RHTdata, args)
+        plot(RHTdata, args)
+        plot_homogenity(RHTdata, args)
+        plot_Ar(RHTdata, args)
+
+   
+
