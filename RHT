@@ -18,6 +18,20 @@ from cmd import Cmd
 
 note_x_rel_pos = 0.75
 linewidth = 3
+print_parameters_and_dwells_calls = 0
+
+class Logger:
+
+    def __init__(self, path):
+        self.logfile = open(path+'.RHT.log','w')
+        
+    def write(self, line):
+        print line
+        self.logfile.write(line + '\n')
+
+    def close(self):
+        self.logfile.close()
+
 class Plotter:
 
     def __init__(self):
@@ -38,12 +52,11 @@ class Plotter:
     def set_lim_args(self, args):
         if args != None:
             if args.xlim != None: 
-                self.ax.set_xlim(max(args.xlim, self.ax.get_xlim()))
+                self.ax.set_xlim(args.xlim)
             if args.ylim != None: self.ax.set_ylim(args.ylim)
 
     def savefig(self, fig_filename, suffix = '', args=None):
         self.fig_counter += 1
-        self.set_lim_args(args)
         fig_filename_fixed = fig_filename + '_IMG' + str(self.fig_counter).zfill(2) + suffix
         print "Saving", fig_filename_fixed
         plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
@@ -63,7 +76,6 @@ class Plotter:
         self.ax2.set_zorder(12)
 
     def show(self, args=None):
-        self.set_lim_args(args)
         plt.show()
         self.clear()
 
@@ -96,7 +108,7 @@ class Plotter:
         text = ax.text(*args, **kwargs)
         text.set_zorder(100)
 
-    def rel_pos(self, xrel, coordinate='x'):
+    def rel_pos(self, xrel, coordinate='x', args=None):
         if coordinate=='x':
             xmin, xmax = plotter.ax.get_xlim()
         elif coordinate=='y':
@@ -452,19 +464,21 @@ def print_dwells(dwells, args):
     print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
-        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(i+1, dwell['duration'], dwell['Tmax'], dwell['Tmean'], dwell['Tmin'], dwell['Max_Homogenity_half_band'])
+        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmax'], dwell['Tmean'], dwell['Tmin'], dwell['Max_Homogenity_half_band'])
 
 def fetch_dwell_by_number(dwells, n):
+    #print [dwell['n'] for dwell in dwells]
     for dwell in dwells:
         if n == dwell['n']:
             return dwell
-        else:
-            return None
+    return None
 
 def print_parameters_and_dwells(dwells, args):
-    dwell_line = "Target H/2\tTarget dev\tTarget HR\t"
+    global print_parameters_and_dwells_calls
+    print_parameters_and_dwells_calls += 1
+    dwell_line = "File\tTarget H/2\tTarget dev\tTarget HR\t"
     for i, target in enumerate(args.dwell_target_temperatures):
-        n=i+1
+        n = i+1
         dwell = fetch_dwell_by_number(dwells, n)
         if dwell != None:
             dwell_line += str(n) + ". Tmean (C)\t" + str(n) + ". dt"  + "(h)\t" + str(n) + ". Max H/2 (h)\t"
@@ -475,18 +489,19 @@ def print_parameters_and_dwells(dwells, args):
 #            print "dthomhalf = dwell target homogenity half band"
 #            print "dhtol = dwell heat_rate tolerance"
 #            print "dtdev\tdthom\tdthomhalf\tdhtol"
-    print "dl:", dwell_line
+    if print_parameters_and_dwells_calls == 1:
+        file_logger.write(dwell_line)
 
     p = parameters_dict(args)
-    dwell_line = "{:3.1f}\t{:3.1f}\t{:3.4f}\t".format(p['dthomhalf'], p['dtdev'], p['dhtol'])
-    for i, dwell in enumerate(dwells):
+    dwell_line = args.path+"\t{:3.1f}\t{:3.1f}\t{:3.4f}\t".format(p['dthomhalf'], p['dtdev'], p['dhtol'])
+    for i, target in enumerate(args.dwell_target_temperatures):
         n=i+1
         dwell = fetch_dwell_by_number(dwells, n)
         if dwell != None:
             dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmean'], dwell['duration'], dwell['Max_Homogenity_half_band'])
         else:
             dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(-1., -1., -1.)
-    print "dl:", dwell_line
+    file_logger.write(dwell_line)
 
 
 def find_dwells_target_temperatures(program_df, args):
@@ -575,6 +590,7 @@ def analyze(RHTdata, args):
     RHTdata['dwells'] = dwells
 
 def plot_all_TC(RHTdata, args):
+    plotter.set_lim_args(args)
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -590,7 +606,7 @@ def plot_all_TC(RHTdata, args):
     if args.show_plot:
         plotter.show(args)
     else:
-        fig_filename = '-'.join(paths).replace('.csv','') 
+        fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, '_all_TC_' + parameters_str(args) + '.png', args=args)
 
 def plot_accepted_TC(RHTdata, args):
@@ -601,6 +617,7 @@ def plot_accepted_TC(RHTdata, args):
     #plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
 
     for i, keys in enumerate(logging['accepted_keys_rounds']):
+        plotter.set_lim_args(args)
         plotter.set_xlabel('Time (h)')
         plotter.set_ylabel('Temperature ($\degree$C)')
         plotter.plot_ax(logging_df['hours'], logging_df[keys].mean(axis=1), label='mean(T)', linewidth=linewidth)
@@ -612,7 +629,7 @@ def plot_accepted_TC(RHTdata, args):
         if args.show_plot:
             plotter.show(args)
         else:
-            fig_filename = '-'.join(paths).replace('.csv','') 
+            fig_filename = args.path.replace('.csv','') 
             plotter.savefig(fig_filename, '_accepted_TC_round_' + parameters_str(args) + '_' + str(i) + '.png', args=args)
 
 def plot_Ar(RHTdata, args):
@@ -629,6 +646,7 @@ def plot_Ar(RHTdata, args):
     plotter.set_ax2()
     plotter.set_ylabel2('Temperature ($\degree$C)')
     plotter.plot_ax2(logging_df['hours'],logging_df['y_mean'], label='mean(T)')
+    plotter.set_lim_args(args)
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
         if len(dwell_df) >= 2:
@@ -695,7 +713,7 @@ def plot_Ar(RHTdata, args):
     if args.show_plot:
         plotter.show(args)
     else:
-        fig_filename = '-'.join(paths).replace('.csv','') 
+        fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, '_Ar_' + parameters_str(args) + '.png', args=args)
 
 def plot_homogenity(RHTdata, args):
@@ -712,6 +730,7 @@ def plot_homogenity(RHTdata, args):
     #plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.0 Ar retort'], label='Ar retort')
     plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
     #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
+    plotter.set_lim_args(args)
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
         if len(dwell_df) >= 2:
@@ -778,10 +797,11 @@ def plot_homogenity(RHTdata, args):
     if args.show_plot:
         plotter.show(args)
     else:
-        fig_filename = '-'.join(paths).replace('.csv','') 
+        fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args)
 
 def plot(RHTdata, args):
+    plotter.set_lim_args(args)
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -862,7 +882,7 @@ def plot(RHTdata, args):
     if args.show_plot:
         plotter.show(args)
     else:
-        fig_filename = '-'.join(paths).replace('.csv','') 
+        fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, '_' + parameters_str(args) + '.png', args=args)
 
 class RHTPrompt(Cmd):
@@ -871,7 +891,7 @@ class RHTPrompt(Cmd):
 
     def do_load(self, inp):
         RHT_csv_reader = RHT_CSV_Reader()
-        self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+        self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
 
     def help_load(self):
         print "Load the data file that is defined with RHT command"
@@ -991,7 +1011,7 @@ class RHTPrompt(Cmd):
     def do_plot_homogenity(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
         plot_homogenity(self.RHTdata, args)
@@ -1002,7 +1022,7 @@ class RHTPrompt(Cmd):
     def do_plot_Ar(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
         plot_Ar(self.RHTdata, args)
@@ -1014,7 +1034,7 @@ class RHTPrompt(Cmd):
     def do_plot_all_TC(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
         plot_all_TC(self.RHTdata, args)
@@ -1025,7 +1045,7 @@ class RHTPrompt(Cmd):
     def do_plot(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
         plot_all_TC(self.RHTdata, args)
@@ -1038,7 +1058,7 @@ class RHTPrompt(Cmd):
     def do_plot(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
         plot(self.RHTdata, args)
@@ -1049,7 +1069,7 @@ class RHTPrompt(Cmd):
     def do_print_dwells(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         print_dwells(self.RHTdata, args)
 
     def help_print_dwells(self):
@@ -1058,7 +1078,7 @@ class RHTPrompt(Cmd):
     def do_analyze(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
-            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.paths[0], False)
+            self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         analyze(self.RHTdata, args)
 
     def help_analyze(self):
@@ -1093,18 +1113,19 @@ class RHTPrompt(Cmd):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot mtbop strain data')
-    parser.add_argument('paths', nargs='+', type=str)
+    parser.add_argument('path', type=str)
     parser.add_argument('-v', '--variables', nargs='?', type=str)
     parser.add_argument('-x', '--x-axis', type=str)
     parser.add_argument('-y', '--y-axis', nargs='+', type=str)
-    parser.add_argument('--xlim', nargs=2, type=float, default=[0,300])
+    parser.add_argument('--xlim', nargs=2, type=float, default=[0,350])
     parser.add_argument('--ylim', nargs=2, type=float)
     parser.add_argument('-tdf', '--temperature-deviation-filters', nargs='+', type=float, default=[500,70,50])
     parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
-    parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10.)
+    parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10., nargs='+')
     parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
-    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5.)
+    #parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5.)
+    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5., nargs='+')
     parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
     parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
@@ -1112,24 +1133,37 @@ if __name__ == '__main__':
 
     global args 
     args = parser.parse_args()
-    paths = args.paths
+    path = args.path
 
-    #logging = RHTdata['data_logging']
-    #logging_df = logging['DataFrame']
+    file_logger = Logger(path)
+
+    if type(args.dwell_target_homogenity_half_band) == type([]):
+        dthomhalfs = args.dwell_target_homogenity_half_band
+    else:
+        dthomhalfs = [args.dwell_target_homogenity_half_band]
+
+    if type(args.dwell_target_deviation) == type([]):
+        dtdevs = args.dwell_target_deviation
+    else:
+        dtdevs = [args.dwell_target_deviation]
 
     if args.command_line:
         RHTPrompt().cmdloop()
     else:
         RHT_csv_reader = RHT_CSV_Reader()
         read_RHT_file = RHT_csv_reader.read_RHT_file
-        RHTdata = read_RHT_file(args, paths[0], False)
-        regenerate_online_data(RHTdata)
-        analyze(RHTdata, args)
-        plot_all_TC(RHTdata, args)
-        plot_accepted_TC(RHTdata, args)
-        plot(RHTdata, args)
-        plot_homogenity(RHTdata, args)
-        plot_Ar(RHTdata, args)
+        RHTdata = read_RHT_file(args, path, False)
+        for args.dwell_target_deviation in dtdevs:
+            for args.dwell_target_homogenity_half_band in dthomhalfs:
+                regenerate_online_data(RHTdata)
+                analyze(RHTdata, args)
+                plot_all_TC(RHTdata, args)
+                plot_accepted_TC(RHTdata, args)
+                plot(RHTdata, args)
+                plot_homogenity(RHTdata, args)
+                plot_Ar(RHTdata, args)
+
+    file_logger.close()
 
    
 
