@@ -16,6 +16,7 @@ import os
 
 from cmd import Cmd
 
+plt.rcParams.update({'font.size':15})
 note_x_rel_pos = 0.75
 linewidth = 3
 print_parameters_and_dwells_calls = 0
@@ -1125,7 +1126,7 @@ if __name__ == '__main__':
     parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10., nargs='+')
     parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
     #parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5.)
-    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5., nargs='+')
+    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=6., nargs='+')
     parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
     parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
