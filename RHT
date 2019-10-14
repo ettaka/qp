@@ -36,17 +36,22 @@ class Logger:
 class Plotter:
 
     def __init__(self):
-        self.clear()
+        self.reset()
         self.colors = ['r','g','b','y','c','k','m']
         self.markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
+
+    def reset(self):
+        self.clear()
         self.fig_counter = 0
 
     def clear(self):
         self.plot_counter = 0
+        plt.close("all")
         self.fig = plt.figure(figsize=(35,10))
         self.ax = self.fig.add_subplot(111)
         self.ax.autoscale(enable=True, axis='y', tight=True)
         self.ax.set_zorder(11)
+        self.ax2 = None
         #self.ax.patch.set_visible(False)
         self.plots = []
 
@@ -104,7 +109,7 @@ class Plotter:
 
     def text(self, *args, **kwargs):
         ax = self.ax
-        if hasattr(self, 'ax2'):
+        if hasattr(self, 'ax2') and self.ax2 != None:
             ax = self.ax2
         text = ax.text(*args, **kwargs)
         text.set_zorder(100)
@@ -112,17 +117,85 @@ class Plotter:
     def rel_pos(self, xrel, coordinate='x', args=None):
         if coordinate=='x':
             xmin, xmax = plotter.ax.get_xlim()
-        elif coordinate=='y':
-            xmin, xmax = plotter.ax.get_ylim()
-        elif coordinate=='y2':
-            xmin, xmax = plotter.ax2.get_ylim()
+        elif coordinate=='y' or coordinate=='y2':
+            if hasattr(self, 'ax2') and self.ax2 != None:
+                xmin, xmax = plotter.ax2.get_ylim()
+            else:
+                xmin, xmax = plotter.ax.get_ylim()
         else:
             print "rel_pos: unknown coordinate! Exiting..."
         x = xmin + xrel * (xmax - xmin)
         return x
 
+    def plot_dwells(self, dwells):
+        for i, dwell in enumerate(dwells):
+            dwell_df = dwell['DataFrame']
+            if len(dwell_df) >= 2:
+                dwell_len = dwell['duration']
+                dwell_Tmean = dwell['Tmean']
+                dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
+                #self.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
+                self.text(dwell_df['hours'].iloc[0], self.rel_pos(0.1, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
+                self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
 
-        
+    def plot_onlines(self, RHTdata):
+        logging = RHTdata['data_logging']
+        logging_df = logging['DataFrame']
+        program_df = RHTdata['program']['DataFrame']
+        dwells = RHTdata['dwells']
+        for i, online in enumerate(RHTdata['onlines']):
+            online_df = online['DataFrame']
+            plotter.text(online['activation hours'], 0.8*logging_df['y_max'].max(), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+            plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
+            plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
+
+    def write_dwell_notes(self, args):
+        dwells_note = 'Dwells:\n'
+        if len(args.dwell_target_temperatures)>0:
+            if RHTdata['duration_based_target_temperatures']:
+                dwells_note += 'program set targets '
+            else:
+                dwells_note += 'user selected targets '
+            dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
+
+        nc = 0
+        if args.dwell_target_deviation != None:
+            nc += 1
+            dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
+        if args.dwell_target_homogenity != None:
+            nc += 1
+            if nc >1: dwells_note += 'and '
+            dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
+        if nc == 1:
+            dwells_note += ' criterion'
+        elif nc > 1:
+            dwells_note += ' criteria'
+
+        self.text(self.rel_pos(note_x_rel_pos, 'x'), self.rel_pos(0.8, 'y'), dwells_note, style='italic',
+                bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+
+    def write_tc_notes(self, RHTdata, rejected=True):
+        logging = RHTdata['data_logging']
+        logging_df = logging['DataFrame']
+        program_df = RHTdata['program']['DataFrame']
+        dwells = RHTdata['dwells']
+
+        if not rejected:
+            if len(logging['accepted_TC_keys'])>0:
+                accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
+                accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+         
+                plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
+                        bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
+
+        else:
+            if len(logging['rejected_TC_keys'])>0:
+            #if False:
+                rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
+                rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
+         
+                plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
+                        bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
 
 plotter = Plotter()
 
@@ -140,6 +213,7 @@ class RHT_CSV_Reader:
         self.CSV_DELIMITER = delimiter
         self.mode('','')
         self.skip_empty_lines = False
+        self.TC_mapping = None
 
     def set_skip_empty_lines(self):
         if not self.skip_empty_lines:
@@ -193,6 +267,17 @@ class RHT_CSV_Reader:
                 split_str = '['
             out = header_entry.split(split_str)[0]
             if out[0] == ' ': out = out[1:] 
+            if self.TC_mapping != None:
+                if 'MT' in out and 'PV' in out and 'TC' in out:
+                    print "I detected a thermo-couple variable: ", out, "let's try to use mapped name.", 
+                    try:
+                        #TCid = str(int(out.split('-N-')[1]))
+                        TCid = out.split('-N-')[1].split('.')[0]
+                        out = "TC " + TCid + ": " + self.TC_mapping[TCid]
+                        print out
+                    except:
+                        print "Mapping not found."
+                        pass
             return out
         except:
             return ''
@@ -221,6 +306,32 @@ class RHT_CSV_Reader:
         RHTdata['data_logging']['values'] = []
         RHTdata['leaktest'] = {}
         RHTdata['onlines'] = []
+
+        self.TC_mapping = None
+        self.TC_mapping_file = None
+        if os.path.isfile(basename + ".mapping"):
+            self.TC_mapping_file = basename + ".mapping"
+        elif os.path.isfile(args.thermo_couple_mapping):
+            self.TC_mapping_file = args.thermo_couple_mapping
+        if self.TC_mapping_file != None: 
+            print "I found a thermo-couple mapping in " + "'" + self.TC_mapping_file + "'" + "trying to use that..."
+            try:
+                self.TC_mapping = {}
+                with open(self.TC_mapping_file, 'r') as TC_map_file:
+                    for line in TC_map_file:
+                        line = line.rstrip('\n')
+                        if ":" in line:
+                            line_split = line.split(":")
+                            TC_location = line_split[0]
+                            TCids = [s.strip() for s in line_split[1].split(",")]
+                            for TCid in TCids:
+                                self.TC_mapping[TCid] = TC_location
+                                print "Thermo-couple id", TCid, "->", self.TC_mapping[TCid]
+                RHTdata['TC_mapping'] = self.TC_mapping
+            except:
+                print "Mapping file error! I couldn't make sense out of the mapping file. Exiting..."
+                exit()
+            print "Reading thermo-couple mapping worked!"
 
         self.reader_mode = ['','']
         with open(path) as csv_file:
@@ -563,10 +674,16 @@ def analyze(RHTdata, args):
             print key  
 
     x = logging_df['hours']
+
     if not args.y_axis == None:
         TC_all_df = logging_df[args.y_axis]
     else:
-        TC_all_df = logging_df[[y for y in logging_df.keys() if ('MT' in y and 'PV' in y and 'TC' in y)]]
+        if 'TC_mapping' not in RHTdata:
+            print "analyze(): note, I didn't find a thermo-couple mapping!"
+            TC_all_df = logging_df[[y for y in logging_df.keys() if ('MT' in y and 'PV' in y and 'TC' in y)]]
+        else:
+            print "Thermo-couple mapping found!"
+            TC_all_df = logging_df[[y for y in logging_df.keys() if 'block' in y]]
 
     RHTdata['TC_all_df'] = TC_all_df
     logging['accepted_TC_keys'], logging['rejected_TC_keys'], logging['accepted_keys_rounds'] = abs_diff_filters(logging_df, TC_all_df, args.temperature_deviation_filters)
@@ -648,68 +765,13 @@ def plot_Ar(RHTdata, args):
     plotter.set_ylabel2('Temperature ($\degree$C)')
     plotter.plot_ax2(logging_df['hours'],logging_df['y_mean'], label='mean(T)')
     plotter.set_lim_args(args)
-    for i, dwell in enumerate(dwells):
-        dwell_df = dwell['DataFrame']
-        if len(dwell_df) >= 2:
-            dwell_len = dwell['duration']
-            dwell_Tmean = dwell['Tmean']
-            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
-            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
-            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.2, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
-            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
 
-    for i, online in enumerate(RHTdata['onlines']):
-        online_df = online['DataFrame']
-        plotter.text(online['activation hours'], plotter.rel_pos(0.8,'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
-        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
-
-    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
-    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
-
-    
-    #if len(logging['accepted_TC_keys'])>0:
-    if False:
-        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
-        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
-                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
-
-    if len(logging['rejected_TC_keys'])>0:
-    #if False:
-        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
-        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
-                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
-
-    dwells_note = 'Dwells:\n'
-    if len(args.dwell_target_temperatures)>0:
-        if RHTdata['duration_based_target_temperatures']:
-            dwells_note += 'program set targets '
-        else:
-            dwells_note += 'user selected targets '
-        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
-
-    nc = 0
-    if args.dwell_target_deviation != None:
-        nc += 1
-        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
-    if args.dwell_target_homogenity != None:
-        nc += 1
-        if nc >1: dwells_note += 'and '
-        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
-    if nc == 1:
-        dwells_note += ' criterion'
-    elif nc > 1:
-        dwells_note += ' criteria'
-
-    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y'), dwells_note, style='italic',
-            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+    plotter.plot_dwells(dwells)
+    plotter.plot_onlines(RHTdata)
+    plotter.write_dwell_notes(args)
+    plotter.write_tc_notes(RHTdata, rejected=True)
 
     plotter.legend(loc='best')
-
-    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
 
     if args.show_plot:
         plotter.show(args)
@@ -732,64 +794,11 @@ def plot_homogenity(RHTdata, args):
     plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
     #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
     plotter.set_lim_args(args)
-    for i, dwell in enumerate(dwells):
-        dwell_df = dwell['DataFrame']
-        if len(dwell_df) >= 2:
-            dwell_len = dwell['duration']
-            dwell_Tmean = dwell['Tmean']
-            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
-            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
-            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.2, 'y2'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
-            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
 
-    for i, online in enumerate(RHTdata['onlines']):
-        online_df = online['DataFrame']
-        plotter.text(online['activation hours'], plotter.rel_pos(0.8,'y2'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
-        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
-
-    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
-    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
-
-    
-    #if len(logging['accepted_TC_keys'])>0:
-    if False:
-        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
-        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y2'), accepted_y_keys_note, style='italic',
-                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
-
-    if len(logging['rejected_TC_keys'])>0:
-    #if False:
-        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
-        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y2'), rejected_y_keys_note, style='italic',
-                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
-
-    dwells_note = 'Dwells:\n'
-    if len(args.dwell_target_temperatures)>0:
-        if RHTdata['duration_based_target_temperatures']:
-            dwells_note += 'program set targets '
-        else:
-            dwells_note += 'user selected targets '
-        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
-
-    nc = 0
-    if args.dwell_target_deviation != None:
-        nc += 1
-        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
-    if args.dwell_target_homogenity != None:
-        nc += 1
-        if nc >1: dwells_note += 'and '
-        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
-    if nc == 1:
-        dwells_note += ' criterion'
-    elif nc > 1:
-        dwells_note += ' criteria'
-
-    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y2'), dwells_note, style='italic',
-            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+    plotter.plot_dwells(dwells)
+    plotter.plot_onlines(RHTdata)
+    plotter.write_dwell_notes(args)
+    plotter.write_tc_notes(RHTdata, rejected=True)
 
     plotter.legend(loc='best')
 
@@ -802,7 +811,6 @@ def plot_homogenity(RHTdata, args):
         plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args)
 
 def plot(RHTdata, args):
-    plotter.set_lim_args(args)
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -815,66 +823,12 @@ def plot(RHTdata, args):
     plotter.plot_ax(logging_df['hours'],logging_df['y_min'], label='min(T)')
     plotter.plot_ax(logging_df['hours'],logging_df['y_mean'], label='mean(T)')
     plotter.plot_ax(logging_df['hours'],logging_df['y_max'], label='max(T)')
-    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
-    for i, dwell in enumerate(dwells):
-        dwell_df = dwell['DataFrame']
-        if len(dwell_df) >= 2:
-            dwell_len = dwell['duration']
-            dwell_Tmean = dwell['Tmean']
-            dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
-            #plotter.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
-            plotter.text(dwell_df['hours'].iloc[0], plotter.rel_pos(0.1, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
-            plotter.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+    plotter.set_lim_args(args)
 
-    for i, online in enumerate(RHTdata['onlines']):
-        online_df = online['DataFrame']
-        plotter.text(online['activation hours'], 0.8*logging_df['y_max'].max(), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
-        plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
-        plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
-
-    #plotter.plot_ax(logging_df['hours'],logging_df['y_mean'])
-    #plotter.plot_ax(dwells['hours'],dwells['y_mean'])
-
-    
-    #if len(logging['accepted_TC_keys'])>0:
-    if False:
-        accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
-        accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
-                bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
-
-    if len(logging['rejected_TC_keys'])>0:
-    #if False:
-        rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
-        rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
- 
-        plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
-                bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
-
-    dwells_note = 'Dwells:\n'
-    if len(args.dwell_target_temperatures)>0:
-        if RHTdata['duration_based_target_temperatures']:
-            dwells_note += 'program set targets '
-        else:
-            dwells_note += 'user selected targets '
-        dwells_note += ', '.join([format(f, "3.0f")+'$\degree$C' for f in args.dwell_target_temperatures]) + '\n'
-
-    nc = 0
-    if args.dwell_target_deviation != None:
-        nc += 1
-        dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_target_deviation) + ' deviation '
-    if args.dwell_target_homogenity != None:
-        nc += 1
-        if nc >1: dwells_note += 'and '
-        dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
-    if nc == 1:
-        dwells_note += ' criterion'
-    elif nc > 1:
-        dwells_note += ' criteria'
-
-    plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.8, 'y'), dwells_note, style='italic',
-            bbox={'facecolor': 'yellow', 'alpha':0.8, 'pad': 10})
+    plotter.plot_dwells(dwells)
+    plotter.plot_onlines(RHTdata)
+    plotter.write_dwell_notes(args)
+    plotter.write_tc_notes(RHTdata, rejected=True)
 
     plotter.legend(loc='best')
 
@@ -1125,12 +1079,12 @@ if __name__ == '__main__':
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
     parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10., nargs='+')
     parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
-    #parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=5.)
     parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=6., nargs='+')
     parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
     parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-cli', '--command-line', action='store_true', default=False) 
+    parser.add_argument('-m', '--thermo-couple-mapping', type=str, default='default.mapping') 
 
     global args 
     args = parser.parse_args()
@@ -1158,11 +1112,12 @@ if __name__ == '__main__':
             for args.dwell_target_homogenity_half_band in dthomhalfs:
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
-                plot_all_TC(RHTdata, args)
-                plot_accepted_TC(RHTdata, args)
+                #plot_all_TC(RHTdata, args)
+                #plot_accepted_TC(RHTdata, args)
                 plot(RHTdata, args)
                 plot_homogenity(RHTdata, args)
                 plot_Ar(RHTdata, args)
+                plotter.reset()
 
     file_logger.close()
 
