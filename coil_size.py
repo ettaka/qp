@@ -25,8 +25,11 @@ def read_coil_size_data(filepath,args):
     with codecs.open(filepath) as f:
         head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
 
+    offset = None
     for line in head:
         if 'shim' in line: shim = float(line.split()[1])*args.unit_scaling
+        elif 'offset' in line: offset = float(line.split()[1])*args.unit_scaling
+
     print "_________________________"
     print "filepath", filepath
     print "size shim:", shim
@@ -34,6 +37,7 @@ def read_coil_size_data(filepath,args):
     col_names = ['L+R' if 'L+R' in s else s for s in head[-1].strip('\r\n').split('\t')]
     print "column names:", col_names
     coil_size_dict['shim'] = shim
+    coil_size_dict['offset'] = offset
     coil_size_dict['column_names'] = col_names
     coil_size_dict['filepath'] = filepath
     coil_size_dict['radial_size_reduction'] = args.radial_size_reduction
@@ -47,6 +51,10 @@ def read_coil_size_data(filepath,args):
     raw_data *= args.unit_scaling
 
     coil_size_dict['raw_data'] = raw_data
+    if coil_size_dict['offset'] != None:
+        print "Using offset", coil_size_dict['offset'], "for correcting the L+R data!"
+        coil_size_dict['raw_data'][:, col_inds['L+R']] += coil_size_dict['offset']
+
     print "Add column L+R+shim"
     add_to_raw_data('L+R+shim', coil_size_dict, raw_data[:,col_inds['L+R']] + shim)
 
@@ -102,9 +110,11 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
         else: xind = col_inds['Y centered']
         if i==0: xdata = coil_size_dict['raw_data'][:,xind]
         ydata = coil_size_dict['interp'][col_inds['L+R']](xdata)
-        label = coil_size_dict['filepath'].replace('.size','') + coil_size_dict['column_names'][1]
+        label = coil_size_dict['filepath'].replace('.size','')# + coil_size_dict['column_names'][1]
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
+    ax.set_xlabel("Longitudinal location (m)")
+    ax.set_ylabel("L+R ($\mu$m)")
     if av_interp != None:
         ax.plot(xdata* args.xunit_plot_scaling,av_interp(xdata)* args.yunit_plot_scaling,'-b'+markers[totnum],label='av', linewidth=5)
     if shimmed_av_interp != None:
