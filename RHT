@@ -2,14 +2,11 @@
 
 import numpy as np
 import pandas as pd
-#import matplotlib
 import matplotlib.pyplot as plt
 import time
-#import pandas as pd
 import argparse
 import codecs
 import cPickle as pickle
-
 import csv
 import datetime
 import os
@@ -767,7 +764,7 @@ def plot_Ar(RHTdata, args):
     plotter.set_lim_args(args)
 
     plotter.plot_dwells(dwells)
-    plotter.plot_onlines(RHTdata)
+    #plotter.plot_onlines(RHTdata)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
 
@@ -796,7 +793,7 @@ def plot_homogenity(RHTdata, args):
     plotter.set_lim_args(args)
 
     plotter.plot_dwells(dwells)
-    plotter.plot_onlines(RHTdata)
+    #plotter.plot_onlines(RHTdata)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
 
