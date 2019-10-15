@@ -132,7 +132,7 @@ class Plotter:
                 dwell_Tmean = dwell['Tmean']
                 dwell_homogenity_half_band = dwell['Max_Homogenity_half_band']
                 #self.plot_ax(dwell_df['hours'],dwell_df['y_mean'])
-                self.text(dwell_df['hours'].iloc[0], self.rel_pos(0.1, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'H/2$\leq${:2.1f}'.format(dwell_homogenity_half_band))
+                self.text(dwell_df['hours'].iloc[0], self.rel_pos(0.1, 'y'), 'Dwell ' + str(i+1) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmidrange'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
                 self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
 
     def plot_onlines(self, RHTdata):
@@ -564,6 +564,7 @@ def find_dwells(logging, args):
             dwell['Tmean'] = dwell_df[accepted_TC_keys].mean().mean()
             dwell['Tmin'] = dwell_df[accepted_TC_keys].min().min()
             dwell['Tmax'] = dwell_df[accepted_TC_keys].max().max()
+            dwell['Tmidrange'] = (dwell['Tmax']+dwell['Tmin'])/2.
             dwell['Max_Homogenity'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
             dwell['Max_Homogenity_half_band'] = dwell['Max_Homogenity']/2.
             dwells.append(dwell)
@@ -581,6 +582,40 @@ def fetch_dwell_by_number(dwells, n):
         if n == dwell['n']:
             return dwell
     return None
+
+def collect_print_parameters(dwells, args):
+    print_params = {}
+    print_params['File'] = []
+    print_params['Target H/2'] = []
+    print_params['Target dev'] = []
+    print_params['Target HR'] = []
+
+    for i, target in enumerate(args.dwell_target_temperatures):
+        n = i+1
+        dwell = fetch_dwell_by_number(dwells, n)
+        print_params[str(n) + '. Tmean'] = []
+        print_params[str(n) + '. dt'] = []
+        print_params[str(n) + '. Max H/2'] = []
+
+    p = parameters_dict(args)
+    print_params['File'].append(args.path)
+    print_params['Target H/2'].append(p['dthomhalf'])
+    print_params['Target dev'].append(p['dtdev'])
+    print_params['Target HR'].append(p['dhtol'])
+
+    for i, target in enumerate(args.dwell_target_temperatures):
+        n=i+1
+        dwell = fetch_dwell_by_number(dwells, n)
+        if dwell != None:
+            print_params[str(n) + '. Tmean'].append(dwell['Tmean'])
+            print_params[str(n) + '. dt'].append(dwell['duration'])
+            print_params[str(n) + '. Max H/2'].append(dwell['Max_Homogenity_half_band'])
+        else:
+            print_params[str(n) + '. Tmean'].append(-1)
+            print_params[str(n) + '. dt'].append(-1)
+            print_params[str(n) + '. Max H/2'].append(-1)
+    print_params_df = pd.DataFrame(print_params)
+    return print_params_df
 
 def print_parameters_and_dwells(dwells, args):
     global print_parameters_and_dwells_calls
@@ -691,6 +726,7 @@ def analyze(RHTdata, args):
     logging_df['y_min'] = accepted_TC_df_list.min(axis=1)
     logging_df['y_max'] = accepted_TC_df_list.max(axis=1)
     logging_df['y_homogenity'] = logging_df['y_max'] - logging_df['y_min'] 
+    logging_df['y_midrange'] = (logging_df['y_max'] + logging_df['y_min'])/2.
     logging_df['dy_mean_dt'] = np.gradient(logging_df['y_mean'], logging_df['seconds'])
 
     #dwell_target_temperatures = find_dwells_target_temperatures(program_df, args)
@@ -701,7 +737,9 @@ def analyze(RHTdata, args):
         args.dwell_target_temperatures = sorted(list(set(program_df[program_df['Time hours'].ge(args.dwell_duration_minimum)]['From Tp zone B3'])))
     dwells = find_dwells(logging, args)
     print_dwells(dwells, args)
-    print_parameters_and_dwells(dwells, args)
+    print_params_df = collect_print_parameters(dwells, args)
+    file_logger.write(print_params_df.to_string())
+    #print_parameters_and_dwells(dwells, args)
     RHTdata['dwells'] = dwells
 
 def plot_all_TC(RHTdata, args):
@@ -1082,6 +1120,7 @@ if __name__ == '__main__':
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-cli', '--command-line', action='store_true', default=False) 
     parser.add_argument('-m', '--thermo-couple-mapping', type=str, default='default.mapping') 
+    parser.add_argument('-ni', '--no-images', action='store_true', default=False) 
 
     global args 
     args = parser.parse_args()
@@ -1109,11 +1148,12 @@ if __name__ == '__main__':
             for args.dwell_target_homogenity_half_band in dthomhalfs:
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
-                #plot_all_TC(RHTdata, args)
-                #plot_accepted_TC(RHTdata, args)
-                plot(RHTdata, args)
-                plot_homogenity(RHTdata, args)
-                plot_Ar(RHTdata, args)
+                if not args.no_images:
+                    plot_all_TC(RHTdata, args)
+                    plot_accepted_TC(RHTdata, args)
+                    plot(RHTdata, args)
+                    plot_homogenity(RHTdata, args)
+                    plot_Ar(RHTdata, args)
                 plotter.reset()
 
     file_logger.close()
