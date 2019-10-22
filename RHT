@@ -22,13 +22,22 @@ class Logger:
 
     def __init__(self, path):
         self.logfile = open(path+'.RHT.log','w')
+        self.texfile = open(path+'.RHT.tex','w')
+        self.texfile.write('\\documentclass{report}\n')
+        self.texfile.write('\\usepackage{booktabs}\n')
+        #self.texfile.write('\\usepackage{geometry}\n')
+        self.texfile.write('\\begin{document}\n')
         
     def write(self, line):
         print line
         self.logfile.write(line + '\n')
 
+    def write_table(self, table):
+        self.texfile.write(table)
+
     def close(self):
         self.logfile.close()
+        self.texfile.write('\end{document}\n')
 
 class Plotter:
 
@@ -135,16 +144,17 @@ class Plotter:
                 self.text(dwell_df['hours'].iloc[0], self.rel_pos(0.1, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
                 self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
 
-    def plot_onlines(self, RHTdata):
+    def plot_onlines(self, RHTdata, plot_curves=True):
         logging = RHTdata['data_logging']
         logging_df = logging['DataFrame']
         program_df = RHTdata['program']['DataFrame']
         dwells = RHTdata['dwells']
         for i, online in enumerate(RHTdata['onlines']):
             online_df = online['DataFrame']
-            plotter.text(online['activation hours'], 0.8*logging_df['Tmax'].max(), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+            plotter.text(online['activation hours'], plotter.rel_pos(0.8, 'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
             plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
-            plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
+            if plot_curves:
+                plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
 
     def write_dwell_notes(self, args):
         dwells_note = 'Dwells:\n'
@@ -560,7 +570,8 @@ def find_dwells(logging, args):
                 dwell_df = dwell_df[diff.abs()<args.dwell_target_deviation]
             dwell_df = dwell_df[dwell_df['dmeanTdt'].abs()<args.dwell_heat_rate_tolerance]
             dwell_df = dwell_df[dwell_df['dmeanTdt']>-0.0001]
-            dwell_df = dwell_df[(dwell_df['Tmid']-target).abs()<args.dwell_mid_deviation]
+            if args.dwell_mid_deviation != None:
+                dwell_df = dwell_df[(dwell_df['Tmid']-target).abs()<args.dwell_mid_deviation]
         else:
             mid_target = (args.dwell_target_ranges[i][0] + args.dwell_target_ranges[i][1])/2
             dwell_df = dwell_df[(dwell_df['Tmid']-mid_target).abs()<mid_target/10.]
@@ -808,7 +819,10 @@ def analyze(RHTdata, args):
     dwells = find_dwells(logging, args)
     print_dwells(dwells, args)
     print_params_df, print_cols = collect_print_parameters(dwells, args)
-    file_logger.write(print_params_df[print_cols].to_string())
+    param = print_params_df[print_cols]
+    file_logger.write(param.to_string())
+    tex_cols = ['Target_T', 'duration', 'Tmeanmid', 'Tmeanmean']
+    file_logger.write_table(param[tex_cols].to_latex(index=False, float_format="{:0.1f}".format, column_format="".join(['c' for col in tex_cols])+'c'))
     #print_parameters_and_dwells(dwells, args)
     RHTdata['dwells'] = dwells
 
@@ -872,7 +886,7 @@ def plot_Ar(RHTdata, args):
     plotter.set_lim_args(args)
 
     plotter.plot_dwells(dwells)
-    #plotter.plot_onlines(RHTdata)
+    plotter.plot_onlines(RHTdata, plot_curves=False)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
 
@@ -899,7 +913,7 @@ def plot_heating_rate(RHTdata, args):
     plotter.set_lim_args(args)
 
     plotter.plot_dwells(dwells)
-    #plotter.plot_onlines(RHTdata)
+    plotter.plot_onlines(RHTdata, plot_curves=False)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
 
@@ -930,7 +944,7 @@ def plot_homogenity(RHTdata, args):
     plotter.set_lim_args(args)
 
     plotter.plot_dwells(dwells)
-    #plotter.plot_onlines(RHTdata)
+    plotter.plot_onlines(RHTdata, plot_curves=False)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
 
@@ -1224,7 +1238,8 @@ if __name__ == '__main__':
     parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
     parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10., nargs='+')
-    parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=1., nargs='+')
+    #parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None, nargs='+')
+    parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None)
     parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
     parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=6., nargs='+')
     parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
@@ -1252,30 +1267,24 @@ if __name__ == '__main__':
     else:
         dtdevs = [args.dwell_target_deviation]
 
-    if type(args.dwell_mid_deviation) == type([]):
-        dmidev = args.dwell_mid_deviation
-    else:
-        dmidev = [args.dwell_mid_deviation]
-
     if args.command_line:
         RHTPrompt().cmdloop()
     else:
         RHT_csv_reader = RHT_CSV_Reader()
         read_RHT_file = RHT_csv_reader.read_RHT_file
         RHTdata = read_RHT_file(args, path, False)
-        for args.dwell_mid_deviation in dmidev:
-            for args.dwell_target_deviation in dtdevs:
-                for args.dwell_target_homogenity_half_band in dthomhalfs:
-                    regenerate_online_data(RHTdata)
-                    analyze(RHTdata, args)
-                    if not args.no_images:
-                        #plot_all_TC(RHTdata, args)
-                        #plot_accepted_TC(RHTdata, args)
-                        plot(RHTdata, args)
-                        #plot_homogenity(RHTdata, args)
-                        #plot_Ar(RHTdata, args)
-                        #plot_heating_rate(RHTdata, args)
-                    plotter.reset()
+        for args.dwell_target_deviation in dtdevs:
+            for args.dwell_target_homogenity_half_band in dthomhalfs:
+                regenerate_online_data(RHTdata)
+                analyze(RHTdata, args)
+                if not args.no_images:
+                    #plot_all_TC(RHTdata, args)
+                    #plot_accepted_TC(RHTdata, args)
+                    plot(RHTdata, args)
+                    plot_homogenity(RHTdata, args)
+                    plot_Ar(RHTdata, args)
+                    plot_heating_rate(RHTdata, args)
+                plotter.reset()
 
     file_logger.close()
 
