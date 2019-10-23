@@ -796,7 +796,7 @@ def analyze(RHTdata, args):
             TC_all_df = logging_df[[y for y in logging_df.keys() if ('MT' in y and 'PV' in y and 'TC' in y)]]
         else:
             print "Thermo-couple mapping found!"
-            TC_all_df = logging_df[[y for y in logging_df.keys() if 'block' in y]]
+            TC_all_df = logging_df[[y for y in logging_df.keys() if 'block' in y and 'air support' not in y and 'plate' not in y]]
 
     RHTdata['TC_all_df'] = TC_all_df
     logging['accepted_TC_keys'], logging['rejected_TC_keys'], logging['accepted_keys_rounds'] = abs_diff_filters(logging_df, TC_all_df, args.temperature_deviation_filters)
@@ -1248,6 +1248,7 @@ if __name__ == '__main__':
     parser.add_argument('-cli', '--command-line', action='store_true', default=False) 
     parser.add_argument('-m', '--thermo-couple-mapping', type=str, default='default.mapping') 
     parser.add_argument('-ni', '--no-images', action='store_true', default=False) 
+    parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
 
     global args 
     args = parser.parse_args()
@@ -1272,7 +1273,7 @@ if __name__ == '__main__':
     else:
         RHT_csv_reader = RHT_CSV_Reader()
         read_RHT_file = RHT_csv_reader.read_RHT_file
-        RHTdata = read_RHT_file(args, path, False)
+        RHTdata = read_RHT_file(args, path, args.override_pickle)
         for args.dwell_target_deviation in dtdevs:
             for args.dwell_target_homogenity_half_band in dthomhalfs:
                 regenerate_online_data(RHTdata)
