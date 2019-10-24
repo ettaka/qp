@@ -1233,7 +1233,7 @@ if __name__ == '__main__':
     parser.add_argument('--xlim', nargs=2, type=float, default=[0,350])
     parser.add_argument('--ylim', nargs=2, type=float)
     parser.add_argument('-tdf', '--temperature-deviation-filters', nargs='+', type=float, default=[500,70,50])
-    parser.add_argument('-dtr', '--dwell-target-ranges', nargs='+', type=str, default=['204 216','396 408','660 671'])
+    parser.add_argument('-dtr', '--dwell-target-ranges', nargs='+', type=str, default=['204 216','389 401','660 670'])
     parser.add_argument('-ntr', '--no-target-ranges', action='store_true', default=False)
     parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
