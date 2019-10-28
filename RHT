@@ -26,6 +26,7 @@ class Logger:
         self.texfile.write('\\documentclass{report}\n')
         self.texfile.write('\\usepackage{booktabs}\n')
         #self.texfile.write('\\usepackage{geometry}\n')
+        self.texfile.write('\\pagenumbering{gobble}\n')
         self.texfile.write('\\begin{document}\n')
         
     def write(self, line):
@@ -755,14 +756,14 @@ def regenerate_online_data(RHTdata):
     program['activation datetime'] = RHTdata['data_loggings'][0]['DataFrame']['datetime'][0]
     program['activation seconds'] = (program['activation datetime'] - logging_df['datetime'][0]).total_seconds()
     program['activation hours'] = program['activation seconds']/3600.
-    program['activation_step'] = find_program_step_using_datetime(logging_df, program['activation datetime'])
+    #program['activation_step'] = find_program_step_using_datetime(logging_df, program['activation datetime'])
     for i, online in enumerate(RHTdata['onlines']):
         latest_program_df = latest_program['DataFrame']
         online_df = online['DataFrame']
         online['activation datetime'] = RHTdata['data_loggings'][i+1]['DataFrame']['datetime'][0]
         online['activation seconds'] = (online['activation datetime'] - RHTdata['data_loggings'][0]['DataFrame']['datetime'][0]).total_seconds()
         online['activation hours'] = online['activation seconds']/3600.
-        online['activation_step'] = find_program_step_using_datetime(logging_df, online['activation datetime'])
+        #online['activation_step'] = find_program_step_using_datetime(logging_df, online['activation datetime'])
         latest_program['deactivation datetime'] = online['activation datetime'] 
         latest_program['deactivation seconds'] = online['activation seconds'] 
         latest_program['deactivation hours'] = online['activation hours'] 
@@ -796,7 +797,7 @@ def analyze(RHTdata, args):
             TC_all_df = logging_df[[y for y in logging_df.keys() if ('MT' in y and 'PV' in y and 'TC' in y)]]
         else:
             print "Thermo-couple mapping found!"
-            TC_all_df = logging_df[[y for y in logging_df.keys() if 'block' in y and 'air support' not in y and 'plate' not in y]]
+            TC_all_df = logging_df[[y for y in logging_df.keys() if 'block' in y.lower() and 'air support' not in y.lower()]]
 
     RHTdata['TC_all_df'] = TC_all_df
     logging['accepted_TC_keys'], logging['rejected_TC_keys'], logging['accepted_keys_rounds'] = abs_diff_filters(logging_df, TC_all_df, args.temperature_deviation_filters)
