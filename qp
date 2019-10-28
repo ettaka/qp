@@ -17,6 +17,9 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.autoscale(enable=True, axis='y', tight=True)
 
+FILETYPE = ".ASC"
+FILETYPES = ['.ASC', '.txt']
+
 """
  %% Compute Stress Option 
  E_ti = 130e6/10e5/10e2 % GPa,muStrain,MPa - Warm = Cold
@@ -257,7 +260,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             else: 
                 curve_label=y_axis_dict['name']
         elif mtbop_data['label type'] == 'filename':
-            curve_label=mtbop_data['filepath'].replace('.txt', '')
+            curve_label=mtbop_data['filepath'].replace(FILETYPE, '')
             if ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']) and not mtbop_data['show_min_max_labels']:
                 print "MIN MAX", mtbop_data['show_min_max_labels']
                 curve_label=''
@@ -388,7 +391,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 		return cpickle_load(pickle_path)
 
 	mtbop_data = {}
-	with codecs.open(basename + '.txt') as f:
+	with codecs.open(basename + FILETYPE) as f:
 		head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
 	channel_names = head[8].strip('\r\n').split('\t')
         get_channel_replacements(mtbop_data, head, channel_names)
@@ -597,7 +600,7 @@ def test_plot_selected():
 def test_plot_selected_list():
 	#datadir = 'Data/MQXFS4' 
 	#datadir = 'Data/HCMQXFS004-CR000001' 
-	#filepath_list = [datadir + '/' + f for f in os.listdir(datadir) if ".txt" in f]
+	#filepath_list = [datadir + '/' + f for f in os.listdir(datadir) if FILETYPE in f]
 	max_current_low_limit = 15
 	
 	#filepath_list = ['Data/test/01QuenchDC_161013_16236.txt', 
@@ -670,8 +673,8 @@ def find_files(paths):
 	filepaths=[]
 	for path in paths:
 		if os.path.isdir(path):
-			filepaths += [path + '/' + f for f in os.listdir(path) if ".txt" in f]
-		elif os.path.isfile(path) and ".txt" in path:
+			filepaths += [path + '/' + f for f in os.listdir(path) if FILETYPE in f]
+		elif os.path.isfile(path) and FILETYPE in path:
 			filepaths.append(path)
 	return filepaths
 
@@ -725,7 +728,7 @@ def create_channel_dict_list(channel_names, channel_units):
                 elif '_RE' in channel_name:
                     channel_dict['longitudinal location'] = 'RE'
 
-                if '_Comp' in channel_name: 
+                if '_comp' in channel_name.lower(): 
                     channel_dict['thermal compensator'] = 'compensator'
 
                 if 'SG_' == channel_name[0:3]:
@@ -1266,7 +1269,31 @@ def plot_data(plot_dict, args=None):
                 mtbop_data['common location'] = plot_dict['common location']
                 mtbop_data['show_min_max_labels'] = plot_dict['show_min_max_labels']
                 plot_mtbop_data(mtbop_data, args)
- 
+
+def search_channel_names_for_y_axis(plot_dict, args):
+    print "search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis"
+    print "search_channel_names_for_y_axis: y_axis: = ", args.y_axis
+    found_channels = []
+    filter_str_list = []
+    if args.filter_out_any != None:
+        filter_str_list = args.filter_out_any.split()
+    print "search_channel_names_for_y_axis: filtering out any: ", filter_str_list
+    for search_name in args.y_axis:
+        search_words = search_name.split()
+        for name in plot_dict['selected_channel_names']:
+            if all(word in name for word in search_words):
+                if not any(word in name for word in filter_str_list):
+                    print "search_channel_names_for_y_axis: found channel:", name
+                    found_channels.append(name)
+                else:
+                    print "search_channel_names_for_y_axis: found channel:", name, "but this was filtered out."
+
+    args.y_axis = list(set(found_channels))
+    if len(args.y_axis) == 0: 
+        print "I didn't find any maching channels... Exiting!"
+        exit()
+    print "search_channel_names_for_y_axis: this is what I found:", args.y_axis
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
 	parser.add_argument('paths', nargs='+', type=str)
@@ -1304,16 +1331,19 @@ if __name__ == '__main__':
 	channels_json = args.channels_json
         #if channels_json == None: channels_json = 'channels.json'
 	x_axis = args.x_axis
-	y_axis = args.y_axis
 	plot = args.plot
-        if not y_axis == None: plot = True
+        if not args.y_axis == None: plot = True
         plot_all = False
-        if y_axis == None and plot: plot_all = True
+        if args.y_axis == None and plot: plot_all = True
 	plot_stress = args.plot_stress
 	override_pickle = args.override_pickle
         markevery = args.markevery
-        save_fig = args.save_fig 
-        if save_fig == None: save_fig = 'plot.png'
+
+        args.path_base_names = args.paths
+        for FT in FILETYPES:
+            args.path_base_names = [path.replace(FT, '') for path in args.path_base_names]
+        if args.save_fig == None and args.y_axis != None: args.save_fig = '-'.join([name.replace(' ','_') for name in args.path_base_names]) + '-' + '-'.join([name.replace(' ','_') for name in args.y_axis]) + '.png'
+        else: args.save_fig =  'plot.png'
 
         if x_axis == None: x_axis = 'Current'
 	plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
@@ -1333,12 +1363,12 @@ if __name__ == '__main__':
 
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
-            y_axis = map(lambda name: 'Delta ' + name, y_axis)
+            args.y_axis = map(lambda name: 'Delta ' + name, args.y_axis)
             if not min_max_avg == None:
                 min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
 
         if min_max_avg != None:
-            if min_max_avg[0] == "y": min_max_avg = y_axis
+            if min_max_avg[0] == "y": min_max_avg = args.y_axis
             compute_min_max_avg(plot_dict, min_max_avg)
         plot_dict['show_min_max_labels'] = args.show_min_max_labels
 
@@ -1351,11 +1381,12 @@ if __name__ == '__main__':
             plot_dict['curve coloring'] = curve_coloring
 
         selected_channel_names = get_selected_channel_names(plot_dict)
+        search_channel_names_for_y_axis(plot_dict, args)
 
         if plot_all:
             plot_dict['y_axis'] = plot_dict['selected_channel_names']
         else:
-            plot_dict['y_axis'] = y_axis
+            plot_dict['y_axis'] = args.y_axis
 
 	if info: 
             print_plot_info(plot_dict)
@@ -1364,7 +1395,7 @@ if __name__ == '__main__':
             print "!!!!! ----------------------------------------------------------------!!!!!"
             exit()
 
-        check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict)
+        check_selected_channels(selected_channel_names, x_axis, args.y_axis, plot_dict)
 
         if args.set_xticks != None:
             xticks = [float(tic) for tic in args.set_xticks.split()]
@@ -1395,7 +1426,8 @@ if __name__ == '__main__':
             if args.show_plot:
                 plt.show()
             else:
-                plt.savefig(save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                print "Saving plot:", args.save_fig
+                plt.savefig(args.save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 
