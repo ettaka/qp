@@ -857,10 +857,10 @@ def create_channel_dict_list(channel_names, channel_units):
                         elif '_FBG' in channel_name:
                                 channel_dict['sensor type'] = 'optical'
                         else: channel_dict['sensor type'] = ''
-                    if '_Z' in channel_name or channel_name[-1] == 'Z':
-                            channel_dict['direction'] =  'Longitudinal'
-                    elif '_T' in channel_name or channel_name[-1] == 'T':
-                            channel_dict['direction'] = 'Azimuthal'
+                    if '_Z' in channel_name or channel_name[-1] == 'Z' or channel_name[-2:] == 'Z_':
+                        channel_dict['direction'] =  'Longitudinal'
+                    elif '_T' in channel_name or channel_name[-1] == 'T' or channel_name[-2:] == 'T_':
+                        channel_dict['direction'] = 'Azimuthal'
 
                     if channel_dict['signal'] == 'stress post computation':
                         channel_dict['physical_quantity'] = 'Stress'
