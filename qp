@@ -435,6 +435,12 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 
 	channel_names = [name.split()[0].replace('_cryo','') for name in channel_names]
 	channel_units = head[9].strip('\r\n').split('\t')
+#        for row in head:
+#            if 'dt' in row:
+#                dt_line = strip('\r\n').split('\t')
+#                mtbop_data['channel_dts'] = [dt_word.split(=)[1] for dt_word in dt_line]
+
+	channel_units = head[9].strip('\r\n').split('\t')
 	#raw_data_df = pd.read_csv(filepath, sep = '\t', skiprows=header_lines, names=channel_names)
 
 	with codecs.open(filepath) as f:
