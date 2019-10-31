@@ -1421,12 +1421,6 @@ if __name__ == '__main__':
 	override_pickle = args.override_pickle
         markevery = args.markevery
 
-        args.path_base_names = args.paths
-        for FT in FILETYPES:
-            args.path_base_names = [path.replace(FT, '') for path in args.path_base_names]
-        if args.save_fig == None and args.y_axis != None: args.save_fig = '-'.join([name.replace(' ','_') for name in args.path_base_names]) + '-' + '-'.join([name.replace(' ','_') for name in args.y_axis]) + '.png'
-        else: args.save_fig =  'plot.png'
-
         if x_axis == None: x_axis = 'Current'
 	plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
         plot_dict['x_axis'] = x_axis
@@ -1449,6 +1443,18 @@ if __name__ == '__main__':
             if not min_max_avg == None:
                 min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
 
+        args.path_base_names = args.paths
+        for FT in FILETYPES:
+            args.path_base_names = [path.replace(FT, '') for path in args.path_base_names]
+        if args.save_fig == None and args.y_axis != None: 
+            args.save_fig = '-'.join([name.replace(' ','_') for name in args.path_base_names]) + '-' + '-'.join([name.replace(' ','_') for name in args.y_axis])
+            if args.comment != None:
+                args.save_fig += '_' + args.comment
+            args.save_fig = args.save_fig.replace(' ', '_')
+            args.save_fig += '.png'
+        elif args.save_fig == '':
+            args.save_fig =  'plot.png'
+
         if min_max_avg != None:
             if min_max_avg[0] == "y": min_max_avg = args.y_axis
             compute_min_max_avg(plot_dict, min_max_avg)
@@ -1461,6 +1467,7 @@ if __name__ == '__main__':
             plot_dict['curve coloring'] = ''
         else:
             plot_dict['curve coloring'] = curve_coloring
+
 
         selected_channel_names = get_selected_channel_names(plot_dict)
         search_channel_names_for_y_axis(plot_dict, args)
