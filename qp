@@ -427,6 +427,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 		return cpickle_load(pickle_path)
 
 	mtbop_data = {}
+        mtbop_data['pickle_path'] = pickle_path
 	with codecs.open(basename + FILETYPE) as f:
 		head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
 	channel_names = head[8].strip('\r\n').split('\t')
