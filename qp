@@ -348,14 +348,16 @@ def filter_plot_dict(plot_dict):
 def get_cryocorrection(head):
     print "Getting cryocorrection factor",
     cryocorrection = None
-    for line in head:
-        if 'CHANNELS:' in line:
-            try:
-                cryocorrection = float(line.split('cryocorrection')[1].split('=')[1])
-                break
-            except:
-                print "...not found."
-                pass
+    for row in head:
+        lines_in_row = row.split(';')
+        for line in lines_in_row:
+            if 'CHANNELS:' in line:
+                try:
+                    cryocorrection = float(line.split('cryocorrection')[1].split('=')[1])
+                    break
+                except:
+                    print "...not found."
+                    pass
 
     return cryocorrection
 
@@ -379,19 +381,21 @@ def get_channel_replacements(mtbop_data, head, channel_names):
     chrep = mtbop_data['channel_replacements'] 
     print "Getting replacement channels data",
     replacements_list=None
-    for line in head:
-        if 'channel_replacements:' in line:
-            try:
-                print line.split('channel_replacements:')[1]
-                chrep['string_list'] = [line.rstrip().split(':')[1].split(',')]
-                chrep['index_list'] = [[channel_names.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
-                print "Corresponds to channel numbers:", chrep['index_list'] 
-                return
-                break
-            except:
-                print "...not found."
-                pass
-            
+    for row in head:
+        lines_in_row = row.split(';')
+        for line in lines_in_row:
+            if 'channel_replacements:' in line:
+                try:
+                    print line.split('channel_replacements:')[1]
+                    chrep['string_list'] = [line.rstrip().split(':')[1].split(',')]
+                    chrep['index_list'] = [[channel_names.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
+                    print "Corresponds to channel numbers:", chrep['index_list'] 
+                    return
+                    break
+                except:
+                    print "...not found."
+                    pass
+                
     print "...not found."
     return replacements_list
 
