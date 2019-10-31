@@ -453,7 +453,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 	#mtbop_data['raw_data_df'] = raw_data_df
 	#mtbop_data['raw_data'] = raw_data_df.values
 	mtbop_data['raw_data'] = raw_data
-        signal_compensation(mtbop_data)
+        #signal_compensation(mtbop_data)
 	mtbop_data['cryocorrection'] = get_cryocorrection(head)
         if mtbop_data['cryocorrection'] != None: signal_cryocorrection(mtbop_data)
         reconstruct_ntp_time(mtbop_data)
@@ -540,8 +540,36 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
                 if not args == None:
                     if args.replace_channels:
                         replace_raw_data_channels(mtbop_data)
+                    if not args.no_thermal_compensation:
+                        signal_compensation(mtbop_data)
                     if args.print_max_current: 
                         detect_max_current(mtbop_data)
+                        detect_max_current_grad(mtbop_data)
+                    if args.rename:
+                        detect_max_current(mtbop_data)
+                        detect_max_current_grad(mtbop_data)
+                        try:
+                            qreplace_str = str(int(round(1000*mtbop_data['max_current']))) + 'A'
+                            qreplace_str += '-' + str(int(round(1000*mtbop_data['max_current_grad']))) + 'As'
+                            newfilepath = filepath.replace('Quench', qreplace_str)
+                            print "Renaming the", filepath, "to", newfilepath
+                            os.rename(filepath, newfilepath)
+                        except: 
+                            print "Tried to rename the file", filepath, "but it failed."
+
+                        try:
+                            print "I'll remove the old pickle file if it exists."
+                            if False and 'pickle_path' in mtbop_data:
+                                pickle_path = mtbop_data['pickle_path']
+                                if os.path.exists(pickle_path):
+                                    os.remove(pickle_path)
+                                else:
+                                    print "pickle file", pickle_path, "does not exist."
+                            else:
+                                print "pickle path not found in mtbop data."
+                        except:
+                            print "Tried to rename the file", filepath, "but it failed."
+
 		mtbop_data_list.append(mtbop_data)
 	return mtbop_data_list
 
@@ -1362,14 +1390,24 @@ if __name__ == '__main__':
         parser.add_argument('--set-yticks', type=str)
         parser.add_argument('--set-xlim', type=str)
         parser.add_argument('--set-ylim', type=str)
+        parser.add_argument('--comment', type=str)
 	parser.add_argument('--grid', action='store_true', default=True) 
+	parser.add_argument('--no-thermal-compensation', action='store_true', default=False) 
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
         parser.add_argument('--fit-range', type=str)
+        parser.add_argument('--inspect', action='store_true', default=False)
+        parser.add_argument('--rename', action='store_true', default=False)
 
 	args = parser.parse_args()
 	paths = args.paths
+        if args.inspect:
+            args.x_axis = 'Data Point'
+            args.y_axis = ['Current']
+            args.show_plot = True
+            args.no_current_squared = True
+         
 	info = args.info
 	channels_json = args.channels_json
         #if channels_json == None: channels_json = 'channels.json'
