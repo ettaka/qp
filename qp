@@ -293,7 +293,7 @@ def plot_mtbop_data(mtbop_data, args=None):
                 curve_label=y_axis_dict['name']
         elif mtbop_data['label type'] == 'filename':
             curve_label=mtbop_data['filepath'].replace(FILETYPE, '')
-            if ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']) and not mtbop_data['show_min_max_labels']:
+            if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']) and not mtbop_data['show_min_max_labels']:
                 print "MIN MAX", mtbop_data['show_min_max_labels']
                 curve_label=''
                 linestyle = '--'
@@ -315,7 +315,7 @@ def plot_mtbop_data(mtbop_data, args=None):
         else:
             curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
-            if 'Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']:
+            if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([10,20])
 
 @timeit
