@@ -20,6 +20,29 @@ ax.autoscale(enable=True, axis='y', tight=True)
 FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
 
+def autoscale_y(args):
+    if args.set_xlim != None:
+        xlim = [float(s) for s in args.set_xlim.split()]
+        if len(xlim) == 2:
+            xmin = xlim[0]
+            xmax = xlim[1]
+
+            ymin, ymax = None, None
+            for line in ax.lines:
+                x = line.get_xdata()
+                y = line.get_ydata()
+                visible_y = y[(x>=xmin) & (x<=xmax)]
+                if len(visible_y):
+                    test = np.min(visible_y)
+                    if ymin == None or ymin > test:
+                        ymin = test
+                    test = np.max(visible_y)
+                    if ymin == None or ymax < test:
+                        ymax = test
+
+            print "autoscale_y: set ylim:", ymin, ymax
+            ax.set_ylim((ymin, ymax))
+
 """
  %% Compute Stress Option 
  E_ti = 130e6/10e5/10e2 % GPa,muStrain,MPa - Warm = Cold
@@ -120,11 +143,20 @@ def detect_max_current(mtbop_data):
 	qinx = np.argmax(current_array)
 	mtbop_data['max_current_index'] = qinx
 	mtbop_data['max_current'] = current_array[qinx]
-	mtbop_data['max_current_grad'] = grad_array[qinx]
 	print "mtbop_data['filepath']", mtbop_data['filepath']
 	print "mtbop_data['max_current_index']", mtbop_data['max_current_index']
-	print "mtbop_data['max_current_grad']", mtbop_data['max_current_grad']
 	print "mtbop_data['max_current']", mtbop_data['max_current']
+
+def detect_max_current_grad(mtbop_data, dt=1):
+	raw_data = mtbop_data['raw_data']
+	current_array = raw_data[:, find_channel_index(mtbop_data['channel_names'], 'Current')]
+	grad_array = np.gradient(current_array, dt)
+	qinx = np.argmax(grad_array)
+	mtbop_data['max_current_grad_index'] = qinx
+	mtbop_data['max_current_grad'] = grad_array[qinx]
+	print "mtbop_data['filepath']", mtbop_data['filepath']
+	print "mtbop_data['max_current_grad_index']", mtbop_data['max_current_grad_index']
+	print "mtbop_data['max_current_grad']", mtbop_data['max_current_grad']
 
 def detect_first_values(mtbop_data):
 	raw_data = mtbop_data['raw_data']
@@ -1423,6 +1455,13 @@ if __name__ == '__main__':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
+            autoscale_y(args)
+            if args.no_thermal_compensation:
+                xmin, xmax = ax.get_xlim()
+                ymin, ymax = ax.get_ylim()
+                print xmin, ymax
+                ax.text(xmin + (xmax-xmin)/3., ymin + 2.*(ymax-ymin)/3., "No thermal compensation", style='italic', bbox={'facecolor': 'yellow', 'alpha':0.3, 'pad': 10})
+
             if args.show_plot:
                 plt.show()
             else:
