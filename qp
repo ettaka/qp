@@ -1349,20 +1349,21 @@ def search_channel_names_for_y_axis(plot_dict, args):
     if args.filter_out_any != None:
         filter_str_list = args.filter_out_any.split()
     print "search_channel_names_for_y_axis: filtering out any: ", filter_str_list
-    for search_name in args.y_axis:
-        search_words = search_name.split()
-        for name in plot_dict['selected_channel_names']:
-            if all(word in name for word in search_words):
-                if not any(word in name for word in filter_str_list):
-                    print "search_channel_names_for_y_axis: found channel:", name
-                    found_channels.append(name)
-                else:
-                    print "search_channel_names_for_y_axis: found channel:", name, "but this was filtered out."
+    if args.y_axis != None:
+        for search_name in args.y_axis:
+            search_words = search_name.split()
+            for name in plot_dict['selected_channel_names']:
+                if all(word in name for word in search_words):
+                    if not any(word in name for word in filter_str_list):
+                        print "search_channel_names_for_y_axis: found channel:", name
+                        found_channels.append(name)
+                    else:
+                        print "search_channel_names_for_y_axis: found channel:", name, "but this was filtered out."
 
-    args.y_axis = list(set(found_channels))
-    if len(args.y_axis) == 0: 
-        print "I didn't find any maching channels... Exiting!"
-        exit()
+        args.y_axis = sorted(list(set(found_channels)))
+        if len(args.y_axis) == 0: 
+            print "I didn't find any maching channels... Exiting!"
+            exit()
     print "search_channel_names_for_y_axis: this is what I found:", args.y_axis
 
 if __name__ == '__main__':
