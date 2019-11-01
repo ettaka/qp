@@ -18,10 +18,6 @@ note_x_rel_pos = 0.75
 linewidth = 3
 print_parameters_and_dwells_calls = 0
 
-fig = plt.figure(figsize=(35,10))
-ax = fig.add_subplot(111)
-ax.autoscale(enable=True, axis='y', tight=True)
-
 class Report:
 
     def __init__(self, path):
@@ -71,7 +67,7 @@ class Logger:
 class Plotter:
 
     def __init__(self):
-        #self.reset()
+        self.reset()
         self.colors = ['r','g','b','y','c','k','m']
         self.markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
@@ -100,7 +96,10 @@ class Plotter:
         self.fig_counter += 1
         fig_filename_fixed = fig_filename + '_IMG' + str(self.fig_counter).zfill(2) + suffix
         print "Saving", fig_filename_fixed
-        plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
+        if hasattr(self, 'ldg') and self.lgd != None:
+            plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
+        else:
+            plt.savefig(fig_filename_fixed, bbox_inches='tight')
         self.clear()
 
     def set_xlabel(self, label):
@@ -108,6 +107,9 @@ class Plotter:
 
     def set_ylabel(self, label):
         self.ax.set_ylabel(label)
+
+    def set_zlabel(self, label):
+        self.ax.set_zlabel(label)
 
     def set_ylabel2(self, label):
         self.ax2.set_ylabel(label)
@@ -137,6 +139,17 @@ class Plotter:
         kwargs['color'] = self.get_color()
         kwargs['linewidth'] = linewidth
         self.plots += self.ax2.plot(*args, **kwargs)
+
+    def pcolormesh(self, *args, **kwargs):
+        hours_samples = args[0]
+        block_samples = args[1]
+        colorbar_label = kwargs['colorbar_label']
+        del kwargs['colorbar_label']
+        self.plot_counter += 1
+        self.plots += [self.ax.pcolormesh(*args, **kwargs)]
+        plot = self.plots[-1]
+        self.ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
+        self.fig.colorbar(plot, ax=self.ax, label=colorbar_label)
 
     def legend(self, *args, **kwargs):
         self.plot_labels = [ax.get_label() for ax in self.plots]
@@ -1003,7 +1016,6 @@ def get_block_temperatures(logging_df, block_numbers, accepted_keys):
         block_temperatures[block_n] = logging_df[block_keys]
     return block_temperatures
 
-
 def plot_homogenity_map(RHTdata, args):
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
@@ -1037,38 +1049,18 @@ def plot_homogenity_map(RHTdata, args):
 
     block_temperature_samples = np.array(block_temperature_list)
 
-    c = ax.pcolormesh(hours_samples, block_samples, block_temperature_samples, cmap='RdBu', vmin=minminT, vmax=maxmaxT)
+
+    #plotter.pcolormesh(hours_samples, block_samples, block_temperature_samples, cmap='RdBu', vmin=minminT, vmax=maxmaxT, colorbar_label='T - mid(T) ($\degree$C)')
+    plotter.pcolormesh(hours_samples, block_samples, block_temperature_samples, cmap='coolwarm', vmin=minminT, vmax=maxmaxT, colorbar_label='T - mid(T) ($\degree$C)')
     # set the limits of the plot to the limits of the data
-    ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
-    fig.colorbar(c, ax=ax)
-
-    plt.savefig('test.png')
-    return
-
     plotter.set_xlabel('Time (h)')
-    plotter.set_ylabel('Temperature ($\degree$C)')
-    plotter.plot_ax(logging_df['hours'],logging_df['H']/2., label='H(T)/2')
-    plotter.set_ax2()
-    plotter.set_ylabel2('Flow (l/h)')
-    #plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.0 Ar retort'], label='Ar retort')
-    plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
-    #plotter.plot_ax(logging_df['hours'],logging_df['Tmean'])
-    plotter.set_lim_args(args)
-
-    plotter.plot_dwells(dwells)
-    plotter.plot_onlines(RHTdata, plot_curves=False)
-    plotter.write_dwell_notes(args)
-    plotter.write_tc_notes(RHTdata, rejected=True)
-
-    plotter.legend(loc='best')
-
-    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+    plotter.set_ylabel('Block number')
 
     if args.show_plot:
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_homogenity_map' + parameters_str(args) + '.png', args=args)
 
 def plot(RHTdata, args):
     logging = RHTdata['data_logging']
