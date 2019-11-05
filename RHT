@@ -862,6 +862,10 @@ def regenerate_online_data(RHTdata):
         regenerate_program_data(online_df)
         latest_program = online
 
+#def calibrate_thermocouples(filepath):
+    #ct = pd.read_table(filepath)
+    #print ct[ct['Id']>=100]
+
 @timeit
 def analyze(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -1434,10 +1438,14 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--thermo-couple-mapping', type=str, default='default.mapping') 
     parser.add_argument('-ni', '--no-images', action='store_true', default=False) 
     parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
+    parser.add_argument('-tcal', '--thermo-couple-calibration', type=str) 
 
     global args 
     args = parser.parse_args()
     path = args.path
+
+    #calibrate_thermocouples(args.thermo_couple_calibration)
+    #exit()
 
     file_logger = Logger(path)
     report = Report(path)
