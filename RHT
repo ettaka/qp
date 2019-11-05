@@ -920,9 +920,9 @@ def regenerate_online_data(RHTdata):
         regenerate_program_data(online_df)
         latest_program = online
 
-#def calibrate_thermocouples(filepath):
-    #ct = pd.read_table(filepath)
-    #print ct[ct['Id']>=100]
+def calibrate_thermocouples(filepath):
+    ct = pd.read_table(filepath)
+    print ct.loc[ct['Id']=='1']
 
 @timeit
 def analyze(RHTdata, args):
@@ -1544,8 +1544,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     path = args.path
 
-    #calibrate_thermocouples(args.thermo_couple_calibration)
-    #exit()
+    calibrate_thermocouples(args.thermo_couple_calibration)
+    exit()
 
     file_logger = Logger(path)
     report = Report(path)
