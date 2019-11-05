@@ -10,6 +10,7 @@ import cPickle as pickle
 import csv
 import datetime
 import os
+import shutil
 
 from cmd import Cmd
 
@@ -17,6 +18,60 @@ plt.rcParams.update({'font.size':15})
 note_x_rel_pos = 0.75
 linewidth = 3
 print_parameters_and_dwells_calls = 0
+
+class Report:
+
+    def __init__(self, path):
+        self.report_path = path+'-report.tex'
+        self.texfile = open(self.report_path,'w')
+        self.texfile.write('\\documentclass{report}\n')
+        self.texfile.write('\\usepackage[textwidth=19cm]{geometry}\n')
+        self.texfile.write('\\usepackage{booktabs}\n')
+        self.texfile.write('\\usepackage{graphicx}\n')
+        self.texfile.write('\\begin{document}\n')
+        self.tables=[]
+        self.figures=[]
+        self.temp_image_paths = []
+
+    def write_table(self, table):
+        self.texfile.write(table)
+
+    def write_figure(self, figure):
+        self.texfile.write(figure)
+
+    def store_table(self, name, table):
+        self.tables.append(table)
+
+    def store_figure(self, name, path, caption=None):
+        basename = os.path.splitext(path)[0]
+        self.temp_image_paths.append(basename.replace('.', '_') + '_RHT_tmp.png')
+        temp_image_path = self.temp_image_paths[-1]
+        shutil.copy(path, temp_image_path)
+        figure = '\\begin{figure}\n'
+        figure += '  \\includegraphics[width=\\textwidth]{' + temp_image_path + '}\n'
+        figure += '  \\label{fig:' + name + '}\n'
+        figure += '  \\caption{' + str(caption) + '}\n'
+        figure += '\\end{figure}\n'
+        self.figures.append(figure)
+
+    def write_report(self):
+        print "Writing report to", self.report_path
+        for table in self.tables:
+            self.write_table(table)
+        for figure in self.figures:
+            self.write_figure(figure)
+        
+    def compile_report(self):
+        cmd = 'pdflatex ' + self.report_path
+        print "Compiling report with pdflatex: ", cmd
+        os.system(cmd)
+        print "Removing all the temporary files."
+        for temp_image_path in self.temp_image_paths:
+            os.remove(temp_image_path)
+            
+    def close(self):
+        self.texfile.write('\\end{document}\n')
+        self.texfile.close()
 
 class Logger:
 
@@ -39,6 +94,7 @@ class Logger:
     def close(self):
         self.logfile.close()
         self.texfile.write('\end{document}\n')
+        self.texfile.close()
 
 class Plotter:
 
@@ -68,11 +124,15 @@ class Plotter:
                 self.ax.set_xlim(args.xlim)
             if args.ylim != None: self.ax.set_ylim(args.ylim)
 
-    def savefig(self, fig_filename, suffix = '', args=None):
+    def savefig(self, fig_filename, suffix = '', args=None, caption=None):
         self.fig_counter += 1
         fig_filename_fixed = fig_filename + '_IMG' + str(self.fig_counter).zfill(2) + suffix
         print "Saving", fig_filename_fixed
-        plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
+        if hasattr(self, 'ldg') and self.lgd != None:
+            plt.savefig(fig_filename_fixed, bbox_extra_artists=(self.lgd,), bbox_inches='tight')
+        else:
+            plt.savefig(fig_filename_fixed, bbox_inches='tight')
+        report.store_figure('IMG'+str(self.fig_counter), fig_filename_fixed, caption)
         self.clear()
 
     def set_xlabel(self, label):
@@ -80,6 +140,9 @@ class Plotter:
 
     def set_ylabel(self, label):
         self.ax.set_ylabel(label)
+
+    def set_zlabel(self, label):
+        self.ax.set_zlabel(label)
 
     def set_ylabel2(self, label):
         self.ax2.set_ylabel(label)
@@ -110,6 +173,21 @@ class Plotter:
         kwargs['linewidth'] = linewidth
         self.plots += self.ax2.plot(*args, **kwargs)
 
+    def pcolormesh(self, *args, **kwargs):
+        hours_samples = args[0]
+        block_samples = args[1]
+        if 'colorbar_label' in kwargs:
+            colorbar_label = kwargs['colorbar_label']
+            del kwargs['colorbar_label']
+        else:
+            colorbar_label = None
+        self.plot_counter += 1
+        self.plots += [self.ax.pcolormesh(*args, **kwargs)]
+        plot = self.plots[-1]
+        #self.ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
+        if colorbar_label != None:
+            self.fig.colorbar(plot, ax=self.ax, label=colorbar_label)
+
     def legend(self, *args, **kwargs):
         self.plot_labels = [ax.get_label() for ax in self.plots]
         self.lgd = self.ax.legend(self.plots, self.plot_labels, **kwargs)
@@ -123,18 +201,18 @@ class Plotter:
 
     def rel_pos(self, xrel, coordinate='x', args=None):
         if coordinate=='x':
-            xmin, xmax = plotter.ax.get_xlim()
+            xmin, xmax = self.ax.get_xlim()
         elif coordinate=='y' or coordinate=='y2':
             if hasattr(self, 'ax2') and self.ax2 != None:
-                xmin, xmax = plotter.ax2.get_ylim()
+                xmin, xmax = self.ax2.get_ylim()
             else:
-                xmin, xmax = plotter.ax.get_ylim()
+                xmin, xmax = self.ax.get_ylim()
         else:
             print "rel_pos: unknown coordinate! Exiting..."
         x = xmin + xrel * (xmax - xmin)
         return x
 
-    def plot_dwells(self, dwells):
+    def plot_dwells(self, dwells, only_txt=False, delta_horizontal_position=5, vertical_position=0.1):
         for i, dwell in enumerate(dwells):
             dwell_df = dwell['DataFrame']
             if len(dwell_df) >= 2:
@@ -142,8 +220,12 @@ class Plotter:
                 dwell_Tmean = dwell['Tmeanmean']
                 dwell_homogenity_half_band = dwell['Hmaxmax/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
-                self.text(dwell_df['hours'].iloc[0], self.rel_pos(0.1, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
-                self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+                self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
+                if not only_txt:
+                    self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
+                else:
+                    self.ax.axvline(x=dwell_df['hours'].iloc[0], color='black', linestyle='dashed')
+                    self.ax.axvline(x=dwell_df['hours'].iloc[-1], color='black', linestyle='dashed')
 
     def plot_onlines(self, RHTdata, plot_curves=True):
         logging = RHTdata['data_logging']
@@ -152,10 +234,10 @@ class Plotter:
         dwells = RHTdata['dwells']
         for i, online in enumerate(RHTdata['onlines']):
             online_df = online['DataFrame']
-            plotter.text(online['activation hours'], plotter.rel_pos(0.8, 'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
-            plotter.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
+            self.text(online['activation hours'], self.rel_pos(0.8, 'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+            self.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
             if plot_curves:
-                plotter.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
+                self.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
 
     def write_dwell_notes(self, args):
         dwells_note = 'Dwells:\n'
@@ -203,7 +285,7 @@ class Plotter:
                 accepted_y_keys_note = 'Accepted thermo-couples:\n' + '\n'.join(logging['accepted_TC_keys'])
                 accepted_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
          
-                plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
+                self.text(self.rel_pos(note_x_rel_pos, 'x'), self.rel_pos(0.25, 'y'), accepted_y_keys_note, style='italic',
                         bbox={'facecolor': 'green', 'alpha':0.8, 'pad': 10})
 
         else:
@@ -212,7 +294,7 @@ class Plotter:
                 rejected_y_keys_note = 'Rejected thermo-couples:\n' + '\n'.join(logging['rejected_TC_keys'])
                 rejected_y_keys_note += '\n' + ', '.join([format(f, "3.0f")+'$\degree$C'  for f in args.temperature_deviation_filters]) + '\ndeviation filters'
          
-                plotter.text(plotter.rel_pos(note_x_rel_pos, 'x'), plotter.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
+                self.text(self.rel_pos(note_x_rel_pos, 'x'), self.rel_pos(0.25, 'y'), rejected_y_keys_note, style='italic',
                         bbox={'facecolor': 'red', 'alpha':0.8, 'pad': 10})
 
 plotter = Plotter()
@@ -335,6 +417,7 @@ class RHT_CSV_Reader:
             print "I found a thermo-couple mapping in " + "'" + self.TC_mapping_file + "'" + "trying to use that..."
             try:
                 self.TC_mapping = {}
+                self.block_mapping = {}
                 with open(self.TC_mapping_file, 'r') as TC_map_file:
                     for line in TC_map_file:
                         line = line.rstrip('\n')
@@ -342,10 +425,12 @@ class RHT_CSV_Reader:
                             line_split = line.split(":")
                             TC_location = line_split[0]
                             TCids = [s.strip() for s in line_split[1].split(",")]
+                            self.block_mapping[TC_location] = TCids
                             for TCid in TCids:
                                 self.TC_mapping[TCid] = TC_location
                                 print "Thermo-couple id", TCid, "->", self.TC_mapping[TCid]
                 RHTdata['TC_mapping'] = self.TC_mapping
+                RHTdata['block_mapping'] = self.block_mapping
             except:
                 print "Mapping file error! I couldn't make sense out of the mapping file. Exiting..."
                 exit()
@@ -645,11 +730,13 @@ def add_col_to_print_dict(print_dict, col):
 
 def collect_print_parameters(dwells, args):
     print_params = {}
+    add_col_to_print_dict(print_params, 'Dwell')
     add_col_to_print_dict(print_params, 'File')
-    add_col_to_print_dict(print_params, 'Target_H/2')
-    add_col_to_print_dict(print_params, 'Target_dev')
-    add_col_to_print_dict(print_params, 'Target_HR')
+    #add_col_to_print_dict(print_params, 'Target_H/2')
+    #add_col_to_print_dict(print_params, 'Target_dev')
+    #add_col_to_print_dict(print_params, 'Target_HR')
 
+    add_col_to_print_dict(print_params, 'duration')
     add_col_to_print_dict(print_params, 'Target_T')
     add_col_to_print_dict(print_params, 'Tmeanmean')
     add_col_to_print_dict(print_params, 'Tmid')
@@ -658,7 +745,6 @@ def collect_print_parameters(dwells, args):
     add_col_to_print_dict(print_params, 'Tmidmean_dev')
     add_col_to_print_dict(print_params, 'Tmeanmid')
     add_col_to_print_dict(print_params, 'Tmeanmid_dev')
-    add_col_to_print_dict(print_params, 'duration')
     add_col_to_print_dict(print_params, 'Hmaxmax/2')
     add_col_to_print_dict(print_params, 'Hmaxmean/2')
     print_cols = print_params.pop('header cols', None)
@@ -666,13 +752,15 @@ def collect_print_parameters(dwells, args):
     p = parameters_dict(args)
 
     for i, target in enumerate(args.dwell_target_temperatures):
-        print_params['File'].append(args.path)
-        print_params['Target_H/2'].append(p['dthomhalf'])
-        print_params['Target_dev'].append(p['dtdev'])
-        print_params['Target_HR'].append(p['dhtol'])
         n=i+1
+        print_params['Dwell'].append(n)
+        print_params['File'].append(args.path)
+        #print_params['Target_H/2'].append(p['dthomhalf'])
+        #print_params['Target_dev'].append(p['dtdev'])
+        #print_params['Target_HR'].append(p['dhtol'])
         dwell = fetch_dwell_by_number(dwells, n)
         if dwell != None:
+            print_params['duration'].append(dwell['duration'])
             print_params['Target_T'].append(float(target))
             print_params['Tmeanmean'].append(dwell['Tmeanmean'])
             print_params['Tmid'].append(dwell['Tmid'])
@@ -681,10 +769,10 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(dwell['Tmidmean dev'])
             print_params['Tmeanmid'].append(dwell['Tmeanmid'])
             print_params['Tmeanmid_dev'].append(dwell['Tmeanmid dev'])
-            print_params['duration'].append(dwell['duration'])
             print_params['Hmaxmax/2'].append(dwell['Hmaxmax/2'])
             print_params['Hmaxmean/2'].append(dwell['Hmaxmean/2'])
         else:
+            print_params['duration'].append(None)
             print_params['Target_T'].append(None)
             print_params['Tmeanmean'].append(None)
             print_params['Tmid'].append(None)
@@ -693,7 +781,6 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(None)
             print_params['Tmeanmid'].append(None)
             print_params['Tmeanmid_dev'].append(None)
-            print_params['duration'].append(None)
             print_params['Hmaxmax/2'].append(None)
             print_params['Hmaxmean/2'].append(None)
     print_params_df = pd.DataFrame(print_params)
@@ -824,6 +911,7 @@ def analyze(RHTdata, args):
     file_logger.write(param.to_string())
     tex_cols = ['Target_T', 'duration', 'Tmeanmid', 'Tmeanmean']
     file_logger.write_table(param[tex_cols].to_latex(index=False, float_format="{:0.1f}".format, column_format="".join(['c' for col in tex_cols])+'c'))
+    report.store_table('summary', param.transpose().to_latex(header=False, float_format="{:0.1f}".format))
     #print_parameters_and_dwells(dwells, args)
     RHTdata['dwells'] = dwells
 
@@ -845,7 +933,7 @@ def plot_all_TC(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_all_TC_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_all_TC_' + parameters_str(args) + '.png', args=args, caption='The temperature reading of every thermo-couple as a function of hours from the beginning of the reaction cycle.')
 
 def plot_accepted_TC(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -868,7 +956,7 @@ def plot_accepted_TC(RHTdata, args):
             plotter.show(args)
         else:
             fig_filename = args.path.replace('.csv','') 
-            plotter.savefig(fig_filename, '_accepted_TC_round_' + parameters_str(args) + '_' + str(i) + '.png', args=args)
+            plotter.savefig(fig_filename, '_accepted_TC_round_' + parameters_str(args) + '_' + str(i) + '.png', args=args, caption='The temperature reading of the accepted thermo-couple as a function of hours from the beginning of the reaction cycle.')
 
 def plot_Ar(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -897,7 +985,7 @@ def plot_Ar(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_Ar_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_Ar_' + parameters_str(args) + '.png', args=args, caption='Argon flow inside the retort and the tooling as a function of time.')
 
 def plot_heating_rate(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -926,7 +1014,7 @@ def plot_heating_rate(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_heating_rate_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_heating_rate_' + parameters_str(args) + '.png', args=args, caption = 'Heating rate as a function of time.')
 
 def plot_homogenity(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -957,7 +1045,103 @@ def plot_homogenity(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args, caption='Homogenity of the fixture according to the accepted thermo-couples.')
+
+def get_block_temperatures(logging_df, block_numbers, accepted_keys):
+    block_temperatures={}
+    for block_n in block_numbers:
+        block_str = 'block ' + str(block_n)
+        block_keys = []
+        for key in accepted_keys:
+            if block_str in key:
+                block_keys.append(key)
+        if len(block_keys) != 0:
+            block_temperatures[block_n] = logging_df[block_keys]
+    return block_temperatures
+
+def plot_map(RHTdata, args, field='Temperature'):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
+
+    TC_mapping = RHTdata['TC_mapping']
+    block_mapping = RHTdata['block_mapping']
+    keys = logging['accepted_TC_keys']
+    block_numbers = sorted(list(set([int(key.split('block')[1].split(',')[0]) for key in block_mapping if 'block' in key])))
+
+    if field == 'Temperature':
+        caption='The temperature according to the accepted thermo-couples as a function of time and fixture fixture block number.'
+        hours_samples, block_samples = np.meshgrid(logging_df['hours'], block_numbers)
+        block_temperatures = get_block_temperatures(logging_df, block_numbers, keys)
+
+        block_field_list = []
+        for j, block_n in enumerate(block_numbers):
+            meanT = block_temperatures[block_n].mean(axis=1).values 
+            if np.any(np.isnan(meanT)): 
+                print j, block_n
+                print
+            block_field_list.append(meanT)
+
+        block_field_samples = np.array(block_field_list)
+
+        plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm', colorbar_label='T($\degree$C)')
+
+        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+        # set the limits of the plot to the limits of the data
+        plotter.set_xlabel('Time (h)')
+        plotter.set_ylabel('Block number')
+    elif field == 'middevT':
+        caption='The mid-range temperature deviation according to the accepted thermo-couples as a function of time and fixture block number.'
+        hours_samples, block_samples = np.meshgrid(logging_df['hours'], block_numbers)
+        block_temperatures = get_block_temperatures(logging_df, block_numbers, keys)
+
+        block_field_list = []
+        for j, block_n in enumerate(block_numbers):
+            meanT = block_temperatures[block_n].mean(axis=1).values 
+            middevT = meanT - logging_df['Tmid']
+            block_field_list.append(middevT)
+
+        block_field_samples = np.array(block_field_list)
+
+        plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm', colorbar_label='T - mid(T) ($\degree$C)')
+
+        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+        # set the limits of the plot to the limits of the data
+        plotter.set_xlabel('Time (h)')
+        plotter.set_ylabel('Block number')
+    elif field == 'middevT_dwells':
+        caption='The mid-range deviation of the accepted thermo-couples in the dwells as a function of time and fixture block number.'
+        for i,dwell in enumerate(dwells):
+            dwell_df = dwell['DataFrame']
+
+            hours_samples, block_samples = np.meshgrid(dwell_df['hours'], block_numbers)
+            block_temperatures = get_block_temperatures(dwell_df, block_numbers, keys)
+
+            block_field_list = []
+            for j, block_n in enumerate(block_numbers):
+                meanT = block_temperatures[block_n].mean(axis=1).values 
+                middevT = meanT - dwell_df['Tmid']
+                block_field_list.append(middevT)
+
+            block_field_samples = np.array(block_field_list)
+
+            if i==0:
+                plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm', colorbar_label='T - mid(T) ($\degree$C)')
+            else:
+                plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm')
+
+    plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+    plotter.plot_onlines(RHTdata, plot_curves=False)
+    # set the limits of the plot to the limits of the data
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Block number')
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, '_' + field + '-map_' + parameters_str(args) + '.png', args=args, caption=caption)
 
 def plot(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -1256,6 +1440,7 @@ if __name__ == '__main__':
     path = args.path
 
     file_logger = Logger(path)
+    report = Report(path)
 
     parse_target_ranges(args)
 
@@ -1280,14 +1465,22 @@ if __name__ == '__main__':
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
                 if not args.no_images:
-                    #plot_all_TC(RHTdata, args)
-                    #plot_accepted_TC(RHTdata, args)
+                    plot_all_TC(RHTdata, args)
+                    plot_accepted_TC(RHTdata, args)
                     plot(RHTdata, args)
                     plot_homogenity(RHTdata, args)
                     plot_Ar(RHTdata, args)
                     plot_heating_rate(RHTdata, args)
+                    #plot_homogenity_map(RHTdata, args)
+                    #plot_dwell_homogenity_map(RHTdata, args)
+                    plot_map(RHTdata, args, field='Temperature')
+                    plot_map(RHTdata, args, field='middevT')
+                    plot_map(RHTdata, args, field='middevT_dwells')
                 plotter.reset()
 
+    report.write_report()
+    report.close()
+    report.compile_report()
     file_logger.close()
 
    
