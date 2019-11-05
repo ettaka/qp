@@ -218,7 +218,7 @@ class Plotter:
             if len(dwell_df) >= 2:
                 dwell_len = dwell['duration']
                 dwell_Tmean = dwell['Tmeanmean']
-                dwell_homogenity_half_band = dwell['Hmaxmax/2']
+                dwell_homogenity_half_band = dwell['Hmax/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
                 self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
                 if not only_txt:
@@ -702,10 +702,10 @@ def find_dwells(logging, args):
             dwell['Tmeanmid'] = (dwell['Tmaxmean'] + dwell['Tminmean'])/2.
             dwell['Tmeanmid dev'] = dwell['Tmeanmid']-dwell['Ttarget']
 
-            dwell['Hmaxmean'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).mean()
-            dwell['Hmaxmax'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
-            dwell['Hmaxmax/2'] = dwell['Hmaxmax']/2.
-            dwell['Hmaxmean/2'] = dwell['Hmaxmean']/2.
+            dwell['Hmean'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).mean()
+            dwell['Hmax'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
+            dwell['Hmax/2'] = dwell['Hmax']/2.
+            dwell['Hmean/2'] = dwell['Hmean']/2.
             dwells.append(dwell)
     return dwells
 
@@ -713,7 +713,7 @@ def print_dwells(dwells, args):
     print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
-        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmaxmax'], dwell['Tmeanmean'], dwell['Tminmin'], dwell['Hmaxmax/2'])
+        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmaxmax'], dwell['Tmeanmean'], dwell['Tminmin'], dwell['Hmax/2'])
 
 def fetch_dwell_by_number(dwells, n):
     #print [dwell['n'] for dwell in dwells]
@@ -745,8 +745,8 @@ def collect_print_parameters(dwells, args):
     add_col_to_print_dict(print_params, 'Tmidmean_dev')
     add_col_to_print_dict(print_params, 'Tmeanmid')
     add_col_to_print_dict(print_params, 'Tmeanmid_dev')
-    add_col_to_print_dict(print_params, 'Hmaxmax/2')
-    add_col_to_print_dict(print_params, 'Hmaxmean/2')
+    add_col_to_print_dict(print_params, 'Hmax/2')
+    add_col_to_print_dict(print_params, 'Hmean/2')
     print_cols = print_params.pop('header cols', None)
 
     p = parameters_dict(args)
@@ -769,8 +769,8 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(dwell['Tmidmean dev'])
             print_params['Tmeanmid'].append(dwell['Tmeanmid'])
             print_params['Tmeanmid_dev'].append(dwell['Tmeanmid dev'])
-            print_params['Hmaxmax/2'].append(dwell['Hmaxmax/2'])
-            print_params['Hmaxmean/2'].append(dwell['Hmaxmean/2'])
+            print_params['Hmax/2'].append(dwell['Hmax/2'])
+            print_params['Hmean/2'].append(dwell['Hmean/2'])
         else:
             print_params['duration'].append(None)
             print_params['Target_T'].append(None)
@@ -781,8 +781,8 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(None)
             print_params['Tmeanmid'].append(None)
             print_params['Tmeanmid_dev'].append(None)
-            print_params['Hmaxmax/2'].append(None)
-            print_params['Hmaxmean/2'].append(None)
+            print_params['Hmax/2'].append(None)
+            print_params['Hmean/2'].append(None)
     print_params_df = pd.DataFrame(print_params)
     return print_params_df, print_cols
 
@@ -811,7 +811,7 @@ def print_parameters_and_dwells(dwells, args):
         n=i+1
         dwell = fetch_dwell_by_number(dwells, n)
         if dwell != None:
-            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmeanmean'], dwell['duration'], dwell['Hmaxmax/2'])
+            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmeanmean'], dwell['duration'], dwell['Hmax/2'])
         else:
             dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(-1., -1., -1.)
     file_logger.write(dwell_line)
@@ -1082,9 +1082,6 @@ def plot_map(RHTdata, args, field='Temperature'):
         block_field_list = []
         for j, block_n in enumerate(block_numbers):
             meanT = block_temperatures[block_n].mean(axis=1).values 
-            if np.any(np.isnan(meanT)): 
-                print j, block_n
-                print
             block_field_list.append(meanT)
 
         block_field_samples = np.array(block_field_list)
