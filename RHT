@@ -11,6 +11,7 @@ import csv
 import datetime
 import os
 import shutil
+import glob
 
 from cmd import Cmd
 
@@ -28,7 +29,11 @@ class Report:
         self.texfile.write('\\usepackage[textwidth=19cm]{geometry}\n')
         self.texfile.write('\\usepackage{booktabs}\n')
         self.texfile.write('\\usepackage{graphicx}\n')
+        self.texfile.write('\\date{2019\\\\ November}\n')
+        self.texfile.write('\\title{Coil nn reaction heat treatment analysis}\n')
+        self.texfile.write('\\author{E. Takala}\n')
         self.texfile.write('\\begin{document}\n')
+        self.texfile.write('\\maketitle\n')
         self.tables=[]
         self.figures=[]
         self.temp_image_paths = []
@@ -39,7 +44,12 @@ class Report:
     def write_figure(self, figure):
         self.texfile.write(figure)
 
-    def store_table(self, name, table):
+    def store_table(self, name, table, caption=None):
+        head = '\\begin{table}\n'
+        head += '  \\centering\n'
+        head += '  \\caption{' + str(caption) + '}\n'
+        table = head + table
+        table += '\\end{table}\n'
         self.tables.append(table)
 
     def store_figure(self, name, path, caption=None):
@@ -56,10 +66,36 @@ class Report:
 
     def write_report(self):
         print "Writing report to", self.report_path
-        for table in self.tables:
-            self.write_table(table)
+        #self.texfile.write('\\section{Figures}\n')
         for figure in self.figures:
             self.write_figure(figure)
+        #self.texfile.write('\\section{Tables}\n')
+        for table in self.tables:
+            self.write_table(table)
+
+    def compare_analyzes(self, RHTdata):
+        RHTdatas=[]
+        dwell_tables = []
+        print "Compare with previously analyzed data."
+        print "We need to load all the existing RHTdata pickles."
+        basename = os.path.splitext(RHTdata['path'])[0]
+        pickle_path = basename +'_analyzed.pickle'
+	if os.path.isfile(pickle_path):
+            print "There is an old pickle file for", basename, "analysis, I'm deleting it..."
+            os.remove(pickle_path)
+        for filepath in glob.glob('*analyzed.pickle'):
+            print "Loading: ", filepath
+            RHTdatas.append(cpickle_load(filepath))
+
+        summary_df = RHTdata['summary_df']
+        for RHTdata in RHTdatas:
+            summary_df = summary_df.append(RHTdata['summary_df'])
+
+        summary_dwell_grouped = summary_df.groupby('Dwell')
+        dwell_numbers = summary_dwell_grouped.groups.keys()
+        for i in dwell_numbers:
+            dwell_summary_df = summary_dwell_grouped.get_group(i)
+            self.store_table('dwell ' + str(i) + ' summary', dwell_summary_df.transpose().to_latex(header=False, float_format="{:0.1f}".format), caption='Dwell ' + str(i) + ' comparison summary for all analyzed files.')
         
     def compile_report(self):
         cmd = 'pdflatex ' + self.report_path
@@ -124,6 +160,9 @@ class Plotter:
                 self.ax.set_xlim(args.xlim)
             if args.ylim != None: self.ax.set_ylim(args.ylim)
 
+    def set_ylim(self, ylim):
+        self.ax.set_ylim(ylim)
+                
     def savefig(self, fig_filename, suffix = '', args=None, caption=None):
         self.fig_counter += 1
         fig_filename_fixed = fig_filename + '_IMG' + str(self.fig_counter).zfill(2) + suffix
@@ -218,14 +257,14 @@ class Plotter:
             if len(dwell_df) >= 2:
                 dwell_len = dwell['duration']
                 dwell_Tmean = dwell['Tmeanmean']
-                dwell_homogenity_half_band = dwell['Hmaxmax/2']
+                dwell_homogenity_half_band = dwell['Hmax/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
                 self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
                 if not only_txt:
                     self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
                 else:
-                    self.ax.axvline(x=dwell_df['hours'].iloc[0], color='black', linestyle='dashed')
-                    self.ax.axvline(x=dwell_df['hours'].iloc[-1], color='black', linestyle='dashed')
+                    self.ax.axvline(x=dwell_df['hours'].iloc[0], color='black', linestyle='solid')
+                    self.ax.axvline(x=dwell_df['hours'].iloc[-1], color='black', linestyle='solid')
 
     def plot_onlines(self, RHTdata, plot_curves=True):
         logging = RHTdata['data_logging']
@@ -398,6 +437,7 @@ class RHT_CSV_Reader:
 		return cpickle_load(pickle_path)
 
         RHTdata = {}
+        RHTdata['path'] = path
         RHTdata['program'] = {}
         RHTdata['program']['values'] = []
         RHTdata['batch_info'] = {}
@@ -702,10 +742,19 @@ def find_dwells(logging, args):
             dwell['Tmeanmid'] = (dwell['Tmaxmean'] + dwell['Tminmean'])/2.
             dwell['Tmeanmid dev'] = dwell['Tmeanmid']-dwell['Ttarget']
 
-            dwell['Hmaxmean'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).mean()
-            dwell['Hmaxmax'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
-            dwell['Hmaxmax/2'] = dwell['Hmaxmax']/2.
-            dwell['Hmaxmean/2'] = dwell['Hmaxmean']/2.
+            dwell['Hmean'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).mean()
+            dwell_asymptot = dwell_df[dwell_df['hours'] >= dwell_df['hours'].max()-1]
+            dwell['Hasmax'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).max()
+            dwell['Hasmin'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).min()
+            dwell['Hasmean'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).mean()
+            dwell['Hmax'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).max()
+            dwell['Hmax/2'] = dwell['Hmax']/2.
+            dwell['Hmean/2'] = dwell['Hmean']/2.
+            dwell['Hasmax/2'] = dwell['Hasmax']/2. 
+            dwell['Hasmin/2'] = dwell['Hasmin']/2. 
+            dwell['Hasmean/2'] = dwell['Hasmean']/2. 
+
+            print 
             dwells.append(dwell)
     return dwells
 
@@ -713,7 +762,7 @@ def print_dwells(dwells, args):
     print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
-        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmaxmax'], dwell['Tmeanmean'], dwell['Tminmin'], dwell['Hmaxmax/2'])
+        print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmaxmax'], dwell['Tmeanmean'], dwell['Tminmin'], dwell['Hmax/2'])
 
 def fetch_dwell_by_number(dwells, n):
     #print [dwell['n'] for dwell in dwells]
@@ -728,7 +777,7 @@ def add_col_to_print_dict(print_dict, col):
         print_dict['header cols'] = []
     print_dict['header cols'].append(col)
 
-def collect_print_parameters(dwells, args):
+def collect_summary_df(dwells, args):
     print_params = {}
     add_col_to_print_dict(print_params, 'Dwell')
     add_col_to_print_dict(print_params, 'File')
@@ -745,8 +794,11 @@ def collect_print_parameters(dwells, args):
     add_col_to_print_dict(print_params, 'Tmidmean_dev')
     add_col_to_print_dict(print_params, 'Tmeanmid')
     add_col_to_print_dict(print_params, 'Tmeanmid_dev')
-    add_col_to_print_dict(print_params, 'Hmaxmax/2')
-    add_col_to_print_dict(print_params, 'Hmaxmean/2')
+    add_col_to_print_dict(print_params, 'Hmax/2')
+    add_col_to_print_dict(print_params, 'Hmean/2')
+    add_col_to_print_dict(print_params, 'Hasmax/2')
+    add_col_to_print_dict(print_params, 'Hasmin/2')
+    add_col_to_print_dict(print_params, 'Hasmean/2')
     print_cols = print_params.pop('header cols', None)
 
     p = parameters_dict(args)
@@ -769,8 +821,11 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(dwell['Tmidmean dev'])
             print_params['Tmeanmid'].append(dwell['Tmeanmid'])
             print_params['Tmeanmid_dev'].append(dwell['Tmeanmid dev'])
-            print_params['Hmaxmax/2'].append(dwell['Hmaxmax/2'])
-            print_params['Hmaxmean/2'].append(dwell['Hmaxmean/2'])
+            print_params['Hmax/2'].append(dwell['Hmax/2'])
+            print_params['Hmean/2'].append(dwell['Hmean/2'])
+            print_params['Hasmax/2'].append(dwell['Hasmax/2'])
+            print_params['Hasmin/2'].append(dwell['Hasmin/2'])
+            print_params['Hasmean/2'].append(dwell['Hasmean/2'])
         else:
             print_params['duration'].append(None)
             print_params['Target_T'].append(None)
@@ -781,10 +836,13 @@ def collect_print_parameters(dwells, args):
             print_params['Tmidmean_dev'].append(None)
             print_params['Tmeanmid'].append(None)
             print_params['Tmeanmid_dev'].append(None)
-            print_params['Hmaxmax/2'].append(None)
-            print_params['Hmaxmean/2'].append(None)
-    print_params_df = pd.DataFrame(print_params)
-    return print_params_df, print_cols
+            print_params['Hmax/2'].append(None)
+            print_params['Hmean/2'].append(None)
+            print_params['Hasmax/2'].append(None)
+            print_params['Hasmin/2'].append(None)
+            print_params['Hasmean/2'].append(None)
+    summary_df = pd.DataFrame(print_params)
+    return summary_df, print_cols
 
 def print_parameters_and_dwells(dwells, args):
     global print_parameters_and_dwells_calls
@@ -811,7 +869,7 @@ def print_parameters_and_dwells(dwells, args):
         n=i+1
         dwell = fetch_dwell_by_number(dwells, n)
         if dwell != None:
-            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmeanmean'], dwell['duration'], dwell['Hmaxmax/2'])
+            dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(dwell['Tmeanmean'], dwell['duration'], dwell['Hmax/2'])
         else:
             dwell_line += "{:3.1f}\t{:3.1f}\t{:3.1f}\t".format(-1., -1., -1.)
     file_logger.write(dwell_line)
@@ -862,6 +920,10 @@ def regenerate_online_data(RHTdata):
         regenerate_program_data(online_df)
         latest_program = online
 
+#def calibrate_thermocouples(filepath):
+    #ct = pd.read_table(filepath)
+    #print ct[ct['Id']>=100]
+
 @timeit
 def analyze(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -906,12 +968,13 @@ def analyze(RHTdata, args):
         args.dwell_target_temperatures = sorted(list(set(program_df[program_df['Time hours'].ge(args.dwell_duration_minimum)]['From Tp zone B3'])))
     dwells = find_dwells(logging, args)
     print_dwells(dwells, args)
-    print_params_df, print_cols = collect_print_parameters(dwells, args)
-    param = print_params_df[print_cols]
+    summary_df, print_cols = collect_summary_df(dwells, args)
+    RHTdata['summary_df'] = summary_df
+    param = summary_df[print_cols]
     file_logger.write(param.to_string())
     tex_cols = ['Target_T', 'duration', 'Tmeanmid', 'Tmeanmean']
-    file_logger.write_table(param[tex_cols].to_latex(index=False, float_format="{:0.1f}".format, column_format="".join(['c' for col in tex_cols])+'c'))
-    report.store_table('summary', param.transpose().to_latex(header=False, float_format="{:0.1f}".format))
+    file_logger.write_table(param[tex_cols].transpose().to_latex(index=False, float_format="{:0.1f}".format))
+    report.store_table('summary', param.transpose().to_latex(header=False, float_format="{:0.1f}".format), caption='Dwell summary')
     #print_parameters_and_dwells(dwells, args)
     RHTdata['dwells'] = dwells
 
@@ -1001,7 +1064,7 @@ def plot_heating_rate(RHTdata, args):
     plotter.plot_ax2(logging_df['hours'],logging_df['Tmean'], label='mean(T)')
     plotter.set_lim_args(args)
 
-    plotter.plot_dwells(dwells)
+    plotter.plot_dwells(dwells, vertical_position=0.4)
     plotter.plot_onlines(RHTdata, plot_curves=False)
     plotter.write_dwell_notes(args)
     plotter.write_tc_notes(RHTdata, rejected=True)
@@ -1023,7 +1086,7 @@ def plot_homogenity(RHTdata, args):
     dwells = RHTdata['dwells']
 
     plotter.set_xlabel('Time (h)')
-    plotter.set_ylabel('Temperature ($\degree$C)')
+    plotter.set_ylabel('Homogenity ($\degree$C)')
     plotter.plot_ax(logging_df['hours'],logging_df['H']/2., label='H(T)/2')
     plotter.set_ax2()
     plotter.set_ylabel2('Flow (l/h)')
@@ -1031,6 +1094,7 @@ def plot_homogenity(RHTdata, args):
     plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.1 Ar tooling'], label='Ar tooling')
     #plotter.plot_ax(logging_df['hours'],logging_df['Tmean'])
     plotter.set_lim_args(args)
+    plotter.set_ylim((0,10))
 
     plotter.plot_dwells(dwells)
     plotter.plot_onlines(RHTdata, plot_curves=False)
@@ -1062,6 +1126,7 @@ def get_block_temperatures(logging_df, block_numbers, accepted_keys):
 def plot_map(RHTdata, args, field='Temperature'):
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
+    logging_df = logging_df[logging_df['hours']<350]
     program_df = RHTdata['program']['DataFrame']
     dwells = RHTdata['dwells']
 
@@ -1078,16 +1143,13 @@ def plot_map(RHTdata, args, field='Temperature'):
         block_field_list = []
         for j, block_n in enumerate(block_numbers):
             meanT = block_temperatures[block_n].mean(axis=1).values 
-            if np.any(np.isnan(meanT)): 
-                print j, block_n
-                print
             block_field_list.append(meanT)
 
         block_field_samples = np.array(block_field_list)
 
         plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm', colorbar_label='T($\degree$C)')
 
-        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.4)
         # set the limits of the plot to the limits of the data
         plotter.set_xlabel('Time (h)')
         plotter.set_ylabel('Block number')
@@ -1106,7 +1168,7 @@ def plot_map(RHTdata, args, field='Temperature'):
 
         plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm', colorbar_label='T - mid(T) ($\degree$C)')
 
-        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+        plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.4)
         # set the limits of the plot to the limits of the data
         plotter.set_xlabel('Time (h)')
         plotter.set_ylabel('Block number')
@@ -1131,7 +1193,7 @@ def plot_map(RHTdata, args, field='Temperature'):
             else:
                 plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm')
 
-    plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.5)
+    plotter.plot_dwells(dwells, only_txt=True, vertical_position=0.4)
     plotter.plot_onlines(RHTdata, plot_curves=False)
     # set the limits of the plot to the limits of the data
     plotter.set_xlabel('Time (h)')
@@ -1172,7 +1234,38 @@ def plot(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_' + parameters_str(args) + '.png', args=args)
+        plotter.savefig(fig_filename, '_' + parameters_str(args) + '.png', args=args, caption='Dwell plot')
+
+def plot_heater_power(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
+
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+    plotter.plot_ax(logging_df['hours'],logging_df['Tmid'], label='mid(T)')
+    plotter.set_ax2()
+    plotter.set_ylabel2('Heater power (%)')
+    plotter.plot_ax2(logging_df['hours'],logging_df['OP zone +A1'], label='OP zone +A1')
+    plotter.plot_ax2(logging_df['hours'],logging_df['OP zone +B1'], label='OP zone +B1')
+    plotter.set_lim_args(args)
+
+    plotter.plot_dwells(dwells)
+    plotter.plot_onlines(RHTdata, plot_curves=False)
+    plotter.write_dwell_notes(args)
+    plotter.write_tc_notes(RHTdata, rejected=True)
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args, caption='Heater power as a function of time.')
+
 
 class RHTPrompt(Cmd):
     prompt = 'RHT> '
@@ -1409,6 +1502,17 @@ def parse_target_ranges(args):
     except:
         print "failed to parse --dwell-target-ranges."
 
+def RHTdata_pickle_analysed(RHTdata):
+    basename = os.path.splitext(RHTdata['path'])[0]
+    pickle_path = basename +'_analyzed.pickle'
+    print "Let's dump the pickle", pickle_path
+    cpickle_dump(RHTdata, pickle_path)
+
+def dwell_pickle_analysed(dwells):
+    basename = os.path.splitext(RHTdata['path'])[0]
+    pickle_path = basename +'_dwells_analyzed.pickle'
+    cpickle_dump(RHTdata, pickle_path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot mtbop strain data')
     parser.add_argument('path', type=str)
@@ -1434,10 +1538,14 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--thermo-couple-mapping', type=str, default='default.mapping') 
     parser.add_argument('-ni', '--no-images', action='store_true', default=False) 
     parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
+    parser.add_argument('-tcal', '--thermo-couple-calibration', type=str) 
 
     global args 
     args = parser.parse_args()
     path = args.path
+
+    #calibrate_thermocouples(args.thermo_couple_calibration)
+    #exit()
 
     file_logger = Logger(path)
     report = Report(path)
@@ -1476,12 +1584,18 @@ if __name__ == '__main__':
                     plot_map(RHTdata, args, field='Temperature')
                     plot_map(RHTdata, args, field='middevT')
                     plot_map(RHTdata, args, field='middevT_dwells')
+                    plot_heater_power(RHTdata, args)
                 plotter.reset()
 
+    report.compare_analyzes(RHTdata)
     report.write_report()
     report.close()
+
     report.compile_report()
     file_logger.close()
+    RHTdata_pickle_analysed(RHTdata)
+    #dwell_pickle_analysed(RHTdata)
+
 
    
 
