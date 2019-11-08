@@ -23,6 +23,7 @@ print_parameters_and_dwells_calls = 0
 class Report:
 
     def __init__(self, path):
+        name = path.split('.')[0]
         self.report_path = path+'-report.tex'
         self.texfile = open(self.report_path,'w')
         self.texfile.write('\\documentclass{report}\n')
@@ -30,7 +31,7 @@ class Report:
         self.texfile.write('\\usepackage{booktabs}\n')
         self.texfile.write('\\usepackage{graphicx}\n')
         self.texfile.write('\\date{2019\\\\ November}\n')
-        self.texfile.write('\\title{Coil nn reaction heat treatment analysis}\n')
+        self.texfile.write('\\title{Coil '+name.replace('_','\\_')+' reaction heat treatment analysis}\n')
         self.texfile.write('\\author{E. Takala}\n')
         self.texfile.write('\\begin{document}\n')
         self.texfile.write('\\maketitle\n')
@@ -73,7 +74,7 @@ class Report:
         for table in self.tables:
             self.write_table(table)
 
-    def compare_analyzes(self, RHTdata):
+    def compare_analyses(self, RHTdata):
         RHTdatas=[]
         dwell_tables = []
         print "Compare with previously analyzed data."
@@ -87,16 +88,21 @@ class Report:
             print "Loading: ", filepath
             RHTdatas.append(cpickle_load(filepath))
 
-        summary_df = RHTdata['summary_df']
-        for RHTdata in RHTdatas:
-            summary_df = summary_df.append(RHTdata['summary_df'])
+        if len(RHTdatas) > 0:
+            summary_df = RHTdata['summary_df']
+            for RHTdata in RHTdatas:
+                summary_df = summary_df.append(RHTdata['summary_df'])
 
-        summary_dwell_grouped = summary_df.groupby('Dwell')
-        dwell_numbers = summary_dwell_grouped.groups.keys()
-        for i in dwell_numbers:
-            dwell_summary_df = summary_dwell_grouped.get_group(i)
-            self.store_table('dwell ' + str(i) + ' summary', dwell_summary_df.transpose().to_latex(header=False, float_format="{:0.1f}".format), caption='Dwell ' + str(i) + ' comparison summary for all analyzed files.')
-        
+            summary_dwell_grouped = summary_df.groupby('Dwell')
+            dwell_numbers = summary_dwell_grouped.groups.keys()
+            for n in dwell_numbers:
+                dwell_summary_df = summary_dwell_grouped.get_group(n)
+                self.store_table('dwell ' + str(n) + ' summary', dwell_summary_df.transpose().to_latex(header=False, float_format="{:0.1f}".format), caption='Dwell ' + str(n) + ' comparison summary for all analyzed files.')
+                plot_dwell_summary(RHTdatas, n)
+        else: 
+            print "I didn't find any previous analyzed RHTdata pickles. No point in doing a summary."
+            
+
     def compile_report(self):
         cmd = 'pdflatex ' + self.report_path
         print "Compiling report with pdflatex: ", cmd
@@ -226,6 +232,13 @@ class Plotter:
         #self.ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
         if colorbar_label != None:
             self.fig.colorbar(plot, ax=self.ax, label=colorbar_label)
+
+    def boxplot(self, *args, **kwargs):
+        self.plot_counter += 1
+        self.plots += [self.ax.boxplot(*args, **kwargs)]
+        plot = self.plots[-1]
+        #self.ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
+
 
     def legend(self, *args, **kwargs):
         self.plot_labels = [ax.get_label() for ax in self.plots]
@@ -699,10 +712,10 @@ def find_dwells(logging, args):
             if args.dwell_mid_deviation != None:
                 dwell_df = dwell_df[(dwell_df['Tmid']-target).abs()<args.dwell_mid_deviation]
         else:
-            mid_target = (args.dwell_target_ranges[i][0] + args.dwell_target_ranges[i][1])/2
-            dwell_df = dwell_df[(dwell_df['Tmid']-mid_target).abs()<mid_target/10.]
-            dwell_df = dwell_df[dwell_df['dmeanTdt'].abs()<0.003]
-            dwell_df = dwell_df[(dwell_df['dmeanTdt'])>-0.0001]
+            #mid_target = (args.dwell_target_ranges[i][0] + args.dwell_target_ranges[i][1])/2
+            #dwell_df = dwell_df[(dwell_df['Tmid']-mid_target).abs()<mid_target/20.]
+            #dwell_df = dwell_df[dwell_df['dmeanTdt'].abs()<0.01]
+            #dwell_df = dwell_df[(dwell_df['dmeanTdt'])>-0.06]
             for key in accepted_TC_keys: 
                 dwell_df = dwell_df[dwell_df[key] >= args.dwell_target_ranges[i][0]]
                 dwell_df = dwell_df[dwell_df[key] <= args.dwell_target_ranges[i][1]]
@@ -722,6 +735,8 @@ def find_dwells(logging, args):
             dwell_df = dwell_df[diff.abs()<args.dwell_target_homogenity]
             dwell['DataFrame'] = dwell_df 
             dwells_tmp.append(dwell)
+    else:
+        dwells_tmp = dwells
 
     dwells = []
     for i, dwell in enumerate(dwells_tmp):
@@ -743,7 +758,8 @@ def find_dwells(logging, args):
             dwell['Tmeanmid dev'] = dwell['Tmeanmid']-dwell['Ttarget']
 
             dwell['Hmean'] = (dwell_df[accepted_TC_keys].max(axis=1) - dwell_df[accepted_TC_keys].min(axis=1)).mean()
-            dwell_asymptot = dwell_df[dwell_df['hours'] >= dwell_df['hours'].max()-1]
+            dwell['dwell_asymptot'] = dwell_df[dwell_df['hours'] >= dwell_df['hours'].max()-1]
+            dwell_asymptot = dwell['dwell_asymptot'] 
             dwell['Hasmax'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).max()
             dwell['Hasmin'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).min()
             dwell['Hasmean'] = (dwell_asymptot[accepted_TC_keys].max(axis=1) - dwell_asymptot[accepted_TC_keys].min(axis=1)).mean()
@@ -754,7 +770,6 @@ def find_dwells(logging, args):
             dwell['Hasmin/2'] = dwell['Hasmin']/2. 
             dwell['Hasmean/2'] = dwell['Hasmean']/2. 
 
-            print 
             dwells.append(dwell)
     return dwells
 
@@ -1002,8 +1017,10 @@ def plot_accepted_TC(RHTdata, args):
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
 
     #plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
+    plotter.plot_dwells(dwells)
 
     for i, keys in enumerate(logging['accepted_keys_rounds']):
         plotter.set_lim_args(args)
@@ -1264,8 +1281,30 @@ def plot_heater_power(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args, caption='Heater power as a function of time.')
+        plotter.savefig(fig_filename, '_homogenity_' + parameters_str(args) + '.png', args=args, caption='heater power as a function of time.')
 
+def plot_dwell_summary(RHTdatas, n, caption='None'):
+    plotter.set_xlabel('Coil number')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+
+    data = []
+    for RHTdata in RHTdatas:
+        dwells = RHTdata['dwells']
+        dwell = fetch_dwell_by_number(dwells, n)
+        if not dwell == None:
+            dwell_df = dwell['DataFrame']
+            accepted_TC_keys = RHTdata['data_logging']['accepted_TC_keys']
+            dwell_asymptot = dwell_df[dwell_df['hours'] >= dwell_df['hours'].max()-1]
+            Has = (dwell_asymptot[accepted_TC_keys].max(axis=1)-dwell_asymptot[accepted_TC_keys].min(axis=1))
+            data.append(Has.values/2.)
+
+    plotter.boxplot(np.array(data))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, '_boxplot_' + parameters_str(args) + '.png', args=args, caption=caption)
 
 class RHTPrompt(Cmd):
     prompt = 'RHT> '
@@ -1526,12 +1565,12 @@ if __name__ == '__main__':
     parser.add_argument('-ntr', '--no-target-ranges', action='store_true', default=False)
     parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
-    parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, default=10., nargs='+')
+    parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, nargs='+')
     #parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None, nargs='+')
     parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None)
     parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
-    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, default=6., nargs='+')
-    parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.01)
+    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, nargs='+')
+    parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.02)
     parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-cli', '--command-line', action='store_true', default=False) 
@@ -1539,6 +1578,7 @@ if __name__ == '__main__':
     parser.add_argument('-ni', '--no-images', action='store_true', default=False) 
     parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
     parser.add_argument('-tcal', '--thermo-couple-calibration', type=str) 
+    parser.add_argument('-comp', '--compare-analyses', action='store_true', default=False) 
 
     global args 
     args = parser.parse_args()
@@ -1575,23 +1615,22 @@ if __name__ == '__main__':
                 if not args.no_images:
                     plot_all_TC(RHTdata, args)
                     plot_accepted_TC(RHTdata, args)
-                    plot(RHTdata, args)
-                    plot_homogenity(RHTdata, args)
-                    plot_Ar(RHTdata, args)
-                    plot_heating_rate(RHTdata, args)
-                    #plot_homogenity_map(RHTdata, args)
-                    #plot_dwell_homogenity_map(RHTdata, args)
-                    plot_map(RHTdata, args, field='Temperature')
-                    plot_map(RHTdata, args, field='middevT')
-                    plot_map(RHTdata, args, field='middevT_dwells')
-                    plot_heater_power(RHTdata, args)
+                    #plot(RHTdata, args)
+                    #plot_homogenity(RHTdata, args)
+                    #plot_Ar(RHTdata, args)
+                    #plot_heating_rate(RHTdata, args)
+                    #plot_map(RHTdata, args, field='Temperature')
+                    #plot_map(RHTdata, args, field='middevT')
+                    #plot_map(RHTdata, args, field='middevT_dwells')
+                    #plot_heater_power(RHTdata, args)
                 plotter.reset()
 
-    report.compare_analyzes(RHTdata)
-    report.write_report()
-    report.close()
+    #if args.compare_analyses:
+        #report.compare_analyses(RHTdata)
+    #report.write_report()
+    #report.close()
 
-    report.compile_report()
+    #report.compile_report()
     file_logger.close()
     RHTdata_pickle_analysed(RHTdata)
     #dwell_pickle_analysed(RHTdata)
