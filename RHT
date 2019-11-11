@@ -652,9 +652,23 @@ def cpickle_load(pickle_path):
 
 def to_datetime(dates, times):
     datetimes = []
+    clock_change = 0
     for i, date in enumerate(dates):
         dateparts = date.split('.')[::-1]
         datetimes.append(datetime.datetime.strptime('-'.join(dateparts) + 'T' + times[i], '%Y-%m-%dT%H:%M:%S'))
+        if i>=1:
+            dt = (datetimes[i]-datetimes[i-1]).total_seconds() 
+            if dt < -3500:
+                print "to_datetime: clock change to winter time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to summer time." 
+                clock_change = 1
+            elif dt > 3500:
+                print "to_datetime: clock change to summer time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to winter time." 
+                clock_change = 2
+        if clock_change == 1:
+            datetimes[i] += datetime.timedelta(hours=1)
+        elif clock_change == 2:
+            datetimes[i] -= datetime.timedelta(hours=1)
+
 #datetimeObj = datetime.strptime('2018-09-11T15::11::45.456777', '%Y-%m-%dT%H::%M::%S.%f')
     return datetimes
 
