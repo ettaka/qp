@@ -12,6 +12,7 @@ import datetime
 import os
 import shutil
 import glob
+import scipy.interpolate
 
 from cmd import Cmd
 
@@ -658,10 +659,10 @@ def to_datetime(dates, times):
         datetimes.append(datetime.datetime.strptime('-'.join(dateparts) + 'T' + times[i], '%Y-%m-%dT%H:%M:%S'))
         if i>=1:
             dt = (datetimes[i]-datetimes[i-1]).total_seconds() 
-            if dt < -3500:
+            if clock_change != 1 and dt < -3500:
                 print "to_datetime: clock change to winter time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to summer time." 
                 clock_change = 1
-            elif dt > 3500:
+            elif clock_change !=2 and dt > 3500:
                 print "to_datetime: clock change to summer time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to winter time." 
                 clock_change = 2
         if clock_change == 1:
@@ -949,9 +950,38 @@ def regenerate_online_data(RHTdata):
         regenerate_program_data(online_df)
         latest_program = online
 
-#def calibrate_thermocouples(filepath):
-    #ct = pd.read_table(filepath)
-    #print ct[ct['Id']>=100]
+def thermocouple_interp_mapping(filepath):
+    ct = pd.read_table(filepath)
+    interp_mapping = {}
+    print "Generating linear interpolator for thermo-couples"
+    for Id in list(set(ct['Id'])):
+        try:
+            print "Thermo-couple id", Id
+            x_vec = pd.to_numeric(ct.loc[ct['Id']==Id]['Tmeas'])
+            y_vec = pd.to_numeric(ct.loc[ct['Id']==Id]['Tdev'])
+            #print "Tmeas:", x_vec.values
+            #print "Tdev:", y_vec.values
+            interp_mapping[Id] = scipy.interpolate.InterpolatedUnivariateSpline(x_vec, y_vec,k=1)
+            #print "interp", str(200), interp(200)
+            #print "interp", str(400), interp(400)
+            #print "interp", str(660), interp(660)
+        except:
+            pass
+    return interp_mapping
+
+def get_TCid(key):
+    #example PV +MT3.0 TC-N-4.0
+    if 'TC-N-' in key:
+        try:
+            return key.split('TC-N-')[1].split('.')[0]
+        except:
+            pass
+    else:
+        try:
+            return key.split(':')[0].split(' ')[1]
+        except:
+            pass
+    return None
 
 @timeit
 def analyze(RHTdata, args):
@@ -966,6 +996,16 @@ def analyze(RHTdata, args):
             print key  
 
     x = logging_df['hours']
+
+    if not args.thermo_couple_calibration == None:
+        RHTdata['TC_interp_mapping'] = thermocouple_interp_mapping(args.thermo_couple_calibration)
+        ip_map = RHTdata['TC_interp_mapping'] 
+        for key in logging_df:
+            TCid = get_TCid(key)
+            if TCid != None and TCid in ip_map:
+                logging_df[key] += ip_map[TCid](logging_df[key])
+            else:
+                print "Calibration not found for:", key
 
     if not args.y_axis == None:
         TC_all_df = logging_df[args.y_axis]
@@ -1577,7 +1617,7 @@ if __name__ == '__main__':
     parser.add_argument('-tdf', '--temperature-deviation-filters', nargs='+', type=float, default=[500,70,50])
     parser.add_argument('-dtr', '--dwell-target-ranges', nargs='+', type=str, default=['204 216','389 401','660 670'])
     parser.add_argument('-ntr', '--no-target-ranges', action='store_true', default=False)
-    parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,400.,665.])
+    parser.add_argument('-dt', '--dwell-target-temperatures', nargs='+', type=float, default=[210.,395.,665.])
     parser.add_argument('-ddmin', '--dwell-duration-minimum', type=float)
     parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, nargs='+')
     #parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None, nargs='+')
@@ -1597,9 +1637,6 @@ if __name__ == '__main__':
     global args 
     args = parser.parse_args()
     path = args.path
-
-    #calibrate_thermocouples(args.thermo_couple_calibration)
-    #exit()
 
     file_logger = Logger(path)
     report = Report(path)
