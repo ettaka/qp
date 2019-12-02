@@ -17,7 +17,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.autoscale(enable=True, axis='y', tight=True)
 
-FILETYPE = ".ASC"
+FILETYPE = ".txt"
 FILETYPES = ['.ASC', '.txt']
 
 def autoscale_y(args):
@@ -482,20 +482,42 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 	cpickle_dump(mtbop_data, pickle_path)
 	return mtbop_data
 
-def signal_compensation(mtbop_data):
+def signal_compensation(mtbop_data, args):
     for compensator_index, compensator_dict in enumerate(mtbop_data['channel_dict_list']):
         if compensator_dict['thermal compensator'] == 'compensator':
             search_terms = compensator_dict['longname'].split()
+
+            all_compensators = []
+            all_compensator_indexes = []
+            if args.use_compensator_average:
+                print "Trying to fetch all compensators for average."
+                for term in search_terms:
+                    if term.isnumeric():
+                        break
+                comp_search_terms = list(search_terms)
+                comp_search_terms.remove(term)
+                for comp_ind, comp_dict in enumerate(mtbop_data['channel_dict_list']):
+                    if all(search_term in comp_dict['name'] for search_term in comp_search_terms) and comp_dict['thermal compensator'] == 'compensator':
+                        all_compensators.append(comp_dict)
+                        all_compensator_indexes.append(comp_ind)
+                all_compensators_names = [c['name'] for c in all_compensators]
+                print "For compensator average I found these:", all_compensators_names
+                        
             try:
                 search_terms.remove('compensator')
             except:
                 pass
+            
             print search_terms
             for compensated_index, compensated_dict in enumerate(mtbop_data['channel_dict_list']):
                 compensated_dict['compensation done'] = False
                 if all(search_term in compensated_dict['name'] for search_term in search_terms) and compensated_dict['thermal compensator'] == '':
-                    print "Thermal compensator (" + compensator_dict['name'] + ") found for:", compensated_dict['name']
-                    mtbop_data['raw_data'][:,compensated_index] -= mtbop_data['raw_data'][:,compensator_index]
+                    if len(all_compensators) != 0:
+                        print "Thermal compensators (" + ','.join(all_compensators_names) + ") found for:", compensated_dict['name']
+                        mtbop_data['raw_data'][:,compensated_index] -= np.mean(mtbop_data['raw_data'][:,all_compensator_indexes], axis=1)
+                    else:
+                        print "Thermal compensator (" + compensator_dict['name'] + ") found for:", compensated_dict['name']
+                        mtbop_data['raw_data'][:,compensated_index] -= mtbop_data['raw_data'][:,compensator_index]
                     compensated_dict['compensation done']=True
                     print "Compensation done."
 
@@ -541,7 +563,7 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
                     if args.replace_channels:
                         replace_raw_data_channels(mtbop_data)
                     if not args.no_thermal_compensation:
-                        signal_compensation(mtbop_data)
+                        signal_compensation(mtbop_data, args)
                     if args.print_max_current: 
                         detect_max_current(mtbop_data)
                         detect_max_current_grad(mtbop_data)
@@ -766,10 +788,9 @@ def create_channel_dict_list(channel_names, channel_units):
 
                 channel_dict['signal'] = 'raw'
 
-                print channel_name
-                if '_Stress' in channel_name:
-                    channel_name = channel_name.replace('_Stress','')
-                    channel_dict['signal'] = 'stress post computation'
+                #if '_Stress' in channel_name:
+                    #channel_name = channel_name.replace('_Stress','')
+                    #channel_dict['signal'] = 'post computation'
                 if 'Strain_' in channel_name:
                     channel_name = channel_name.replace('Strain_','')
                 if '_cryo' in channel_name:
@@ -862,7 +883,7 @@ def create_channel_dict_list(channel_names, channel_units):
                     elif '_T' in channel_name or channel_name[-1] == 'T' or channel_name[-2:] == 'T_':
                         channel_dict['direction'] = 'Azimuthal'
 
-                    if channel_dict['signal'] == 'stress post computation':
+                    if channel_dict['signal'] == 'post computation':
                         channel_dict['physical_quantity'] = 'Stress'
                         channel_dict['unit'] = 'MPa'
 
@@ -1049,6 +1070,7 @@ def get_channel_longname(channel_dict):
     if not channel_dict['sensor type'] == '': longname += ' ' + channel_dict['sensor type']
     if not channel_dict['thermal compensator'] == '': longname += ' ' + channel_dict['thermal compensator']
     if not channel_dict['longitudinal location'] == '': longname += ' ' + channel_dict['longitudinal location']
+    if not channel_dict['signal'] == '' and channel_dict['signal'] == 'post computation': longname += ' ' + channel_dict['signal']
 
     return longname
 
@@ -1111,8 +1133,9 @@ def compute_stresses(plot_dict):
     for mtbop_data in mtbop_data_list:
 	print "Computing stresses for:", mtbop_data['filepath']
         for channel_dict in channel_dict_list:
-            if channel_dict['physical_quantity'].lower() == 'stress':
+            if channel_dict['physical_quantity'].lower() == 'stress' and 'material' in channel_dict:
                 raw_data = mtbop_data['raw_data']
+
                 material = channel_dict['material']
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
@@ -1394,6 +1417,7 @@ if __name__ == '__main__':
         parser.add_argument('--comment', type=str)
 	parser.add_argument('--grid', action='store_true', default=True) 
 	parser.add_argument('--no-thermal-compensation', action='store_true', default=False) 
+	parser.add_argument('--use-compensator-average', action='store_true', default=False) 
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
