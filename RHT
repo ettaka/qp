@@ -141,12 +141,14 @@ class Report(TexTemplator):
 
         d = self.doc_data
 
-        d['%FIG_DEFAULT_MAPPING'] = self.figure('Default_mapping.png', 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a red X are not included in the analysis.')
+        d['%FIG_DEFAULT_MAPPING'] = self.figure('Default_mapping.png', 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a blue or yellow X are not included in the analysis. Blue represents argon temperature and yellow represents end plate temperature.')
         
+        if "%CSV_files" not in d: d['CSV_files'] = "-"
         param_table = OrderedDict({'Start date': [RHTdata['start date']],
                      'End date': [RHTdata['end date']],
                      'Furnace': ['Gero GLO 10000KE/09-1'],
-                     'Cable type': [d['%CABLE_ID'] + ' (' + d['%STRAND_TYPE']+ ')']})
+                     'Cable type': [d['%CABLE_ID'] + ' (' + d['%STRAND_TYPE']+ ')'],
+                     'CSV files': d['%CSV_files']})
 
         d['%FIG_DWELL_PLOT'] = self.figures['fig:dwell_plot']
         d['%FIG_HEATING_RATE'] = self.figures['fig:heating_rate']
@@ -1472,7 +1474,7 @@ def plot(RHTdata, args):
     else:
         fig_filename = args.path.replace('.csv','') 
         caption_text = 'Temperature as a function of time. Program is the initial control sequence for the furnace that is defined apriori.'
-        if RHTdata['onlines'] > 0: caption_text += ' Online $i$ (if any) is the $i^{th}$ change to the program during the heat treatment cycle.'
+        #if RHTdata['onlines'] > 0: caption_text += ' Online $i$ (if any) is the $i^{th}$ change to the program during the heat treatment cycle.'
         plotter.savefig(fig_filename, 'fig:dwell_plot', '_' + parameters_str(args) + '.png', args=args, caption=caption_text)
 
 def plot_mid_range(RHTdata, args):
@@ -1843,7 +1845,7 @@ if __name__ == '__main__':
     path = args.path
 
     file_logger = Logger(path)
-    report = Report(path + '.tex', 'hllhcedms_template.tex')
+    report = Report(path + '.tex', 'hllhcedms_template_short.tex')
 
     parse_target_ranges(args)
 
