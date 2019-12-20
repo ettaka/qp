@@ -31,10 +31,14 @@ TO_MATH_DICT = {
         'Target\_T':'Target [$^\circ$C]',
         'Allowed\_Band':'Allowed Band [$^\circ$C]',
         'duration':'$\Delta t$ [h]',
+        'Tmaxmax_prec':'$\max{T_\mathrm{prec}}$ [$^\circ$C]',
         'Tmaxmax':'$\max{T}$ [$^\circ$C]',
-        'Tmeanmean':'$\mean{T}$ [$^\circ$C]',
         'Tmid':'$\midrange{T}$ [$^\circ$C]',
+        'Tminmin':'$\min{T}$ [$^\circ$C]',
         'Hmax/2':'$\max{H/2}$ [$^\circ$C]',
+        'Tmaxmean':'$\mean{\max{T}}$ [$^\circ$C]',
+        'Tmidmean':'$\mean{\mid{T}}$ [$^\circ$C]',
+        'Tminmean':'$\mean{\min{T}}$ [$^\circ$C]',
         'Hmean/2':'$\mean{H/2}$ [$^\circ$C]',
         'Hasmax/2':'$\max{H_\mathrm{asm}/2}$ [$^\circ$C]',
         'Hasmean/2':'$\mean{H_\mathrm{asm}/2}$ [$^\circ$C]'
@@ -81,7 +85,7 @@ class Report(TexTemplator):
     def store_figure(self, path, label, caption=None):
         self.figures[label] = self.figure(path, label, caption)
 
-    def compare_analyses(self, RHTdata):
+    def compare_analyses(self, RHTdata, args):
         RHTdatas=[]
         dwell_tables = []
         print "Compare with previously analyzed data."
@@ -97,16 +101,20 @@ class Report(TexTemplator):
 
         if len(RHTdatas) > 0:
             RHTdatas.append(RHTdata)
+            print "RHTdatas:", [R['path'] for R in RHTdatas]
             for RHTdata in RHTdatas:
                 RHTdata['datestr'] = ''.join([w for w in reversed(RHTdata['date'].split('.'))]) 
             RHTdatas = sorted(RHTdatas, key = lambda i: i['datestr'])
-            summary_df = RHTdatas[0]['summary_df']
-            for RHTdata in RHTdatas:
-                summary_df = summary_df.append(RHTdata['summary_df'])
+            for i, RHTdata in enumerate(RHTdatas):
+                if i>0:
+                    summary_df = summary_df.append(RHTdata['summary_df'])
+                else:
+                    summary_df = RHTdatas[0]['summary_df']
 
             summary_dwell_grouped = summary_df.groupby('Dwell')
             dwell_numbers = summary_dwell_grouped.groups.keys()
-            tex_cols = ['File', 'Dwell', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax', 'Tmeanmean', 'Tmid','Hmax/2','Hasmax/2','Hmean/2','Hasmean/2']
+            #tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tmid', 'Tminmin', 'Hmax/2', 'Tmaxmean','Tmidmean', 'Tminmean', 'Hmean/2', 'Hasmax/2','Hasmean/2']
+            tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tminmean', 'Hmean/2','Hasmean/2']
             summary_cols = tex_cols
             #summary_cols = ['File', 'duration', 'Target_T', 'Tmaxmax', 'Tmeanmean', 'Hmax/2', 'Hasmax/2']
             #print_params['Tmid'].append(dwell['Tmid'])
@@ -122,12 +130,52 @@ class Report(TexTemplator):
             #print_params['Hasmean/2'].append(dwell['Hasmean/2'])
 
             for n in dwell_numbers:
-                dwell_summary_df = summary_dwell_grouped.get_group(n)
-                self.store_table(to_math(dwell_summary_df[summary_cols].to_latex(index=False, header=True, float_format="{:0.1f}".format)), 'table:dwell ' + str(n) + ' summary', caption='Dwell ' + str(n) + ' comparison summary for all analyzed files.', resize_textwidth=True)
-                plot_dwell_summary(RHTdatas, n)
+                dwell_summary_df = summary_dwell_grouped.get_group(n).dropna()
+                self.store_table(to_math(dwell_summary_df[summary_cols].to_latex(index=False, header=True, float_format="{:0.1f}".format)).replace('CR110','\\hline \nCR110'), 'table:dwell ' + str(n) + ' summary', caption='Dwell ' + str(n) + ' comparison summary for all analyzed files.', resize_textwidth=True)
+                plot_dwell_summary(RHTdatas, n, args)
         else: 
             print "I didn't find any previous analyzed RHTdata pickles. No point in doing a summary."
             
+    def write_remarks(self, RHTdata, itemized_remarks):
+        remarks=''
+        dwell_remarks='\n'
+        overshoots = []
+        belows = []
+        homogovers = []
+        temperature_resolution = 0.1
+        for dwell in RHTdata['dwells']:
+            dwell_df = dwell['DataFrame']
+            n = dwell['n']
+            allowed = dwell['target_ranges'][n-1]
+            if dwell['Tmaxmax'] > allowed[1] + temperature_resolution: 
+                overshoot = dwell['Tmaxmax'] - allowed[1]
+                overshoots.append((n,overshoot,dwell['Tmaxmax'],allowed[1]))
+                #dwell_remarks+='Absolute maximum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(overshoot) + ' $\degC$ higher than allowed.\n'
+            if dwell['Tminmin'] < allowed[0] - temperature_resolution: 
+                below = allowed[0] - dwell['Tminmin'] 
+                belows.append((n,below,dwell['Tminmin'],allowed[0]))
+                #dwell_remarks+='Absolute minimum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(below) + ' $\degC$ lower than allowed.\n'
+            if dwell['Hmean/2'] > 3.:
+                over = dwell['Hmean/2']
+                homogovers.append((n,over,dwell['Hmean/2'],3.))
+
+        if len(overshoots) > 0:
+            dwell_remarks+="\item Absolute maximum temperature has violated the allowed band condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(shoot[0], shoot[2], shoot[3]) for shoot in overshoots]) + ".\n"
+        if len(belows) > 0:
+            dwell_remarks+="\item Absolute minimum temperature has violated the allowed band condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC <$ {:0.1f} $\degC$)'.format(below[0], below[2], below[3]) for below in belows]) + ".\n"
+        if len(homogovers) > 0:
+            dwell_remarks+="\item The mean homogenity has violated the allowed condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(over[0], over[2], over[3]) for over in homogovers]) + ".\n"
+
+        if not '\item' in dwell_remarks:
+            remarks = ''
+        else:
+            remarks = '\\begin{itemize}\n'
+            remarks += itemized_remarks
+            remarks += dwell_remarks
+            remarks += '\\end{itemize}\n'
+
+        return remarks
+
     def write_report(self, RHTdata):
         self.doc_data = {}
 
@@ -141,14 +189,17 @@ class Report(TexTemplator):
 
         d = self.doc_data
 
-        d['%FIG_DEFAULT_MAPPING'] = self.figure('Default_mapping.png', 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a blue or yellow X are not included in the analysis. Blue represents argon temperature and yellow represents end plate temperature.')
+        d['%FIG_DEFAULT_MAPPING'] = self.figure('png/Default_mapping.png', 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a blue or yellow X are not included in the analysis. Blue represents argon temperature and yellow represents end plate temperature.')
         
-        if "%CSV_files" not in d: d['CSV_files'] = "-"
+        if "%CSV_files" not in d: d['%CSV_files'] = "-"
+        if "%RHT_CYCLE_EDMS" not in d: d['%RHT_CYCLE_EDMS'] = "2270203"
+        param_table_keys = ['Start date', 'End date', 'Furnace', 'RHT Program', 'Cable type', 'CSV file']
         param_table = OrderedDict({'Start date': [RHTdata['start date']],
                      'End date': [RHTdata['end date']],
                      'Furnace': ['Gero GLO 10000KE/09-1'],
+                     'RHT Program': ['EDMS '+d['%RHT_CYCLE_EDMS']],
                      'Cable type': [d['%CABLE_ID'] + ' (' + d['%STRAND_TYPE']+ ')'],
-                     'CSV files': d['%CSV_files']})
+                     'CSV file': [d['%CSV_files']]})
 
         d['%FIG_DWELL_PLOT'] = self.figures['fig:dwell_plot']
         d['%FIG_HEATING_RATE'] = self.figures['fig:heating_rate']
@@ -156,8 +207,14 @@ class Report(TexTemplator):
         d['%FIG_MIDDEVT_DWELLS'] = self.figures['fig:middevT_dwells-map']
         d['%FIG_BLOCK_HOMOGENITY_DWELLS'] = self.figures['fig:block_homogenity_dwells-map']
 
-        d['%TAB_PARAM'] = self.table(to_math(pd.DataFrame(param_table, columns=param_table.keys()).transpose().to_latex(header=False)), 'table:data', caption='General RHT parameters')
+        d['%TAB_PARAM'] = self.table(to_math(pd.DataFrame(param_table)[param_table_keys].transpose().to_latex(header=False)), 'table:data', caption='General RHT parameters')
         d['%TAB_SUMMARY'] = self.tables['table:summary']
+        if not '%REMARKS' in d: 
+            itemized_remarks = ''
+        else:
+            itemized_remarks = '\item ' + '\item \n'.join(d['%REMARKS'])
+        d['%REMARKS'] = self.write_remarks(RHTdata, itemized_remarks)
+        
 
         # RHT program
         program_keys = [key for key in RHTdata['program']['variables'] if (RHTdata['program']['DataFrame'][key] != 0).any()]
@@ -327,6 +384,9 @@ class Plotter:
         if colorbar_label != None:
             self.fig.colorbar(plot, ax=self.ax, label=colorbar_label)
 
+    def axvline(self, x, text=''):
+        self.ax.axvline(x=x, color='black', linestyle='solid')
+
     def boxplot(self, *args, **kwargs):
         self.plot_counter += 1
         self.plots += [self.ax.boxplot(*args, **kwargs)]
@@ -364,9 +424,9 @@ class Plotter:
             if len(dwell_df) >= 2:
                 dwell_len = dwell['duration']
                 dwell_Tmean = dwell['Tmeanmean']
-                dwell_homogenity_half_band = dwell['Hmax/2']
+                dwell_mean_hper2 = dwell['Hmean/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
-                self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'H/2$\leq${:2.1f}\n'.format(dwell_homogenity_half_band))
+                self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'mean(H/2)={:2.1f}\n'.format(dwell_mean_hper2))
                 if not only_txt:
                     self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
                 else:
@@ -545,6 +605,7 @@ class RHT_CSV_Reader:
 
         RHTdata = {}
         RHTdata['path'] = path
+        RHTdata['Coil ID'] = RHTdata['path'].replace('.csv', '').split('_')[0]
         RHTdata['basename'] = basename
         RHTdata['program'] = {}
         RHTdata['program']['values'] = []
@@ -811,6 +872,7 @@ def find_dwells(logging, args):
         dwell = dwells[-1]
         dwell['n'] = i + 1
         dwell['Ttarget'] = target
+        dwell['target_ranges'] = args.dwell_target_ranges
         dwell['DataFrame'] = logging_df.copy(deep=True)
         dwell_df = dwell['DataFrame']
         if args.no_target_ranges:
@@ -840,6 +902,8 @@ def find_dwells(logging, args):
                 dwell_df = logging_df.copy(deep=True)
                 dwell_df = dwell_df[dwell_df['hours'] >= hours_start]
                 dwell_df = dwell_df[dwell_df['hours'] <= hours_end]
+                dwell['hours_start'] = hours_start
+                dwell['hours_end'] = hours_end
             except: 
                 pass
 
@@ -870,6 +934,10 @@ def find_dwells(logging, args):
             dwell['Tmeanmean'] = dwell_df[accepted_TC_keys].mean().mean()
             dwell['Tminmin'] = dwell_df[accepted_TC_keys].min().min()
             dwell['Tmaxmax'] = dwell_df[accepted_TC_keys].max().max()
+            if 'hours_end' in dwell:
+                dwell['Tmaxmax_prec'] = logging_df[logging_df['hours']<= dwell['hours_start']][accepted_TC_keys].max().max()
+            else:
+                dwell['Tmaxmax_prec'] = None
             dwell['Tmid'] = (dwell['Tmaxmax']+dwell['Tminmin'])/2.
             dwell['Tmid dev'] = dwell['Tmid']-dwell['Ttarget']
             dwell['Tmidmean'] = (dwell_df[accepted_TC_keys].max(axis=1) + dwell_df[accepted_TC_keys].min(axis=1)).mean()/2.
@@ -919,10 +987,11 @@ def add_col_to_print_dict(print_dict, col):
         print_dict['header cols'] = []
     print_dict['header cols'].append(col)
 
-def collect_summary_df(dwells, args):
+def collect_summary_df(dwells, args, RHTdata):
     print_params = {}
     add_col_to_print_dict(print_params, 'Dwell')
     add_col_to_print_dict(print_params, 'File')
+    add_col_to_print_dict(print_params, 'Coil ID')
     #add_col_to_print_dict(print_params, 'Target_H/2')
     #add_col_to_print_dict(print_params, 'Target_dev')
     #add_col_to_print_dict(print_params, 'Target_HR')
@@ -931,7 +1000,11 @@ def collect_summary_df(dwells, args):
     add_col_to_print_dict(print_params, 'Target_T')
     add_col_to_print_dict(print_params, 'Allowed_Band')
     add_col_to_print_dict(print_params, 'Tmaxmax')
+    add_col_to_print_dict(print_params, 'Tmaxmax_prec')
+    add_col_to_print_dict(print_params, 'Tmaxmean')
     add_col_to_print_dict(print_params, 'Tmeanmean')
+    add_col_to_print_dict(print_params, 'Tminmean')
+    add_col_to_print_dict(print_params, 'Tminmin')
     add_col_to_print_dict(print_params, 'Tmid')
     add_col_to_print_dict(print_params, 'Tmid_dev')
     add_col_to_print_dict(print_params, 'Tmidmean')
@@ -952,6 +1025,7 @@ def collect_summary_df(dwells, args):
         n=i+1
         print_params['Dwell'].append(n)
         print_params['File'].append(args.path)
+        print_params['Coil ID'].append(RHTdata['Coil ID'])
         #print_params['Target_H/2'].append(p['dthomhalf'])
         #print_params['Target_dev'].append(p['dtdev'])
         #print_params['Target_HR'].append(p['dhtol'])
@@ -961,7 +1035,11 @@ def collect_summary_df(dwells, args):
             print_params['Target_T'].append(float(target))
             print_params['Allowed_Band'].append(dtr)
             print_params['Tmaxmax'].append(dwell['Tmaxmax'])
+            print_params['Tmaxmax_prec'].append(dwell['Tmaxmax_prec'])
+            print_params['Tmaxmean'].append(dwell['Tmaxmean'])
             print_params['Tmeanmean'].append(dwell['Tmeanmean'])
+            print_params['Tminmean'].append(dwell['Tminmean'])
+            print_params['Tminmin'].append(dwell['Tminmin'])
             print_params['Tmid'].append(dwell['Tmid'])
             print_params['Tmid_dev'].append(dwell['Tmid dev'])
             print_params['Tmidmean'].append(dwell['Tmidmean'])
@@ -978,7 +1056,11 @@ def collect_summary_df(dwells, args):
             print_params['Target_T'].append(None)
             print_params['Allowed_Band'].append(None)
             print_params['Tmaxmax'].append(None)
+            print_params['Tmaxmax_prec'].append(None)
+            print_params['Tmaxmean'].append(None)
             print_params['Tmeanmean'].append(None)
+            print_params['Tminmean'].append(None)
+            print_params['Tminmin'].append(None)
             print_params['Tmid'].append(None)
             print_params['Tmid_dev'].append(None)
             print_params['Tmidmean'].append(None)
@@ -1104,6 +1186,8 @@ def get_TCid(key):
 
 @timeit
 def analyze(RHTdata, args):
+    RHTdata['dwell_target_ranges'] = args.dwell_target_ranges
+    RHTdata['Coil ID'] = RHTdata['path'].replace('.csv','').split('_')[0]
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -1156,11 +1240,12 @@ def analyze(RHTdata, args):
         args.dwell_target_temperatures = sorted(list(set(program_df[program_df['Time hours'].ge(args.dwell_duration_minimum)]['From Tp zone B3'])))
     dwells = find_dwells(logging, args)
     print_dwells(dwells, args)
-    summary_df, print_cols = collect_summary_df(dwells, args)
+    summary_df, print_cols = collect_summary_df(dwells, args, RHTdata)
     RHTdata['summary_df'] = summary_df
     param = summary_df[print_cols]
     file_logger.write(param.to_string())
-    tex_cols = ['duration', 'Target_T', 'Allowed_Band', 'Tmaxmax', 'Tmeanmean', 'Tmid','Hmax/2','Hasmax/2','Hmean/2','Hasmean/2']
+    #tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tmid', 'Tminmin', 'Hmax/2', 'Tmaxmean','Tmidmean', 'Tminmean', 'Hmean/2', 'Hasmax/2','Hasmean/2']
+    tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tminmean', 'Hmean/2','Hasmean/2']
     file_logger.write_table(param[tex_cols].transpose().to_latex(index=False, float_format="{:0.1f}".format))
     report.store_table(to_math(param[tex_cols].transpose().to_latex(header=False, float_format="{:0.1f}".format)), 'table:summary', caption='Dwell summary')
     #print_parameters_and_dwells(dwells, args)
@@ -1279,7 +1364,7 @@ def plot_homogenity(RHTdata, args):
 
     plotter.set_xlabel('Time (h)')
     plotter.set_ylabel('Homogenity ($\degree$C)')
-    plotter.plot_ax(logging_df['hours'],logging_df['H']/2., label='H(T)/2')
+    plotter.plot_ax(logging_df['hours'],logging_df['H']/2., label='H/2')
     plotter.set_ax2()
     plotter.set_ylabel2('Flow (l/h)')
     #plotter.plot_ax2(logging_df['hours'],logging_df['PV +GP1.0 MFC-1.0 Ar retort'], label='Ar retort')
@@ -1540,14 +1625,15 @@ def plot_heater_power(RHTdata, args):
         fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, 'fig:heater_power', '_heater_power_' + parameters_str(args) + '.png', args=args, caption='heater power as a function of time.')
 
-def plot_dwell_summary(RHTdatas, n, caption='None'):
-    plotter.set_xlabel('Coil number')
+def plot_dwell_summary(RHTdatas, n, args, caption='None'):
+    plotter.set_xlabel('Coil ID')
     plotter.set_ylabel('Temperature ($\degree$C)')
 
-    caption='Dwell {} asymptotic temperature (all accepted thermo-couple readings for an hour at the end of the dwell)'.format(n)
+    caption='Dwell {} asymptotic temperature.'.format(n)
     data = []
     labels = []
-    for RHTdata in RHTdatas:
+    nof_accepted_coil_ids = 0
+    for i, RHTdata in enumerate(RHTdatas):
         dwells = RHTdata['dwells']
         dwell = fetch_dwell_by_number(dwells, n)
         if not dwell == None and dwell['duration'] >= 10:
@@ -1555,10 +1641,18 @@ def plot_dwell_summary(RHTdatas, n, caption='None'):
             accepted_TC_keys = RHTdata['data_logging']['accepted_TC_keys']
             dwell_asymptot = dwell_df[dwell_df['hours'] >= dwell_df['hours'].max()-2]
             dwell_asymptot = dwell_asymptot[dwell_asymptot['hours'] <= dwell_asymptot['hours'].max()-1]
-            data.append(dwell_asymptot[accepted_TC_keys].values.flatten())
-            labels.append(RHTdata['path'])
+            values = dwell_asymptot[accepted_TC_keys].values.flatten()
+            if not any(np.isnan(values)):
+                nof_accepted_coil_ids += 1
+                data.append(values)
+                labels.append(RHTdata['Coil ID'])
+                if RHTdata['Coil ID'] == 'CR110':
+                        plotter.axvline(nof_accepted_coil_ids-.5)
 
     plotter.boxplot(data, labels=labels)
+    ymin, ymax = args.dwell_target_ranges[n-1]
+    ran = 10.
+    plotter.set_ylim((ymin, ymin+2*ran))
 
     if args.show_plot:
         plotter.show(args)
@@ -1889,7 +1983,7 @@ if __name__ == '__main__':
                 plotter.reset()
 
     if args.compare_analyses:
-        report.compare_analyses(RHTdata)
+        report.compare_analyses(RHTdata, args)
     report.write_report(RHTdata)
     report.close()
     report.compile()
