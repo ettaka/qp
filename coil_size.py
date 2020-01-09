@@ -1,6 +1,8 @@
 #!env python
 
+import math
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import time
 #import pandas as pd
@@ -27,16 +29,22 @@ def read_coil_size_data(filepath,args):
 
     offset = None
     for line in head:
-        if 'shim' in line: shim = float(line.split()[1])*args.unit_scaling
+        if 'mshim' in line: mshim = float(line.split()[1])*args.unit_scaling
         elif 'offset' in line: offset = float(line.split()[1])*args.unit_scaling
+        elif 'rshim' in line: rshim = float(line.split()[1])*args.unit_scaling
+
+    if args.rshim != None: rshim = args.rshim
 
     print "_________________________"
     print "filepath", filepath
-    print "size shim:", shim
+    print "mid-plane shim:", mshim
+    print "radial shim:", rshim
+    print "offset", offset
 
     col_names = ['L+R' if 'L+R' in s else s for s in head[-1].strip('\r\n').split('\t')]
     print "column names:", col_names
-    coil_size_dict['shim'] = shim
+    coil_size_dict['mshim'] = mshim
+    coil_size_dict['rshim'] = rshim
     coil_size_dict['offset'] = offset
     coil_size_dict['column_names'] = col_names
     coil_size_dict['filepath'] = filepath
@@ -55,11 +63,11 @@ def read_coil_size_data(filepath,args):
         print "Using offset", coil_size_dict['offset'], "for correcting the L+R data!"
         coil_size_dict['raw_data'][:, col_inds['L+R']] += coil_size_dict['offset']
 
-    print "Add column L+R+shim"
-    add_to_raw_data('L+R+shim', coil_size_dict, raw_data[:,col_inds['L+R']] + shim)
+    print "Add column L+R+mshim"
+    add_to_raw_data('L+R+mshim', coil_size_dict, raw_data[:,col_inds['L+R']] + mshim)
 
-    print "Add column L+R+shim-rsr"
-    add_to_raw_data('L+R+shim-rsr', coil_size_dict, raw_data[:,col_inds['L+R']] + shim - args.radial_size_reduction)
+    print "Add column L+R+mshim-rsr"
+    add_to_raw_data('L+R+mshim-rsr', coil_size_dict, raw_data[:,col_inds['L+R']] + mshim - args.radial_size_reduction)
 
     print "Add centered position"
     pos = raw_data[:,col_inds['Y']]
@@ -128,9 +136,9 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
     if av_interp != None:
         ax.plot(xdata* args.xunit_plot_scaling,av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av', linewidth=3)
     #if shimmed_av_interp != None:
-        #ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,'-r'+markers[totnum],label='av+shim', linewidth=5)
+        #ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,'-r'+markers[totnum],label='av+mshim', linewidth=5)
     #if shimmed_rsr_av_interp != None and args.radial_size_reduction != 0:
-        #ax.plot(xdata* args.xunit_plot_scaling,shimmed_rsr_av_interp(xdata)* args.yunit_plot_scaling,'-y'+markers[totnum],label='av+shim-rsr', linewidth=5)
+        #ax.plot(xdata* args.xunit_plot_scaling,shimmed_rsr_av_interp(xdata)* args.yunit_plot_scaling,'-y'+markers[totnum],label='av+mshim-rsr', linewidth=5)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -147,21 +155,20 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimm
 
     for i,coil_size_dict in enumerate(coil_size_dicts):
         col_inds = coil_size_dict['column_indices']
-        shim = coil_size_dict['shim']
+        mshim = coil_size_dict['mshim']
         add_interp_to_coil_dict(coil_size_dict, args)
         if not args.no_centering: xind = col_inds['Y']
         else: xind = col_inds['Y centered']
         if i==0: xdata = coil_size_dict['raw_data'][:,xind]
-        ydata = coil_size_dict['interp'][col_inds['L+R']](xdata) + shim
+        ydata = coil_size_dict['interp'][col_inds['L+R']](xdata) + mshim
         label = coil_size_dict['filepath'].replace('.size','')# + coil_size_dict['column_names'][1]
-        if not np.isclose(shim,0):
-            label += '+shim ({:2.0f} $\mu$m)'.format(1e6*shim)
+        label += '+mshim ({:2.0f} $\mu$m)'.format(coil_size_dict['L+R average']+1e6*mshim)
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("L+R ($\mu$m)")
     if shimmed_av_interp != None:
-        ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av+shim', linewidth=3)
+        ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av+mshim', linewidth=3)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -169,6 +176,37 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimm
         save_fig = 'coil_size_shimmed.png'
         plt.savefig(save_fig)
 
+def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None, shell_slope=0.12):
+    plt.cla()
+
+    ax2 = ax.twinx()
+    #if args.set_xlim != None: ax.set_xlim(args.set_xlim)
+    #if args.set_ylim != None: ax.set_ylim(args.set_ylim)
+    ax.grid(args.grid)
+
+    for i,coil_size_dict in enumerate(coil_size_dicts):
+        col_inds = coil_size_dict['column_indices']
+        mshim = coil_size_dict['mshim']
+        add_interp_to_coil_dict(coil_size_dict, args)
+        if not args.no_centering: xind = col_inds['Y']
+        else: xind = col_inds['Y centered']
+        if i==0: xdata = coil_size_dict['raw_data'][:,xind]
+        ydata = coil_size_dict['interp'][col_inds['L+R']](xdata) + mshim
+        label = coil_size_dict['filepath'].replace('.size','')# + coil_size_dict['column_names'][1]
+        label += '+mshim ({:2.0f} $\mu$m)'.format(coil_size_dict['L+R average']+1e6*mshim)
+        totnum = i + 1
+    ax.set_xlabel("Longitudinal location (m)")
+    ax.set_ylabel("Size w.r.t. minimum ($\mu$m)")
+    ax2.set_ylabel("Azimuthal stress w.r.t. minimum (MPa)")
+    if shimmed_av_interp != None:
+        ax.plot(xdata* args.xunit_plot_scaling,2./np.pi*(np.max(shimmed_av_interp(xdata)) - shimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+        ax2.plot(xdata* args.xunit_plot_scaling, shell_slope * 2./np.pi*(np.max(shimmed_av_interp(xdata)) - shimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+    ax.legend(loc=args.legend_location)
+    if args.show_plot:
+        plt.show()
+    else:
+        save_fig = 'theoretical_load_key.png'
+        plt.savefig(save_fig)
 
 def get_average_coil_size_interp(coil_size_dicts, args, col_name='L+R'):
     for i,coil_size_dict in enumerate(coil_size_dicts):
@@ -188,6 +226,81 @@ def get_average_coil_size_interp(coil_size_dicts, args, col_name='L+R'):
     interp = scipy.interpolate.InterpolatedUnivariateSpline(xdata, LplusRav,k=1)
     return interp, xdata
 
+def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05, location_length_points=100., coilpackdiff = -100.):
+    if info_locations == None:
+        short_shell = 0.3415
+        long_shell = 2. * short_shell
+        l = 2*short_shell + 10*long_shell
+        #LE = short_shell + long_shell
+        #CE = l / 2.
+        #RE = l - LE
+        LE = .607
+        CE = 3.407
+        RE = 7.007
+        info_locations = {'AVG':None, 'LE':LE, 'CE':CE, 'RE':RE}
+
+    shimming_info = {"Location name":[],
+                    "Location":[],
+                    "Loc len":[],
+                    "Coil":[],
+                    "L+R":[],
+                    "mshim":[], 
+                    "L+R+mshim":[],
+                    "dR":[],
+                    "rshim": [],
+                    "Coilpack": [],
+                    "Coilpack e": []
+                    }
+
+    for loc_name in info_locations:
+        for i,coil_size_dict in enumerate(coil_size_dicts):
+            shimming_info['Location name'].append(loc_name)
+            location = info_locations[loc_name]
+            col_inds = coil_size_dict['column_indices']
+            mshim = 1e6*coil_size_dict['mshim']
+            rshim = 1e6*coil_size_dict['rshim']
+            offset = 1e6*coil_size_dict['rshim']
+            if loc_name == 'AVG':
+                coil_size = coil_size_dict['L+R average']
+                shimming_info['Location'].append(1e3*l/2.)
+                shimming_info['Loc len'].append(1e3*l)
+            else:
+                location_start = location-location_length/2.
+                location_end = location+location_length/2.
+                location_area = np.linspace(location_start, location_end, location_length_points)
+                coil_size = 1e6*(np.average(coil_size_dict['interp'][col_inds['L+R']](location_area)))
+                shimming_info['Location'].append(1e3*location)
+                shimming_info['Loc len'].append(1e3*location_length)
+
+            shimming_info['Coil'].append(coil_size_dict['filepath'].replace('.size',''))
+            shimming_info['L+R'].append(coil_size)
+            shimming_info['mshim'].append(mshim)
+            shimming_info['rshim'].append(rshim)
+            shimming_info['L+R+mshim'].append(coil_size+mshim)
+            shimming_info['dR'].append(2./math.pi *(coil_size+mshim))
+            shimming_info['Coilpack'].append(2./math.pi *(coil_size+mshim)+rshim)
+            shimming_info['Coilpack e'].append(2./math.pi *(coil_size+mshim)+rshim+coilpackdiff)
+
+
+    sort_values = ['Loc len', 'Location']
+    df = pd.DataFrame(shimming_info)
+    cols = ["Coil", "Location name", "Location", "Loc len", "L+R", "mshim", "L+R+mshim", "dR", "rshim", "Coilpack", "Coilpack e"]
+
+    df_out = df[cols].sort_values(sort_values)
+    print df_out.to_string(float_format="{:0.0f}".format, index=False)
+
+    avg_table = df.groupby(['Location name','Location'], as_index=False, group_keys=True).mean()
+    avg_table['Coil'] = ['AVG' for dR in avg_table['dR']]
+    print avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False)
+
+    joined_table = df_out.append(avg_table)
+
+    print joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False)
+
+
+    return df
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot coil sizes')
     parser.add_argument('paths', nargs='+', type=str)
@@ -196,11 +309,13 @@ if __name__ == '__main__':
     parser.add_argument('-us', '--unit-scaling', type=float, default=0.001)
     parser.add_argument('-xus', '--xunit-plot-scaling', type=float, default=1)
     parser.add_argument('-yus', '--yunit-plot-scaling', type=float, default=1e6)
+    parser.add_argument('-rshim', type=float, default=None)
     parser.add_argument('-nc', '--no-centering', action='store_false', default=True) 
     parser.add_argument('-rsr', '--radial-size-reduction', type=float, default=0.)
     parser.add_argument('--fit', action='store_true', default=False)
     parser.add_argument('--set-xlim', nargs=2, type=float)
     parser.add_argument('--set-ylim', nargs=2, type=float)
+    parser.add_argument('--shell-slope', type=float, default = 0.12)
     parser.add_argument('--grid', action='store_true', default=False)
 
     args = parser.parse_args()
@@ -209,11 +324,14 @@ if __name__ == '__main__':
     coil_size_dicts = read_coil_size_dicts(args)
     #plot_coil_sizes(coil_size_dicts, args)
     average_coil_size_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R',)
-    average_coil_size_shim_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+shim')
-    average_coil_size_shim_rsr_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+shim-rsr')
+    average_coil_size_shim_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim')
+    average_coil_size_shim_rsr_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim-rsr')
     print "plot coil sizes"
     plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
     plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
+    plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope)
+
+    shimming_info = get_shimming_info(coil_size_dicts)
     print "Store average coil size to average_coil.size"
     avdata = np.c_[av_xdata, average_coil_size_interp(av_xdata)]
     np.savetxt('average_coil.size', avdata, header='Y\n Average coil size')
