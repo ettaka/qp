@@ -142,10 +142,12 @@ class Report(TexTemplator):
         overshoots = []
         belows = []
         homogovers = []
+        durations = []
         temperature_resolution = 0.1
         for dwell in RHTdata['dwells']:
             dwell_df = dwell['DataFrame']
             n = dwell['n']
+            durnom = 50.
             allowed = dwell['target_ranges'][n-1]
             if dwell['Tmaxmax'] > allowed[1] + temperature_resolution: 
                 overshoot = dwell['Tmaxmax'] - allowed[1]
@@ -158,6 +160,7 @@ class Report(TexTemplator):
             if dwell['Hmean/2'] > 3.:
                 over = dwell['Hmean/2']
                 homogovers.append((n,over,dwell['Hmean/2'],3.))
+            durations.append((n, dwell['duration']-durnom))
 
         if len(overshoots) > 0:
             dwell_remarks+="\item Absolute maximum temperature has violated the allowed band condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(shoot[0], shoot[2], shoot[3]) for shoot in overshoots]) + ".\n"
@@ -165,6 +168,9 @@ class Report(TexTemplator):
             dwell_remarks+="\item Absolute minimum temperature has violated the allowed band condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC <$ {:0.1f} $\degC$)'.format(below[0], below[2], below[3]) for below in belows]) + ".\n"
         if len(homogovers) > 0:
             dwell_remarks+="\item The mean homogenity has violated the allowed condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(over[0], over[2], over[3]) for over in homogovers]) + ".\n"
+
+        dwell_remarks+="\item The dwell durations w.r.t. nominal: " + ', '.join(['{}. {:0.1f} h'.format(dt[0],dt[1]) for dt in durations]) + ".\n"
+
 
         if not '\item' in dwell_remarks:
             remarks = ''
@@ -250,6 +256,13 @@ class Report(TexTemplator):
         for i in range(1,4):
             try:
                 d['%FIG_BOXPLOT_DWELL_' + str(i)] = self.figures['fig:boxplot dwell ' + str(i)]
+            except:
+                pass
+
+        for i in range(1,4):
+            try:
+                boxplottabledata = self.tables['table:dwell boxplot data ' + str(i)]
+                d['%TAB_DWELL_BOXPLOT_DATA_' + str(i)] = boxplottabledata
             except:
                 pass
 
@@ -1650,6 +1663,56 @@ def plot_dwell_summary(RHTdatas, n, args, caption='None'):
                         plotter.axvline(nof_accepted_coil_ids-.5)
 
     plotter.boxplot(data, labels=labels)
+    boxplot_data = plotter.plots[-1]
+    #boxplot_keys = ['boxes', 'fliers', 'medians', 'means', 'whiskers', 'caps']
+    boxplot_keys = boxplot_data.keys()
+    boxplot_numbers_dict = {}
+    boxplot_keys_nonempty = []
+    for boxplot_key in boxplot_keys:
+        if len(boxplot_data[boxplot_key]) > 0:
+            if 'whiskers' == boxplot_key or 'caps' == boxplot_key:
+                boxplot_numbers_dict[boxplot_key] = []
+                boxplot_keys_nonempty.append(boxplot_key)
+                for i in range(0,len(boxplot_data[boxplot_key]),2):
+                    line1 = boxplot_data[boxplot_key][i]
+                    line2 = boxplot_data[boxplot_key][i+1]
+                    ydata = line1.get_ydata() + line2.get_ydata()
+                    if len(ydata) != 0:
+                        ymin = min(ydata)
+                        ymax = max(ydata)
+                        ymax = np.around(ymax)
+                        ymin = np.around(ymin)
+                    else:
+                        ymax = None
+                        ymin = None
+
+                    ymax = np.around(ymax)
+                    ymin = np.around(ymin)
+                    boxplot_numbers_dict[boxplot_key].append(np.array((ymin,ymax)))
+            else:
+                boxplot_numbers_dict[boxplot_key] = []
+                boxplot_keys_nonempty.append(boxplot_key)
+                for line in boxplot_data[boxplot_key]:
+                    ydata = line.get_ydata()
+                    if len(ydata) != 0:
+                        ymin = min(ydata)
+                        ymax = max(ydata)
+                        ymax = np.around(ymax)
+                        ymin = np.around(ymin)
+                    else:
+                        ymax = None
+                        ymin = None
+
+                    boxplot_numbers_dict[boxplot_key].append(np.array((ymin,ymax)))
+
+    boxplot_keys = boxplot_keys_nonempty
+
+    boxplot_numbers_dict['Coil ID'] = labels
+
+    boxplot_numbers_df = pd.DataFrame(boxplot_numbers_dict)
+
+    report.store_table(to_math(boxplot_numbers_df[['Coil ID'] + boxplot_keys].to_latex(index=False, header=True, float_format="{:0.1f}".format)), 'table:dwell boxplot data '+str(n), caption='Dwell '+str(n)+' boxplot data', resize_textwidth=True)
+
     ymin, ymax = args.dwell_target_ranges[n-1]
     ran = 10.
     plotter.set_ylim((ymin, ymin+2*ran))
