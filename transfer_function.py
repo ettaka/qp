@@ -244,6 +244,7 @@ def plot_tf(ax, times_called, filepath, args):
                 _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
 
         if single_coils:
+            ax.set_title(data_label)
             print "Plot single pole gauges",
             for i in range(4):
                 if neighbour_shell_averages:
