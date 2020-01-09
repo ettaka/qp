@@ -12,6 +12,7 @@ import tabulate
 import json
 import matplotlib.dates as md
 import datetime 
+import pandas as pd
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -252,10 +253,11 @@ def plot_mtbop_data(mtbop_data, args=None):
                     ax_dict['raw_data'] = ax_dict['raw_data']**2.
                     if mtbop_data['normalize x'] and ax_dict == x_axis_dict:
                         ax_dict['label'] = '$(I/I_\mathrm{Ult})^2$'
-                        ax.axvline(x=0.8, color='black', linestyle='dashed')
+                        x_nominal = (16470./17890)**2
+                        ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(0.633, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
+                        ax.text(x_nominal-0.174, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
                         ax.text(0.8, 0.2, 'Ultimate', rotation=90, transform = ax.transAxes)
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
@@ -317,6 +319,10 @@ def plot_mtbop_data(mtbop_data, args=None):
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([10,20])
+
+        if args.last_points:
+            mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
+            mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[-1])
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -1336,8 +1342,12 @@ def plot_data(plot_dict, args=None):
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
     find_common_location(plot_dict)
+    if args.last_points:
+        last_points_data = {}
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
+            mtbop_data['last_points_data'] = last_points_data
+            mtbop_data['last_points_data'][y_axis] = []
             if plot_dict['curve coloring'] == 'filewise':
                 mtbop_data['color'] = colors[i%len(colors)]
                 mtbop_data['marker'] = markers[i%len(markers)]
@@ -1363,6 +1373,11 @@ def plot_data(plot_dict, args=None):
                 mtbop_data['common location'] = plot_dict['common location']
                 mtbop_data['show_min_max_labels'] = plot_dict['show_min_max_labels']
                 plot_mtbop_data(mtbop_data, args)
+
+    if args.last_points:
+        last_points_data = pd.DataFrame(last_points_data)
+        print last_points_data
+        
 
 def search_channel_names_for_y_axis(plot_dict, args):
     print "search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis"
@@ -1424,6 +1439,8 @@ if __name__ == '__main__':
         parser.add_argument('--fit-range', type=str)
         parser.add_argument('--inspect', action='store_true', default=False)
         parser.add_argument('--rename', action='store_true', default=False)
+        parser.add_argument('--last-points', action='store_true', default=False)
+        parser.add_argument('--diff-plot', action='store_true', default=False)
 
 	args = parser.parse_args()
 	paths = args.paths
