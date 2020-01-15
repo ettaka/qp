@@ -18,7 +18,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.autoscale(enable=True, axis='y', tight=True)
 
-FILETYPE = ".txt"
+FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
 
 def autoscale_y(args):
@@ -320,9 +320,10 @@ def plot_mtbop_data(mtbop_data, args=None):
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([10,20])
 
-        if args.last_points:
-            mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
-            mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[-1])
+        mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
+        mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
+        mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[-1])
+        mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -426,7 +427,10 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 		 channel_units = [string, .., string],
 		 raw_data = numpy.ndarray}
 	"""
-	basename = os.path.splitext(filepath)[0]
+        pathlist = os.path.splitext(filepath)
+	basename = pathlist[0]
+	filetype = pathlist[1]
+        if filetype in FILETYPES: FILETYPE = filetype
 	pickle_path = basename + '.pickle'
 	if os.path.isfile(pickle_path) and not override_pickle:
 		print "Found a pickle:", pickle_path, "for", filepath, "using that instead."
@@ -771,6 +775,11 @@ def find_channel_names(mtbop_data_list):
 def find_files(paths):
 	filepaths=[]
 	for path in paths:
+                pathlist = os.path.splitext(path)
+                basename = pathlist[0]
+                filetype = pathlist[1]
+                if filetype in FILETYPES: FILETYPE = filetype
+	
 		if os.path.isdir(path):
 			filepaths += [path + '/' + f for f in os.listdir(path) if FILETYPE in f]
 		elif os.path.isfile(path) and FILETYPE in path:
@@ -832,6 +841,7 @@ def create_channel_dict_list(channel_names, channel_units):
                 if 'SG_' == channel_name[0:3]:
                     channel_name = channel_name.replace('SG_','')
                     channel_dict['sensor type'] = 'resistive'
+                    channel_dict['sensor type'] = ''
 
                 if channel_name == 'Current':
                     channel_dict['physical_quantity'] = 'Current'
@@ -881,6 +891,7 @@ def create_channel_dict_list(channel_names, channel_units):
                     if channel_dict['sensor type'] == '':
                         if '_SG' in channel_name in channel_name:
                                 channel_dict['sensor type'] = 'resistive'
+                                channel_dict['sensor type'] = ''
                         elif '_FBG' in channel_name:
                                 channel_dict['sensor type'] = 'optical'
                         else: channel_dict['sensor type'] = ''
@@ -947,6 +958,7 @@ def create_channel_data_original(mtbop_data_list):
 			channel_dict['unit'] = 'None'
                 if '_SG' in channel_name:
                         channel_dict['sensor type'] = 'resistive'
+                        channel_dict['sensor type'] = ''
                 elif '_FBG' in channel_name:
                         channel_dict['sensor type'] = 'optical'
                 else: channel_dict['sensor type'] = ''
@@ -1341,13 +1353,14 @@ def plot_data(plot_dict, args=None):
     colors = ['b','g','r','c','m','y','k','orange']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
+    last_points_data_list = []
     find_common_location(plot_dict)
-    if args.last_points:
-        last_points_data = {}
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
-            mtbop_data['last_points_data'] = last_points_data
+            mtbop_data['last_points_data'] = {}
             mtbop_data['last_points_data'][y_axis] = []
+            mtbop_data['last_points_data']['filepath'] = []
+            last_points_data_list.append(mtbop_data['last_points_data'])
             if plot_dict['curve coloring'] == 'filewise':
                 mtbop_data['color'] = colors[i%len(colors)]
                 mtbop_data['marker'] = markers[i%len(markers)]
@@ -1375,9 +1388,22 @@ def plot_data(plot_dict, args=None):
                 plot_mtbop_data(mtbop_data, args)
 
     if args.last_points:
-        last_points_data = pd.DataFrame(last_points_data)
-        print last_points_data
-        
+        last_points_data_frames = [pd.DataFrame(l) for l in last_points_data_list]
+        last_points_df = pd.concat(last_points_data_frames)
+        if args.last_points_groupby == None:
+            print "Maximum:"
+            print last_points_df.groupby('filepath').max()
+            print "Minimum:"
+            print last_points_df.groupby('filepath').min()
+        else:
+            try:
+                print "Maximum:"
+                print last_points_df.groupby(args.last_points_groupby).max().dropna(axis=1, how='all')
+                print "Minimum:"
+                print last_points_df.groupby(args.last_points_groupby).min().dropna(axis=1, how='all')
+            except:
+                print "Last points group by failed with:", args.last_points_groupby
+                pass
 
 def search_channel_names_for_y_axis(plot_dict, args):
     print "search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis"
@@ -1440,6 +1466,7 @@ if __name__ == '__main__':
         parser.add_argument('--inspect', action='store_true', default=False)
         parser.add_argument('--rename', action='store_true', default=False)
         parser.add_argument('--last-points', action='store_true', default=False)
+        parser.add_argument('--last-points-groupby', nargs='+', type=str)
         parser.add_argument('--diff-plot', action='store_true', default=False)
 
 	args = parser.parse_args()
