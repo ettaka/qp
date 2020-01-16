@@ -332,7 +332,16 @@ class Plotter:
 
     def set_ylim(self, ylim):
         self.ax.set_ylim(ylim)
-                
+
+    def get_ylim(self, *args, **kwargs):
+        return self.ax.get_ylim(*args, **kwargs)
+
+    def set_xticks(self, *args, **kwargs):
+        return self.ax.set_xticks(*args, **kwargs)
+
+    def set_xticklabels(self, *args, **kwargs):
+        return self.ax.set_xticklabels(*args, **kwargs)
+
     def savefig(self, fig_filename, label, suffix = '', args=None, caption=None):
         self.fig_counter += 1
         fig_filename_fixed = fig_filename.replace('.','_') + '_IMG' + str(self.fig_counter).zfill(2) + suffix
@@ -888,10 +897,19 @@ def find_dwells(logging, args):
         dwell['target_ranges'] = args.dwell_target_ranges
         dwell['DataFrame'] = logging_df.copy(deep=True)
         dwell_df = dwell['DataFrame']
+        dwell['TC durations'] = {}
+        dwell['TC durations']['TC'] = []
+        dwell['TC durations']['durations'] = []
+        dwell['TC durations']['start'] = []
+        dwell['TC durations']['end'] = []
         if args.no_target_ranges:
             for key in accepted_TC_keys: 
                 diff = dwell_df[key]-target
                 dwell_df = dwell_df[diff.abs()<args.dwell_target_deviation]
+                dwell['TC durations']['TC'].append(key)
+                dwell['TC durations']['start'].append(dwell_df['hours'].values[0])
+                dwell['TC durations']['end'].append(dwell_df['hours'].values[-1])
+                dwell['TC durations']['durations'].append(dwell_df['hours'].values[-1] - dwell_df['hours'].values[0])
             dwell_df = dwell_df[dwell_df['dmeanTdt'].abs()<args.dwell_heat_rate_tolerance]
             dwell_df = dwell_df[dwell_df['dmeanTdt']>-0.0001]
             if args.dwell_mid_deviation != None:
@@ -903,13 +921,19 @@ def find_dwells(logging, args):
             #dwell_df = dwell_df[(dwell_df['dmeanTdt'])>-0.06]
             for key in accepted_TC_keys: 
                 dwell_df = dwell_df[dwell_df[key] >= args.dwell_target_ranges[i][0]]
+                dwell_df_key = dwell['DataFrame'][dwell['DataFrame'][key] >= args.dwell_target_ranges[i][0]]
+                dwell['TC durations']['TC'].append(key)
+                dwell['TC durations']['start'].append(dwell_df_key['hours'].values[0])
             try:
                 hours_start = dwell_df['hours'].values[0]
             except:
                 pass
 
-            for key in accepted_TC_keys: 
+            for k, key in enumerate(accepted_TC_keys): 
                 dwell_df = dwell_df[dwell_df[key] <= args.dwell_target_ranges[i][1]]
+                dwell_df_key = dwell['DataFrame'][dwell['DataFrame'][key] >= args.dwell_target_ranges[i][0]]
+                dwell['TC durations']['end'].append(dwell_df_key['hours'].values[-1])
+                dwell['TC durations']['durations'].append(dwell['TC durations']['end'][k] - dwell['TC durations']['start'][k])
             try:
                 hours_end = dwell_df['hours'].values[-1]
                 dwell_df = logging_df.copy(deep=True)
@@ -980,6 +1004,50 @@ def find_dwells(logging, args):
                 dwells.append(dwell)
 
     return dwells
+
+def find_TC_durations(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    accepted_TC_keys = logging['accepted_TC_keys']
+    dwells = RHTdata['dwells']
+    for dwell in dwells:
+        dwell['TC durations2'] = {}
+        dwell['TC durations2']['TC'] = []
+        dwell['TC durations2']['durations'] = []
+        dwell['TC durations2']['start'] = []
+        dwell['TC durations2']['end'] = []
+        dwell_df = dwell['DataFrame']
+        for key in accepted_TC_keys:
+            test_df = logging_df.copy(deep=True)
+            TC_mean = dwell_df[key].mean()
+            diff = test_df[key] - TC_mean 
+            test_df = test_df[diff.abs()<5]
+            test_df = test_df[test_df['dmeanTdt'].abs()<args.dwell_heat_rate_tolerance]
+            test_df = test_df[test_df['dmeanTdt']>-0.0001]
+            dwell['TC durations2']['TC'].append(key)
+            dwell['TC durations2']['start'].append(test_df['hours'].values[0])
+            dwell['TC durations2']['end'].append(test_df['hours'].values[-1])
+            dwell['TC durations2']['durations'].append(test_df['hours'].values[-1] - test_df['hours'].values[0])
+
+def IT_weights(T, T0=600., T1=650., w0=0., w1=1.):
+    weights = (w1-w0)/(T1-T0) * (T-T0)
+    weights[weights < w0] = w0
+    weights[weights > w1] = w1
+    return weights
+
+def compute_TC_ITs(RHTdata, args):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    accepted_TC_keys = logging['accepted_TC_keys']
+    RHTdata['Integrated Temperatures'] = []
+    Treact = args.dwell_target_temperatures[2]
+    for key in accepted_TC_keys:
+        TC_values = logging_df[key].values
+        T1 = 650.
+        T0 = 600.
+        dt1 = 50. * 3600.
+        w_values = IT_weights(TC_values, T0=T0, T1=T1, w0=0., w1=1.)
+        RHTdata['Integrated Temperatures'].append(np.trapz(w_values*TC_values,logging_df['seconds']/(Treact*dt1)))
 
 def print_dwells(dwells, args):
     print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
@@ -1197,6 +1265,11 @@ def get_TCid(key):
             pass
     return None
 
+def sort_list_by_block_number(accepted_TC_keys):
+    l = [(int(key.split(':')[1].split()[1]), key) for key in accepted_TC_keys]
+    keys_out = [key[1] for key in sorted(l, key=lambda x: x[0])]
+    return keys_out
+
 @timeit
 def analyze(RHTdata, args):
     RHTdata['dwell_target_ranges'] = args.dwell_target_ranges
@@ -1235,6 +1308,7 @@ def analyze(RHTdata, args):
 
     RHTdata['TC_all_df'] = TC_all_df
     logging['accepted_TC_keys'], logging['rejected_TC_keys'], logging['accepted_keys_rounds'] = abs_diff_filters(logging_df, TC_all_df, args.temperature_deviation_filters)
+    logging['accepted_TC_keys'] = sort_list_by_block_number(logging['accepted_TC_keys'])
      
     accepted_TC_df_list = logging_df[logging['accepted_TC_keys']]
 
@@ -1265,6 +1339,8 @@ def analyze(RHTdata, args):
     RHTdata['dwells'] = dwells
     RHTdata['start date'] = logging_df['datetime'].iloc[0].strftime('%Y-%m-%d')
     RHTdata['end date'] = logging_df['datetime'].iloc[-1].strftime('%Y-%m-%d')
+    find_TC_durations(RHTdata, args)
+    compute_TC_ITs(RHTdata, args)
 
 def plot_all_TC(RHTdata, args):
     plotter.set_lim_args(args)
@@ -1400,6 +1476,58 @@ def plot_homogenity(RHTdata, args):
     else:
         fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, 'fig:homogenity', '_homogenity_' + parameters_str(args) + '.png', args=args, caption='Homogenity of the fixture according to the accepted thermo-couples.')
+
+def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2):
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwell = RHTdata['dwells'][dwell_nr]
+
+    plotter.set_xlabel('TC')
+    plotter.set_ylabel('Dwell ' + str(dwell_nr+1) + ' duration (h)')
+    xdata = range(len(dwell['TC durations']['TC']))
+    plotter.plot_ax(xdata, dwell['TC durations']['durations'], label='durations')
+    plotter.plot_ax(xdata, dwell['TC durations2']['durations'], label='durations2')
+
+    plotter.set_ylim((49., 55.))
+
+    plotter.set_xticks(xdata)
+    plotter.set_xticklabels(dwell['TC durations']['TC'], rotation=45)
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, 'fig:dwell_'+str(dwell_nr+1)+'durations', '_dwell'+str(dwell_nr+1)+'_durations_' + parameters_str(args) + '.png', args=args, caption='Dwell durations of the fixture according to the individual thermo-couples.')
+
+def plot_TC_IT(RHTdata, args):
+    IT = RHTdata['Integrated Temperatures']
+    accepted_TC_keys = RHTdata['data_logging']['accepted_TC_keys']
+
+    plotter.set_xlabel('TC')
+    plotter.set_ylabel('Normalized Integrated Temperature')
+    xdata = range(len(accepted_TC_keys))
+    plotter.plot_ax(xdata, IT, label="weighted Int. TC")
+
+    #plotter.set_ylim((49., 55.))
+
+    plotter.set_xticks(xdata)
+    plotter.set_xticklabels(accepted_TC_keys, rotation=45)
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, 'fig:TC_ITs', 'TC_ITs' + parameters_str(args) + '.png', args=args, caption='Integrated temperature of the fixture according to the individual thermo-couples.')
+
 
 def get_block_temperatures(logging_df, block_numbers, accepted_keys):
     block_temperatures={}
@@ -1996,6 +2124,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
     parser.add_argument('-tcal', '--thermo-couple-calibration', type=str) 
     parser.add_argument('-comp', '--compare-analyses', action='store_true', default=False) 
+    parser.add_argument('--no-report', action='store_true', default=False) 
 
     global args 
     args = parser.parse_args()
@@ -2028,7 +2157,7 @@ if __name__ == '__main__':
                 analyze(RHTdata, args)
                 if not args.no_images:
 
-                    #plot_mid_range(RHTdata, args)
+                    plot_mid_range(RHTdata, args)
 #                    plot_all_TC(RHTdata, args)
 #                    plot_accepted_TC(RHTdata, args)
                     plot(RHTdata, args)
@@ -2040,19 +2169,22 @@ if __name__ == '__main__':
                     plot_map(RHTdata, args, field='middevT_dwells')
 #                    plot_map(RHTdata, args, field='block_homogenity')
                     plot_map(RHTdata, args, field='block_homogenity_dwells')
+                    plot_TC_dwell_durations(RHTdata, args)
+                    plot_TC_IT(RHTdata, args)
 #                    plot_heater_power(RHTdata, args)
 
 
                 plotter.reset()
 
-    if args.compare_analyses:
-        report.compare_analyses(RHTdata, args)
-    report.write_report(RHTdata)
-    report.close()
-    report.compile()
-    file_logger.close()
-    RHTdata_pickle_analysed(RHTdata)
-    #dwell_pickle_analysed(RHTdata)
+    if not args.no_report:
+        if args.compare_analyses:
+            report.compare_analyses(RHTdata, args)
+        report.write_report(RHTdata)
+        report.close()
+        report.compile()
+        file_logger.close()
+        RHTdata_pickle_analysed(RHTdata)
+        #dwell_pickle_analysed(RHTdata)
 
 
    
