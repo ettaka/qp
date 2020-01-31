@@ -1703,7 +1703,7 @@ def plot(RHTdata, args):
         #if RHTdata['onlines'] > 0: caption_text += ' Online $i$ (if any) is the $i^{th}$ change to the program during the heat treatment cycle.'
         plotter.savefig(fig_filename, 'fig:dwell_plot', '_' + parameters_str(args) + '.png', args=args, caption=caption_text)
 
-def plot_mid_range(RHTdata, args):
+def plot_mid_range(RHTdata, args, theoretical=True):
     plotter.clear((16,10))
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
@@ -1715,15 +1715,31 @@ def plot_mid_range(RHTdata, args):
     plotter.set_xlabel('Time (h)')
     plotter.set_ylabel('Temperature ($\degree$C)')
     plotter.insert_color('black')
-    plotter.plot_ax(logging_df['hours'],logging_df['Tmean'], label='mean(T)')
+    plotter.plot_ax(logging_df['hours'],logging_df['Tmax'], label='Maximum')
+    plotter.plot_ax(logging_df['hours'],logging_df['Tmin'], label='Minimum')
+
     plotter.set_lim_args(args)
+
+    if theoretical:
+        x1 = 210./50.
+        x2 = x1 + 50.
+        x3 = x2 + (400.-210.)/50.
+        x4 = x3 + 50.
+        x5 = x4 + (665.-400.)/50.
+        x6 = x5 + 50.
+        x7 = x6 + 665./50.
+        xtheor = np.array([0.,x1,x2,x3,x4,x5,x6,x7])
+        ytheor = np.array([0.,210.,210.,400.,400.,665.,665., 0.])
+        plotter.plot_ax(xtheor+40.,ytheor, linestyle='--', label='Theoretical')
+        plotter.set_ylim((0.,700.))
+
 
     #plotter.plot_dwells(dwells)
     #plotter.plot_onlines(RHTdata)
     #plotter.write_dwell_notes(args)
     #plotter.write_tc_notes(RHTdata, rejected=True)
 
-    #plotter.legend(loc='best')
+    plotter.legend(loc='best')
 
     #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
 
@@ -2158,8 +2174,8 @@ if __name__ == '__main__':
                 if not args.no_images:
 
                     plot_mid_range(RHTdata, args)
-#                    plot_all_TC(RHTdata, args)
-#                    plot_accepted_TC(RHTdata, args)
+                    plot_all_TC(RHTdata, args)
+                    plot_accepted_TC(RHTdata, args)
                     plot(RHTdata, args)
                     plot_homogenity(RHTdata, args)
 #                    plot_Ar(RHTdata, args)
