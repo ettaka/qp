@@ -922,18 +922,27 @@ def find_dwells(logging, args):
             for key in accepted_TC_keys: 
                 dwell_df = dwell_df[dwell_df[key] >= args.dwell_target_ranges[i][0]]
                 dwell_df_key = dwell['DataFrame'][dwell['DataFrame'][key] >= args.dwell_target_ranges[i][0]]
-                dwell['TC durations']['TC'].append(key)
-                dwell['TC durations']['start'].append(dwell_df_key['hours'].values[0])
+                try:
+                    dwell['TC durations']['TC'].append(key)
+                    dwell['TC durations']['start'].append(dwell_df_key['hours'].values[0])
+                except:
+                    print "The start of dwell", str(dwell['n']), "for key", key, "was not found."
+                    pass
             try:
                 hours_start = dwell_df['hours'].values[0]
             except:
+                print "Dwell", str(dwell['n']), "start not found."
                 pass
 
             for k, key in enumerate(accepted_TC_keys): 
                 dwell_df = dwell_df[dwell_df[key] <= args.dwell_target_ranges[i][1]]
                 dwell_df_key = dwell['DataFrame'][dwell['DataFrame'][key] >= args.dwell_target_ranges[i][0]]
-                dwell['TC durations']['end'].append(dwell_df_key['hours'].values[-1])
-                dwell['TC durations']['durations'].append(dwell['TC durations']['end'][k] - dwell['TC durations']['start'][k])
+                try:
+                    dwell['TC durations']['end'].append(dwell_df_key['hours'].values[-1])
+                    dwell['TC durations']['durations'].append(dwell['TC durations']['end'][k] - dwell['TC durations']['start'][k])
+                except:
+                    print "The end of dwell", str(dwell['n']), "for key", key, "was not found."
+                    pass
             try:
                 hours_end = dwell_df['hours'].values[-1]
                 dwell_df = logging_df.copy(deep=True)
@@ -941,7 +950,10 @@ def find_dwells(logging, args):
                 dwell_df = dwell_df[dwell_df['hours'] <= hours_end]
                 dwell['hours_start'] = hours_start
                 dwell['hours_end'] = hours_end
+                dwell['duration'] = hours_end-hours_start
+                print "Dwell", str(dwell['n']), "duration", str(dwell['duration'])
             except: 
+                print "Dwell", str(dwell['n']), "end not found."
                 pass
 
         dwell['DataFrame'] = dwell_df
@@ -1000,7 +1012,7 @@ def find_dwells(logging, args):
             dwell['Hasmin/2'] = dwell['Hasmin']/2. 
             dwell['Hasmean/2'] = dwell['Hasmean']/2. 
 
-            if dwell['duration'] > 10:
+            if dwell['duration'] > args.minimum_dwell_duration:
                 dwells.append(dwell)
 
     return dwells
@@ -1044,7 +1056,7 @@ def compute_TC_ITs(RHTdata, args):
     for key in accepted_TC_keys:
         TC_values = logging_df[key].values
         T1 = 650.
-        T0 = 600.
+        T0 = 400.
         dt1 = 50. * 3600.
         w_values = IT_weights(TC_values, T0=T0, T1=T1, w0=0., w1=1.)
         RHTdata['Integrated Temperatures'].append(np.trapz(w_values*TC_values,logging_df['seconds']/(Treact*dt1)))
@@ -1481,28 +1493,32 @@ def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2):
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
-    dwell = RHTdata['dwells'][dwell_nr]
+    try:
+        dwell = RHTdata['dwells'][dwell_nr]
 
-    plotter.set_xlabel('TC')
-    plotter.set_ylabel('Dwell ' + str(dwell_nr+1) + ' duration (h)')
-    xdata = range(len(dwell['TC durations']['TC']))
-    plotter.plot_ax(xdata, dwell['TC durations']['durations'], label='durations')
-    plotter.plot_ax(xdata, dwell['TC durations2']['durations'], label='durations2')
+        plotter.set_xlabel('TC')
+        plotter.set_ylabel('Dwell ' + str(dwell_nr+1) + ' duration (h)')
+        xdata = range(len(dwell['TC durations']['TC']))
+        plotter.plot_ax(xdata, dwell['TC durations']['durations'], label='durations')
+        plotter.plot_ax(xdata, dwell['TC durations2']['durations'], label='durations2')
 
-    plotter.set_ylim((49., 55.))
+        plotter.set_ylim((49., 55.))
 
-    plotter.set_xticks(xdata)
-    plotter.set_xticklabels(dwell['TC durations']['TC'], rotation=45)
+        plotter.set_xticks(xdata)
+        plotter.set_xticklabels(dwell['TC durations']['TC'], rotation=45)
 
-    plotter.legend(loc='best')
+        plotter.legend(loc='best')
 
-    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+        #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
 
-    if args.show_plot:
-        plotter.show(args)
-    else:
-        fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, 'fig:dwell_'+str(dwell_nr+1)+'durations', '_dwell'+str(dwell_nr+1)+'_durations_' + parameters_str(args) + '.png', args=args, caption='Dwell durations of the fixture according to the individual thermo-couples.')
+        if args.show_plot:
+            plotter.show(args)
+        else:
+            fig_filename = args.path.replace('.csv','') 
+            plotter.savefig(fig_filename, 'fig:dwell_'+str(dwell_nr+1)+'durations', '_dwell'+str(dwell_nr+1)+'_durations_' + parameters_str(args) + '.png', args=args, caption='Dwell durations of the fixture according to the individual thermo-couples.')
+    except:
+        print "Dwell", str(dwell_nr+1), "was not found: I'm not going to plot TC dwell durations"
+
 
 def plot_TC_IT(RHTdata, args):
     IT = RHTdata['Integrated Temperatures']
@@ -1820,42 +1836,37 @@ def plot_dwell_summary(RHTdatas, n, args, caption='None'):
                 for i in range(0,len(boxplot_data[boxplot_key]),2):
                     line1 = boxplot_data[boxplot_key][i]
                     line2 = boxplot_data[boxplot_key][i+1]
-                    ydata = line1.get_ydata() + line2.get_ydata()
-                    if len(ydata) != 0:
-                        ymin = min(ydata)
-                        ymax = max(ydata)
-                        ymax = np.around(ymax)
-                        ymin = np.around(ymin)
-                    else:
-                        ymax = None
-                        ymin = None
-
-                    ymax = np.around(ymax)
-                    ymin = np.around(ymin)
+                    ymax = np.around(np.max([line1.get_ydata(),line2.get_ydata()]), 1)
+                    ymin = np.around(np.min([line1.get_ydata(),line2.get_ydata()]), 1)
                     boxplot_numbers_dict[boxplot_key].append(np.array((ymin,ymax)))
             else:
                 boxplot_numbers_dict[boxplot_key] = []
                 boxplot_keys_nonempty.append(boxplot_key)
                 for line in boxplot_data[boxplot_key]:
                     ydata = line.get_ydata()
-                    if len(ydata) != 0:
-                        ymin = min(ydata)
-                        ymax = max(ydata)
-                        ymax = np.around(ymax)
-                        ymin = np.around(ymin)
-                    else:
+                    try:
+                        ymax = np.around(np.max(ydata), 1)
+                    except:
                         ymax = None
+                    try:
+                        ymin = np.around(np.min(ydata), 1)
+                    except:
                         ymin = None
-
+ 
                     boxplot_numbers_dict[boxplot_key].append(np.array((ymin,ymax)))
 
-    boxplot_keys = boxplot_keys_nonempty
+    boxplot_table_keys = list(boxplot_keys_nonempty)
+#    try:
+#        boxplot_table_keys.remove('caps')
+#        boxplot_table_keys.remove('fliers')
+#    except:
+#        pass
 
     boxplot_numbers_dict['Coil ID'] = labels
 
     boxplot_numbers_df = pd.DataFrame(boxplot_numbers_dict)
 
-    report.store_table(to_math(boxplot_numbers_df[['Coil ID'] + boxplot_keys].to_latex(index=False, header=True, float_format="{:0.1f}".format)), 'table:dwell boxplot data '+str(n), caption='Dwell '+str(n)+' boxplot data', resize_textwidth=True)
+    report.store_table(to_math(boxplot_numbers_df[['Coil ID'] + boxplot_table_keys].to_latex(index=False, header=True, float_format="{:0.1f}".format)), 'table:dwell boxplot data '+str(n), caption='Dwell '+str(n)+' boxplot data', resize_textwidth=True)
 
     ymin, ymax = args.dwell_target_ranges[n-1]
     ran = 10.
@@ -2141,6 +2152,7 @@ if __name__ == '__main__':
     parser.add_argument('-tcal', '--thermo-couple-calibration', type=str) 
     parser.add_argument('-comp', '--compare-analyses', action='store_true', default=False) 
     parser.add_argument('--no-report', action='store_true', default=False) 
+    parser.add_argument('--minimum-dwell-duration', type=float, default=10.)
 
     global args 
     args = parser.parse_args()
