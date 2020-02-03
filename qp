@@ -22,7 +22,7 @@ FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
 
 def autoscale_y(args):
-    if args.set_xlim != None:
+    if args.set_xlim != None and args.set_ylim == None:
         xlim = [float(s) for s in args.set_xlim.split()]
         if len(xlim) == 2:
             xmin = xlim[0]
@@ -75,14 +75,36 @@ MATERIAL_DATA = {
 			}
 
 		}
+MATERIAL_DATA_WARM = { 
+		'titanium' : {
+			'elastic_modulus':str(130e9/1e6/1e6),
+			'poisson_ratio':'0.30'
+			},
+		'aluminium' : {
+			'elastic_modulus':str(70e9/1e6/1e6),
+			'poisson_ratio':'0.34'
+			},
+        	'stainless steel' : {
+			'elastic_modulus':str(210e9/1e6/1e6),
+			'poisson_ratio':'0.28'
+			}
 
-def compute_stress(strain_theta, strain_z, material, axis):
+		}
+
+
+
+def compute_stress(strain_theta, strain_z, material, axis, args):
 	"""
 	stress_z     = E/(1-v**2)*(strain_z     * v * strain_theta)
 	stress_theta = E/(1-v**2)*(strain_theta * v * strain_z)
 	"""
-	E = float(MATERIAL_DATA[material]['elastic_modulus'])
-	v = float(MATERIAL_DATA[material]['poisson_ratio'])
+        if args.warm:
+            mat_data = MATERIAL_DATA_WARM
+        else:
+            mat_data = MATERIAL_DATA
+
+	E = float(mat_data[material]['elastic_modulus'])
+	v = float(mat_data[material]['poisson_ratio'])
 	if axis.lower()=='azimuthal': 
 		strain_1 = strain_theta
 		strain_2 = strain_z
@@ -92,11 +114,17 @@ def compute_stress(strain_theta, strain_z, material, axis):
 
 	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
 
-def compute_stress_simple(strain, material):
+def compute_stress_simple(strain, material, args):
 	"""
 	stress     = E*strain
 	"""
-	E = float(MATERIAL_DATA[material]['elastic_modulus'])
+
+        if args.warm:
+            mat_data = MATERIAL_DATA_WARM
+        else:
+            mat_data = MATERIAL_DATA
+
+	E = float(mat_data[material]['elastic_modulus'])
 	return E * strain[:]
 
 
@@ -243,11 +271,13 @@ def plot_mtbop_data(mtbop_data, args=None):
                 ax_dict['raw_data'] = raw_data[:max_current_index+1,ax_dict['index']]
             else:
                 ax_dict['raw_data'] = raw_data[:,ax_dict['index']]
-            if ax_dict['name'] == 'NTP Time':
+            if ax_dict['name'] == 'NTP Time' and args.ntp_to_date:
                 ax_dict['raw_data'] =[datetime.datetime.fromtimestamp(stamp) for stamp in ax_dict['raw_data']]
                 plt.setp(ax.get_xticklabels(), rotation=25, horizontalalignment='right')
                 ax.text(0, -0.2, "Start:" + str(ax_dict['raw_data'][0]), transform = ax.transAxes)
                 ax.text(0, -0.25, "End:" + str(ax_dict['raw_data'][-1]), transform = ax.transAxes)
+            elif ax_dict['name'] == 'NTP Time' and args.ntp_to_dsec:
+                ax_dict['raw_data'] = ax_dict['raw_data'] - ax_dict['raw_data'][0] 
             if ax_dict['name'].lower() == 'current':
                 if not args.no_current_squared:
                     ax_dict['raw_data'] = ax_dict['raw_data']**2.
@@ -810,6 +840,9 @@ def create_channel_dict_list(channel_names, channel_units):
                     channel_name = channel_name.replace('Strain_','')
                 if '_cryo' in channel_name:
                     channel_name = channel_name.replace('_cryo','')
+                if 'FBG_' in channel_name:
+                    channel_name = channel_name.replace('FBG_','')+'_FBG'
+
 
 
                 if '_inter' in channel_name:
@@ -852,10 +885,10 @@ def create_channel_dict_list(channel_names, channel_units):
                     channel_dict['sensor type'] = 'NTP'
                     channel_dict['longname'] = 'NTP Time'
                     channel_dict['name'] = 'NTP Time'
-                elif 'pressure' in channel_name.lower():
+                elif 'pressure' in channel_name.lower() or ('bladder' in channel_name.lower()):
                     channel_dict['unit'] = 'Bar'
                     channel_dict['physical_quantity'] = 'Pressure'
-                    if 'Rod' in channel_name:
+                    if 'rod' in channel_name.lower():
                         channel_dict['name'] = 'Piston Pressure'
                         channel_dict['longname'] = 'Piston Pressure'
                     elif 'bladder' in channel_name.lower():
@@ -894,6 +927,7 @@ def create_channel_dict_list(channel_names, channel_units):
                                 channel_dict['sensor type'] = ''
                         elif '_FBG' in channel_name:
                                 channel_dict['sensor type'] = 'optical'
+                                channel_name = channel_name.replace('_FBG', '')
                         else: channel_dict['sensor type'] = ''
                     if '_Z' in channel_name or channel_name[-1] == 'Z' or channel_name[-2:] == 'Z_':
                         channel_dict['direction'] =  'Longitudinal'
@@ -1172,7 +1206,7 @@ def add_column_to_mtbop_raw_data(mtbop_data, data, name):
     mtbop_data['channel_names'].append(name)
     mtbop_data['raw_data'] = np.c_[mtbop_data['raw_data'], data]
 
-def compute_stresses(plot_dict):
+def compute_stresses(plot_dict, args):
     mtbop_data_list = plot_dict['mtbop_data_list'] 
     channel_dict_list = plot_dict['channel_dict_list']
     add_stress_data_to_dicts(channel_dict_list)
@@ -1190,10 +1224,10 @@ def compute_stresses(plot_dict):
                     if not azimuthal_dict == None:
                             azimuthal_strain = get_raw_data_by_name(mtbop_data, azimuthal_dict['name']) 
                             longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                            stress_data = compute_stress(azimuthal_strain, longitudinal_strain, material, channel_dict['direction'])
+                            stress_data = compute_stress(azimuthal_strain, longitudinal_strain, material, channel_dict['direction'], args)
                     else:
                         longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                        stress_data = compute_stress_simple(longitudinal_strain, material)
+                        stress_data = compute_stress_simple(longitudinal_strain, material, args)
                     add_column_to_mtbop_raw_data(mtbop_data, stress_data, channel_dict['name'])
                 except:
                     pass
@@ -1268,7 +1302,7 @@ def compute_stresses(plot_dict):
 #				mtbop_data['channel_names'].append(channel_name)
 
 
-def compute_rod_forces(plot_dict):
+def compute_rod_forces(plot_dict, args):
     mtbop_data_list = plot_dict['mtbop_data_list'] 
     channel_dict_list = plot_dict['channel_dict_list']
     add_rod_force_data_to_dicts(channel_dict_list)
@@ -1285,7 +1319,7 @@ def compute_rod_forces(plot_dict):
 
                 try:
                     longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                    rod_force_data = A_rod * compute_stress_simple(longitudinal_strain, material)
+                    rod_force_data = A_rod * compute_stress_simple(longitudinal_strain, material, args)
                     add_column_to_mtbop_raw_data(mtbop_data, rod_force_data, channel_dict['name'])
                 except:
                     pass
@@ -1312,10 +1346,10 @@ def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
 
         if plot_stress:
             add_stress_channel_data(plot_dict)
-            compute_stresses(plot_dict)
+            compute_stresses(plot_dict, args)
         if args.rod_force:
             add_rod_force_channel_data(plot_dict)
-            compute_rod_forces(plot_dict)
+            compute_rod_forces(plot_dict, args)
 
 	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
@@ -1397,6 +1431,33 @@ def find_common_location(plot_dict):
 
     print 'common location:', common_words
     plot_dict['common location'] = common_words
+
+
+def store_data(plot_dict, args=None):
+    x_axis = plot_dict['x_axis']
+    y_axis_list = plot_dict['y_axis']
+    if y_axis_list == None: 
+        print "You didn't choose any channels on y-axis, exiting..."
+        exit()
+
+    colors = ['b','g','r','c','m','y','k','orange']
+    markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
+
+    last_points_data_list = []
+    find_common_location(plot_dict)
+    for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
+        if args.store_points != None:
+            point_indices = []
+            time_index = mtbop_data['channel_names'].index('Time')
+            time_values = mtbop_data['raw_data'][:, time_index]
+            for point in args.store_points:
+                point_index = np.abs(time_values-point).argmin()
+                point_indices.append(point_index)
+
+        y_axis_indices = [mtbop_data['channel_names'].index(name) for name in y_axis_list]
+        df = pd.DataFrame(mtbop_data['raw_data'][:,y_axis_indices][point_indices,:], columns=y_axis_list)
+        df.to_csv(mtbop_data['filepath'].replace('.txt','')+'_store_points.csv')
+        
 
 
 def plot_data(plot_dict, args=None):
@@ -1527,9 +1588,13 @@ if __name__ == '__main__':
         parser.add_argument('--rename', action='store_true', default=False)
         parser.add_argument('--last-points', action='store_true', default=False)
         parser.add_argument('--last-points-groupby', nargs='+', type=str)
+        parser.add_argument('--store-points', nargs='+', type=float)
         parser.add_argument('--diff-plot', action='store_true', default=False)
         parser.add_argument('--rod-force', action='store_true', default=False)
         parser.add_argument('--rods', action='store_true', default=False)
+        parser.add_argument('--warm', action='store_true', default=False)
+        parser.add_argument('--ntp-to-date', action='store_true', default=False)
+        parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
 	#parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
 	args = parser.parse_args()
@@ -1639,6 +1704,10 @@ if __name__ == '__main__':
             ax.set_ylim(ylim)
 
         ax.grid(args.grid)
+
+        if args.store_points != None:
+            print "storing points!"
+            store_data(plot_dict, args)
 
         if plot or args.show_plot:
             plot_data(plot_dict, args)
