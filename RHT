@@ -149,15 +149,15 @@ class Report(TexTemplator):
             n = dwell['n']
             durnom = 50.
             allowed = dwell['target_ranges'][n-1]
-            if dwell['Tmaxmax'] > allowed[1] + temperature_resolution: 
+            if round(dwell['Tmaxmax'], 1) > allowed[1] + temperature_resolution: 
                 overshoot = dwell['Tmaxmax'] - allowed[1]
                 overshoots.append((n,overshoot,dwell['Tmaxmax'],allowed[1]))
                 #dwell_remarks+='Absolute maximum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(overshoot) + ' $\degC$ higher than allowed.\n'
-            if dwell['Tminmin'] < allowed[0] - temperature_resolution: 
+            if round(dwell['Tminmin']) < allowed[0] - temperature_resolution: 
                 below = allowed[0] - dwell['Tminmin'] 
                 belows.append((n,below,dwell['Tminmin'],allowed[0]))
                 #dwell_remarks+='Absolute minimum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(below) + ' $\degC$ lower than allowed.\n'
-            if dwell['Hmean/2'] > 3.:
+            if round(dwell['Hmean/2'], 1) > 3.:
                 over = dwell['Hmean/2']
                 homogovers.append((n,over,dwell['Hmean/2'],3.))
             durations.append((n, dwell['duration']-durnom))
@@ -303,7 +303,7 @@ class Plotter:
 
     def __init__(self):
         self.reset()
-        self.colors = ['r','g','b','y','c','k','m']
+        self.colors = ['r','g','b','k','c','y','m']
         self.markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
     def insert_color(self, color):
@@ -328,7 +328,8 @@ class Plotter:
         if args != None:
             if args.xlim != None: 
                 self.ax.set_xlim(args.xlim)
-            if args.ylim != None: self.ax.set_ylim(args.ylim)
+            if args.ylim != None: 
+                self.ax.set_ylim(args.ylim)
 
     def set_ylim(self, ylim):
         self.ax.set_ylim(ylim)
@@ -440,7 +441,7 @@ class Plotter:
         x = xmin + xrel * (xmax - xmin)
         return x
 
-    def plot_dwells(self, dwells, only_txt=False, delta_horizontal_position=5, vertical_position=0.1):
+    def plot_dwells(self, dwells, only_txt=False, delta_horizontal_position=5, vertical_position=0.1, no_txt=False):
         for i, dwell in enumerate(dwells):
             dwell_df = dwell['DataFrame']
             if len(dwell_df) >= 2:
@@ -448,12 +449,23 @@ class Plotter:
                 dwell_Tmean = dwell['Tmeanmean']
                 dwell_mean_hper2 = dwell['Hmean/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
-                self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'mean(H/2)={:2.1f}\n'.format(dwell_mean_hper2))
+                if not no_txt:
+                    self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'mean(H/2)={:2.1f}\n'.format(dwell_mean_hper2))
                 if not only_txt:
                     self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
                 else:
                     self.ax.axvline(x=dwell_df['hours'].iloc[0], color='black', linestyle='solid')
                     self.ax.axvline(x=dwell_df['hours'].iloc[-1], color='black', linestyle='solid')
+
+    def plot_allowed_band(self, dwells, only_txt=False, delta_horizontal_position=5, vertical_position=0.1):
+        
+        for i, dtr in enumerate(args.dwell_target_ranges):
+            if not only_txt:
+                self.ax.axhspan(dtr[0], dtr[1], facecolor='green', alpha=0.2)
+            else:
+                self.ax.axvline(x=dwell_df['hours'].iloc[0], color='black', linestyle='solid')
+                self.ax.axvline(x=dwell_df['hours'].iloc[-1], color='black', linestyle='solid')
+
 
     def plot_onlines(self, RHTdata, plot_curves=True):
         logging = RHTdata['data_logging']
@@ -756,14 +768,14 @@ class RHT_CSV_Reader:
                         self.unset_skip_empty_lines()
                         latest_online['values'] += [[self.to_float_str(value) for value in row]]
                     
-        RHTdata['program']['DataFrame'] = to_DataFrame(RHTdata['program']['variables'],RHTdata['program']['values'])
+        RHTdata['program']['DataFrame'] = to_DataFrame(RHTdata['program']['variables'],RHTdata['program']['values'], args)
 
-        RHTdata['data_logging']['DataFrame'] = to_DataFrame(RHTdata['data_logging']['variables'],RHTdata['data_logging']['values'])
+        RHTdata['data_logging']['DataFrame'] = to_DataFrame(RHTdata['data_logging']['variables'],RHTdata['data_logging']['values'], args)
 
         for i,logging in enumerate(RHTdata['data_loggings']):
-            logging['DataFrame'] = to_DataFrame(logging['variables'], logging['values'])
+            logging['DataFrame'] = to_DataFrame(logging['variables'], logging['values'], args)
         for online in RHTdata['onlines']:
-            online['DataFrame'] = to_DataFrame(online['variables'], online['values'])
+            online['DataFrame'] = to_DataFrame(online['variables'], online['values'], args)
             # here we deal with a bug that is in MQXF furnace CSV format:
             online['DataFrame']['Time'] = online['DataFrame']['Offset zone B8'] 
        
@@ -794,7 +806,7 @@ def parameters_dict(args):
               'dhtol':args.dwell_heat_rate_tolerance}
     return params
 
-def to_DataFrame(variables, values):
+def to_DataFrame(variables, values, args):
 
     if len(values) > 0:
         #variables = RHTdata['data_logging']['variables']
@@ -809,7 +821,7 @@ def to_DataFrame(variables, values):
             except:
                 pass
         if 'date' in DataFrame.keys() and 'time' in DataFrame.keys():
-            DataFrame['datetime'] = to_datetime(DataFrame['date'], DataFrame['time'])
+            DataFrame['datetime'] = to_datetime(DataFrame['date'], DataFrame['time'], args)
             DataFrame['seconds'] = (DataFrame['datetime'] - DataFrame['datetime'][0]).dt.total_seconds()
             DataFrame['hours'] = DataFrame['seconds']/3600
     else:
@@ -829,24 +841,25 @@ def cpickle_load(pickle_path):
 		mtbop_data = pickle.load(handle)
 	return mtbop_data
 
-def to_datetime(dates, times):
+def to_datetime(dates, times, args):
     datetimes = []
     clock_change = 0
     for i, date in enumerate(dates):
         dateparts = date.split('.')[::-1]
         datetimes.append(datetime.datetime.strptime('-'.join(dateparts) + 'T' + times[i], '%Y-%m-%dT%H:%M:%S'))
-        if i>=1:
-            dt = (datetimes[i]-datetimes[i-1]).total_seconds() 
-            if clock_change != 1 and dt < -3500:
-                print "to_datetime: clock change to winter time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to summer time." 
-                clock_change = 1
-            elif clock_change !=2 and dt > 3500:
-                print "to_datetime: clock change to summer time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to winter time." 
-                clock_change = 2
-        if clock_change == 1:
-            datetimes[i] += datetime.timedelta(hours=1)
-        elif clock_change == 2:
-            datetimes[i] -= datetime.timedelta(hours=1)
+        if not args.no_clock_change_detection:
+            if i>=1:
+                dt = (datetimes[i]-datetimes[i-1]).total_seconds() 
+                if clock_change != 1 and dt < -3500:
+                    print "to_datetime: clock change to winter time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to summer time." 
+                    clock_change = 1
+                elif clock_change !=2 and dt > 3500:
+                    print "to_datetime: clock change to summer time detected (i=",str(i),"datetime=",datetimes[i],"dt =", str(dt) + "). All the following times are changed back to winter time." 
+                    clock_change = 2
+            if clock_change == 1:
+                datetimes[i] += datetime.timedelta(hours=1)
+            elif clock_change == 2:
+                datetimes[i] -= datetime.timedelta(hours=1)
 
 #datetimeObj = datetime.strptime('2018-09-11T15::11::45.456777', '%Y-%m-%dT%H::%M::%S.%f')
     return datetimes
@@ -1356,6 +1369,9 @@ def analyze(RHTdata, args):
 
 def plot_all_TC(RHTdata, args):
     plotter.set_lim_args(args)
+    xargs_old = plotter.ax.get_xlim()
+    args.xlim = (0, 300)
+    plotter.set_lim_args(args)
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -1373,8 +1389,13 @@ def plot_all_TC(RHTdata, args):
     else:
         fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, 'fig:all_TC', '_all_TC_' + parameters_str(args) + '.png', args=args, caption='The temperature reading of every thermo-couple as a function of hours from the beginning of the reaction cycle.')
+    args.xlim = xargs_old 
 
 def plot_accepted_TC(RHTdata, args):
+    plotter.set_lim_args(args)
+    xargs_old = plotter.ax.get_xlim()
+    args.xlim = (0,300)
+    plotter.set_lim_args(args)
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
@@ -1398,6 +1419,7 @@ def plot_accepted_TC(RHTdata, args):
         else:
             fig_filename = args.path.replace('.csv','') 
             plotter.savefig(fig_filename, 'fig:accepted_TC', '_accepted_TC_round_' + parameters_str(args) + '_' + str(i) + '.png', args=args, caption='The temperature reading of the accepted thermo-couple as a function of hours from the beginning of the reaction cycle.')
+    args.xlim = xargs_old 
 
 def plot_Ar(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -1719,7 +1741,7 @@ def plot(RHTdata, args):
         #if RHTdata['onlines'] > 0: caption_text += ' Online $i$ (if any) is the $i^{th}$ change to the program during the heat treatment cycle.'
         plotter.savefig(fig_filename, 'fig:dwell_plot', '_' + parameters_str(args) + '.png', args=args, caption=caption_text)
 
-def plot_mid_range(RHTdata, args, theoretical=True):
+def plot_mean_and_theoretical(RHTdata, args, theoretical=True):
     plotter.clear((16,10))
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
@@ -1730,7 +1752,7 @@ def plot_mid_range(RHTdata, args, theoretical=True):
 
     plotter.set_xlabel('Time (h)')
     plotter.set_ylabel('Temperature ($\degree$C)')
-    plotter.insert_color('black')
+    #plotter.insert_color('black')
     plotter.plot_ax(logging_df['hours'],logging_df['Tmax'], label='Maximum')
     plotter.plot_ax(logging_df['hours'],logging_df['Tmin'], label='Minimum')
 
@@ -1763,10 +1785,50 @@ def plot_mid_range(RHTdata, args, theoretical=True):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, 'fig:mid_range_plot', 'mid_range_plot_' + parameters_str(args) + '.png', args=args, caption='Dwell plot')
+        plotter.savefig(fig_filename, 'fig:mean_theoretical_plot', 'mean_theoretical_plot_' + parameters_str(args) + '.png', args=args, caption='Dwell plot')
 
+def plot_dwell_close_up(RHTdata, args, dwellnr = 1):
+    plotter.clear((16,10))
+    logging = RHTdata['data_logging']
+    logging_df = logging['DataFrame']
+    program_df = RHTdata['program']['DataFrame']
+    dwells = RHTdata['dwells']
 
+    #plotter.plot_ax(program_df['hours from'],program_df['From Tp zone B3'], label='Program')
 
+    plotter.set_xlabel('Time (h)')
+    plotter.set_ylabel('Temperature ($\degree$C)')
+    plotter.plot_ax(logging_df['hours'],logging_df['Tmax'], label='Maximum')
+    plotter.plot_ax(logging_df['hours'],logging_df['Tmin'], label='Minimum')
+
+    dwell = dwells[dwellnr-1]
+    dwell_df = dwell['DataFrame']
+    xargs_old = plotter.ax.get_xlim()
+    yargs_old = plotter.ax.get_ylim()
+    args.xlim = (dwell_df['hours'].iloc[0]-10, dwell_df['hours'].iloc[-1]+10)
+    yran = args.dwell_target_ranges[dwellnr-1]
+    args.ylim = (yran[0] - 5, yran[1] + 5)
+    plotter.set_lim_args(args)
+
+    plotter.plot_dwells(dwells, no_txt=True)
+    plotter.plot_allowed_band(dwells)
+
+    #plotter.plot_onlines(RHTdata)
+    #plotter.write_dwell_notes(args)
+    #plotter.write_tc_notes(RHTdata, rejected=True)
+
+    plotter.legend(loc='best')
+
+    #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
+
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, 'fig:dwell_' + str(dwellnr) + 'close_up_plot', 'dwell_' + str(dwellnr) + 'close_up_plot_' + parameters_str(args) + '.png', args=args, caption='Dwell plot')
+
+    args.xlim = xargs_old 
+    args.ylim = yargs_old 
 
 def plot_heater_power(RHTdata, args):
     logging = RHTdata['data_logging']
@@ -2153,11 +2215,13 @@ if __name__ == '__main__':
     parser.add_argument('-comp', '--compare-analyses', action='store_true', default=False) 
     parser.add_argument('--no-report', action='store_true', default=False) 
     parser.add_argument('--minimum-dwell-duration', type=float, default=10.)
+    parser.add_argument('--dwell-close-ups', action='store_true', default=False) 
+    parser.add_argument('--no-clock-change-detection', action='store_true', default=False) 
 
     global args 
     args = parser.parse_args()
     path = args.path
-
+    
     file_logger = Logger(path)
     report = Report(path + '.tex', 'hllhcedms_template_short.tex')
 
@@ -2184,23 +2248,24 @@ if __name__ == '__main__':
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
                 if not args.no_images:
-
-                    plot_mid_range(RHTdata, args)
+                    plot_mean_and_theoretical(RHTdata, args)
                     plot_all_TC(RHTdata, args)
                     plot_accepted_TC(RHTdata, args)
                     plot(RHTdata, args)
                     plot_homogenity(RHTdata, args)
-#                    plot_Ar(RHTdata, args)
+                    plot_Ar(RHTdata, args)
                     plot_heating_rate(RHTdata, args)
-#                    plot_map(RHTdata, args, field='Temperature')
-#                    plot_map(RHTdata, args, field='middevT')
+                    plot_map(RHTdata, args, field='Temperature')
+                    plot_map(RHTdata, args, field='middevT')
                     plot_map(RHTdata, args, field='middevT_dwells')
-#                    plot_map(RHTdata, args, field='block_homogenity')
+                    plot_map(RHTdata, args, field='block_homogenity')
                     plot_map(RHTdata, args, field='block_homogenity_dwells')
                     plot_TC_dwell_durations(RHTdata, args)
                     plot_TC_IT(RHTdata, args)
-#                    plot_heater_power(RHTdata, args)
-
+                    plot_heater_power(RHTdata, args)
+                    if args.dwell_close_ups:
+                        for i,_ in enumerate(RHTdata['dwells']):
+                            plot_dwell_close_up(RHTdata, args, i+1)
 
                 plotter.reset()
 
