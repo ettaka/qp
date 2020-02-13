@@ -600,11 +600,22 @@ def convert_units_to_umum(mtbop_data):
             #raw_data[:,i] *= 1e-6
             channel_dict['unit'] = 'um/um'
 
+def apply_gradient_filter(mtbop_data, args):
+    print "Applying gradient filter with", args.gradient_filter*100, "% mean deviation"
+    raw_data = mtbop_data['raw_data']
+    raw_abs_gradient = np.abs(np.gradient(raw_data,axis=0))
+    mean_abs_gradient = np.mean(np.abs(raw_abs_gradient),axis=0)
+    mean_dev = np.abs(raw_abs_gradient-mean_abs_gradient)
+    remove_indexes = np.argwhere(mean_dev/mean_abs_gradient>args.gradient_filter)
+    mtbop_data['raw_data'] = np.delete(raw_data, remove_indexes, axis=0)
+
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
 	mtbop_data_list = []
 	for filepath in filepath_list:
 		mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
                 if not args == None:
+                    if args.gradient_filter is not None:
+                        apply_gradient_filter(mtbop_data, args)
                     if args.replace_channels:
                         replace_raw_data_channels(mtbop_data)
                     if not args.no_thermal_compensation:
@@ -1608,7 +1619,7 @@ if __name__ == '__main__':
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
         parser.add_argument('--old-format', action='store_true', default=False)
         parser.add_argument('--font-size', type=float, default=20)
-        parser.add_argument('--gradient-filter', action='store_true', default=False)
+        parser.add_argument('--gradient-filter', type=float, default=None)
 	#parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
 	args = parser.parse_args()
