@@ -287,8 +287,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(x_nominal-0.174, 0.2, 'Nominal', rotation=90, transform = ax.transAxes)
-                        ax.text(0.8, 0.2, 'Ultimate', rotation=90, transform = ax.transAxes)
+                        ax.text(x_nominal-0.188, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
+                        ax.text(0.8-0.014, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
@@ -330,6 +330,11 @@ def plot_mtbop_data(mtbop_data, args=None):
                 curve_label=''
                 linestyle = '--'
 
+        for word in y_axis_dict['label'].split('(')[0].split():
+            w = word.replace('$\Delta$','')
+            curve_label = curve_label.replace(w + ' ','')
+            curve_label = curve_label.replace(w,'')
+
         if args.fit:
             max_x = np.max(xdata)
             fit_max_x = 1.6 * max_x
@@ -345,7 +350,7 @@ def plot_mtbop_data(mtbop_data, args=None):
         if mtbop_data['no_markers']:
             curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=3)
         else:
-            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=y_axis_dict['name'])
+            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([10,20])
@@ -607,13 +612,17 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
                     if args.print_max_current: 
                         detect_max_current(mtbop_data)
                         detect_max_current_grad(mtbop_data)
-                    if args.rename:
+                    if args.rename is not None:
                         detect_max_current(mtbop_data)
                         detect_max_current_grad(mtbop_data)
                         try:
-                            qreplace_str = str(int(round(1000*mtbop_data['max_current']))) + 'A'
-                            qreplace_str += '-' + str(int(round(1000*mtbop_data['max_current_grad']))) + 'As'
-                            newfilepath = filepath.replace('Quench', qreplace_str)
+                            if args.rename == "simple":
+                                qreplace_str = '_'.join(filepath.split('_')[2:])
+                                newfilepath = filepath.replace(qreplace_str,'')[:-1]+"."+filepath.split('.')[1]
+                            else:
+                                qreplace_str = str(int(round(1000*mtbop_data['max_current']))) + 'A'
+                                qreplace_str += '-' + str(int(round(1000*mtbop_data['max_current_grad']))) + 'As'
+                                newfilepath = filepath.replace('Quench', qreplace_str)
                             print "Renaming the", filepath, "to", newfilepath
                             os.rename(filepath, newfilepath)
                         except: 
@@ -861,19 +870,19 @@ def create_channel_dict_list(channel_names, channel_units):
                 channel_dict['physical_quantity'] = ''
 
                 channel_dict['longitudinal location'] = ''
-                if '_LE' in channel_name:
+                if '_LE' in channel_name or 'LE_' in channel_name:
                     channel_dict['longitudinal location'] = 'LE'
-                elif '_CE' in channel_name or '_MI' in channel_name:
+                elif '_CE' in channel_name or '_MI' in channel_name or 'CE_' in channel_name or 'MI_' in channel_name:
                     channel_dict['longitudinal location'] = 'CE'
-                elif '_RE' in channel_name:
+                elif '_RE' in channel_name or 'RE_' in channel_name:
                     channel_dict['longitudinal location'] = 'RE'
 
-                if '_comp' in channel_name.lower(): 
+                if args.old_format and '_comp' in channel_name.lower(): 
                     channel_dict['thermal compensator'] = 'compensator'
 
                 if 'SG_' == channel_name[0:3]:
                     channel_name = channel_name.replace('SG_','')
-                    channel_dict['sensor type'] = 'resistive'
+                    channel_dict['sensor type'] = 'Resistive'
                     channel_dict['sensor type'] = ''
 
                 if channel_name == 'Current':
@@ -923,10 +932,10 @@ def create_channel_dict_list(channel_names, channel_units):
 
                     if channel_dict['sensor type'] == '':
                         if '_SG' in channel_name in channel_name:
-                                channel_dict['sensor type'] = 'resistive'
+                                channel_dict['sensor type'] = 'Resistive'
                                 channel_dict['sensor type'] = ''
                         elif '_FBG' in channel_name:
-                                channel_dict['sensor type'] = 'optical'
+                                channel_dict['sensor type'] = 'Optical'
                                 channel_name = channel_name.replace('_FBG', '')
                         else: channel_dict['sensor type'] = ''
                     if '_Z' in channel_name or channel_name[-1] == 'Z' or channel_name[-2:] == 'Z_':
@@ -991,10 +1000,10 @@ def create_channel_data_original(mtbop_data_list):
 			channel_dict['physical_quantity'] = 'None'
 			channel_dict['unit'] = 'None'
                 if '_SG' in channel_name:
-                        channel_dict['sensor type'] = 'resistive'
+                        channel_dict['sensor type'] = 'Resistive'
                         channel_dict['sensor type'] = ''
                 elif '_FBG' in channel_name:
-                        channel_dict['sensor type'] = 'optical'
+                        channel_dict['sensor type'] = 'Optical'
                 else: channel_dict['sensor type'] = ''
                 if '_Z' in channel_name or channel_name[-1] == 'Z':
 			channel_dict['direction'] =  'Longitudinal'
@@ -1080,7 +1089,7 @@ def add_rod_force_channel_data(plot_dict):
             added_dict['longname'] = get_channel_longname(added_dict)
             added_dict['name'] = added_dict['longname'] 
             added_dict['material'] = channel_dict['material'] 
-            added_dict['unit'] = 'MN'
+            added_dict['unit'] = 'kN'
     #        if not added_dict['location'] in location_dict:
     #            location_dict[added_dict['location']] = {}
     #            if not added_
@@ -1319,7 +1328,7 @@ def compute_rod_forces(plot_dict, args):
 
                 try:
                     longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
-                    rod_force_data = A_rod * compute_stress_simple(longitudinal_strain, material, args)
+                    rod_force_data = 1000. * A_rod * compute_stress_simple(longitudinal_strain, material, args)
                     add_column_to_mtbop_raw_data(mtbop_data, rod_force_data, channel_dict['name'])
                 except:
                     pass
@@ -1511,10 +1520,12 @@ def plot_data(plot_dict, args=None):
             print "Maximum:"
             lpout = last_points_df.groupby('filepath').max()
             lpout['sum'] = last_points_df.groupby('filepath').max().sum(axis=1)
+            lpout['mean'] = last_points_df.groupby('filepath').max().mean(axis=1)
             print lpout
             print "Minimum:"
             lpout = last_points_df.groupby('filepath').min()
             lpout['sum'] = last_points_df.groupby('filepath').min().sum(axis=1)
+            lpout['mean'] = last_points_df.groupby('filepath').min().mean(axis=1)
             print lpout
         else:
             try:
@@ -1585,7 +1596,7 @@ if __name__ == '__main__':
         parser.add_argument('--fit', action='store_true', default=False)
         parser.add_argument('--fit-range', type=str)
         parser.add_argument('--inspect', action='store_true', default=False)
-        parser.add_argument('--rename', action='store_true', default=False)
+        parser.add_argument('--rename', type=str, default=None)
         parser.add_argument('--last-points', action='store_true', default=False)
         parser.add_argument('--last-points-groupby', nargs='+', type=str)
         parser.add_argument('--store-points', nargs='+', type=float)
@@ -1595,6 +1606,9 @@ if __name__ == '__main__':
         parser.add_argument('--warm', action='store_true', default=False)
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
+        parser.add_argument('--old-format', action='store_true', default=False)
+        parser.add_argument('--font-size', type=float, default=20)
+        parser.add_argument('--gradient-filter', action='store_true', default=False)
 	#parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
 	args = parser.parse_args()
@@ -1609,6 +1623,8 @@ if __name__ == '__main__':
             args.y_axis = ["Rod Longitudinal Force"]
             args.rod_force = True
             args.last_points = True
+
+        plt.rcParams.update({'font.size':args.font_size})
 
 	info = args.info
 	channels_json = args.channels_json
@@ -1714,7 +1730,7 @@ if __name__ == '__main__':
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
             else:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.13), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
