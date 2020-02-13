@@ -377,15 +377,24 @@ def plot_selected_list_raw_current(mtbop_data_list):
 		plot_raw_current(mtbop_data)
 	ax.legend()
 
-def filter_plot_dict(plot_dict):
-    if plot_dict['filter_out_str'] != None: 
-        filter_words = plot_dict['filter_out_str'].split()
+def filter_plot_dict(plot_dict, args):
+    if args.filter_out_any is not None: 
+        filter_words = args.filter_out_any.split()
+    if args.filter_out_not_any is not None:
+        not_filter_words = args.filter_out_not_any.split()
     for channel in plot_dict['channel_dict_list']:
         channel['active'] = True
-        if plot_dict['filter_out_str'] != None: 
+        if args.filter_out_any != None: 
             if any(word in channel['name'] for word in filter_words):
-                channel['active'] = False
-                print channel['name'], "filtered", "|", filter_words
+                if args.filter_out_not_any is not None:
+                    print "not_filter_words:", not_filter_words
+                    if all([not word in channel['name'] for word in not_filter_words]):
+                        print "filtered:", channel['name']
+                        channel['active'] = False
+                else:
+                    channel['active'] = False
+                if not channel['active']:
+                    print channel['name'], "filtered", "|", filter_words
 
 def get_cryocorrection(head):
     print "Getting cryocorrection factor",
@@ -1555,13 +1564,18 @@ def search_channel_names_for_y_axis(plot_dict, args):
     filter_str_list = []
     if args.filter_out_any != None:
         filter_str_list = args.filter_out_any.split()
+        if not args.filter_out_not_any is None:
+            not_filter_words = args.filter_out_not_any.split()
+        else:
+            not_filter_words = []
     print "search_channel_names_for_y_axis: filtering out any: ", filter_str_list
+    print "search_channel_names_for_y_axis: filtering out not: ", not_filter_words
     if args.y_axis != None:
         for search_name in args.y_axis:
             search_words = search_name.split()
             for name in plot_dict['selected_channel_names']:
                 if all(word in name for word in search_words):
-                    if not any(word in name for word in filter_str_list):
+                    if not any(word in name for word in filter_str_list) or any(word in name for word in not_filter_words):
                         print "search_channel_names_for_y_axis: found channel:", name
                         found_channels.append(name)
                     else:
@@ -1594,6 +1608,7 @@ if __name__ == '__main__':
         parser.add_argument('--label-type', type=str)
         parser.add_argument('--curve-coloring', type=str)
         parser.add_argument('--filter-out-any', type=str)
+        parser.add_argument('--filter-out-not-any', type=str)
         parser.add_argument('--set-xticks', type=str)
         parser.add_argument('--set-yticks', type=str)
         parser.add_argument('--set-xlim', type=str)
@@ -1661,9 +1676,7 @@ if __name__ == '__main__':
         else:
             plot_dict['no_markers'] = False
 
-        filter_out_str = args.filter_out_any
-        plot_dict['filter_out_str'] = filter_out_str
-        filter_plot_dict(plot_dict)
+        filter_plot_dict(plot_dict, args)
 
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
