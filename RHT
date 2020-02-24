@@ -23,6 +23,7 @@ sys.path.insert(0, "/home/eetakala/git/textemplator/")
 from textemplator import TexTemplator
 
 plt.rcParams.update({'font.size':20})
+plt.rcParams.update({'lines.markersize':20})
 note_x_rel_pos = 0.75
 linewidth = 3
 print_parameters_and_dwells_calls = 0
@@ -33,11 +34,11 @@ TO_MATH_DICT = {
         'duration':'$\Delta t$ [h]',
         'Tmaxmax_prec':'$\max{T_\mathrm{prec}}$ [$^\circ$C]',
         'Tmaxmax':'$\max{T}$ [$^\circ$C]',
-        'Tmid':'$\midrange{T}$ [$^\circ$C]',
         'Tminmin':'$\min{T}$ [$^\circ$C]',
         'Hmax/2':'$\max{H/2}$ [$^\circ$C]',
         'Tmaxmean':'$\mean{\max{T}}$ [$^\circ$C]',
         'Tmidmean':'$\mean{\mid{T}}$ [$^\circ$C]',
+        'Tmid':'$\midrange{T}$ [$^\circ$C]',
         'Tminmean':'$\mean{\min{T}}$ [$^\circ$C]',
         'Hmean/2':'$\mean{H/2}$ [$^\circ$C]',
         'Hasmax/2':'$\max{H_\mathrm{asm}/2}$ [$^\circ$C]',
@@ -62,7 +63,10 @@ def latex_table_fix_units(latex_table, program, program_keys):
     for i, program_key in enumerate(program_keys):
         unit = get_variable_unit(program_key, program['variables'], program['units'])
         fixed_unit = fix_units(unit)
-        latex_table = latex_table.replace(program_key, program_key + ' [' + fixed_unit + ']')
+        try:
+            latex_table = latex_table.replace(program_key, program_key + ' [' + fixed_unit + ']')
+        except:
+            latex_table = latex_table.replace(program_key, program_key + ' [' + unit + ']')
     return latex_table
 
 def get_variable_unit(variable, variables, units):
@@ -114,7 +118,7 @@ class Report(TexTemplator):
             summary_dwell_grouped = summary_df.groupby('Dwell')
             dwell_numbers = summary_dwell_grouped.groups.keys()
             #tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tmid', 'Tminmin', 'Hmax/2', 'Tmaxmean','Tmidmean', 'Tminmean', 'Hmean/2', 'Hasmax/2','Hasmean/2']
-            tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tminmean', 'Hmean/2','Hasmean/2']
+            tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tmidmean','Tminmean', 'Hmean/2','Hasmean/2']
             summary_cols = tex_cols
             #summary_cols = ['File', 'duration', 'Target_T', 'Tmaxmax', 'Tmeanmean', 'Hmax/2', 'Hasmax/2']
             #print_params['Tmid'].append(dwell['Tmid'])
@@ -130,9 +134,13 @@ class Report(TexTemplator):
             #print_params['Hasmean/2'].append(dwell['Hasmean/2'])
 
             for n in dwell_numbers:
-                dwell_summary_df = summary_dwell_grouped.get_group(n).dropna()
+                dwell_summary_df = summary_dwell_grouped.get_group(n).dropna().round(decimals=1)
                 self.store_table(to_math(dwell_summary_df[summary_cols].to_latex(index=False, header=True, float_format="{:0.1f}".format)).replace('CR110','\\hline \nCR110'), 'table:dwell ' + str(n) + ' summary', caption='Dwell ' + str(n) + ' comparison summary for all analyzed files.', resize_textwidth=True)
                 plot_dwell_summary(RHTdatas, n, args)
+            
+            plot_TC_IT_summary(RHTdatas, args)
+
+
         else: 
             print "I didn't find any previous analyzed RHTdata pickles. No point in doing a summary."
             
@@ -147,13 +155,14 @@ class Report(TexTemplator):
         for dwell in RHTdata['dwells']:
             dwell_df = dwell['DataFrame']
             n = dwell['n']
-            durnom = 50.
+            durnoms = [48., 48., 50.]
+            durnom = durnoms[n-1]
             allowed = dwell['target_ranges'][n-1]
             if round(dwell['Tmaxmax'], 1) > allowed[1] + temperature_resolution: 
                 overshoot = dwell['Tmaxmax'] - allowed[1]
                 overshoots.append((n,overshoot,dwell['Tmaxmax'],allowed[1]))
                 #dwell_remarks+='Absolute maximum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(overshoot) + ' $\degC$ higher than allowed.\n'
-            if round(dwell['Tminmin']) < allowed[0] - temperature_resolution: 
+            if round(dwell['Tminmin'], 1) < allowed[0] - temperature_resolution: 
                 below = allowed[0] - dwell['Tminmin'] 
                 belows.append((n,below,dwell['Tminmin'],allowed[0]))
                 #dwell_remarks+='Absolute minimum temperature during dwell ' + str(n) + ' is {:0.1f}'.format(below) + ' $\degC$ lower than allowed.\n'
@@ -167,7 +176,7 @@ class Report(TexTemplator):
         if len(belows) > 0:
             dwell_remarks+="\item Absolute minimum temperature has violated the allowed band condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC <$ {:0.1f} $\degC$)'.format(below[0], below[2], below[3]) for below in belows]) + ".\n"
         if len(homogovers) > 0:
-            dwell_remarks+="\item The mean homogenity has violated the allowed condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(over[0], over[2], over[3]) for over in homogovers]) + ".\n"
+            dwell_remarks+="\item The mean homogeneity has violated the allowed condition during dwells: " + ', '.join(['{} ({:0.1f} $\degC >$ {:0.1f} $\degC$)'.format(over[0], over[2], over[3]) for over in homogovers]) + ".\n"
 
         dwell_remarks+="\item The dwell durations w.r.t. nominal: " + ', '.join(['{}. {:0.1f} h'.format(dt[0],dt[1]) for dt in durations]) + ".\n"
 
@@ -193,25 +202,32 @@ class Report(TexTemplator):
         #except:
             #print RHTdata['basename'] + '.json loading failed! Cannot create the report!'
 
-        d = self.doc_data
+        if 'mapping_picture_file' in self.doc_data:
+            mapping_picture_file = self.doc_data['mapping_picture_file']
+        else:
+            mapping_picture_file = 'png/Default_mapping.png'
 
-        d['%FIG_DEFAULT_MAPPING'] = self.figure('png/Default_mapping.png', 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a blue or yellow X are not included in the analysis. Blue represents argon temperature and yellow represents end plate temperature.')
+        d = {}
+        for key in self.doc_data:
+            if '%' in key:
+                d[key] = self.doc_data[key]
+
+        d['%FIG_DEFAULT_MAPPING'] = self.figure(mapping_picture_file, 'fig:default_mapping', caption='The thermo-couple locations. Those that are marked with a blue, yellow or red (if any) X are not included in the analysis. Blue represents argon temperature, yellow represents end plate temperature and red represents rejected based on careful examination.')
         
         if "%CSV_files" not in d: d['%CSV_files'] = "-"
         if "%RHT_CYCLE_EDMS" not in d: d['%RHT_CYCLE_EDMS'] = "2270203"
-        param_table_keys = ['Start date', 'End date', 'Furnace', 'RHT Program', 'Cable type', 'CSV file']
+        param_table_keys = ['Start date', 'End date', 'Furnace', 'Cable type', 'CSV file']
         param_table = OrderedDict({'Start date': [RHTdata['start date']],
                      'End date': [RHTdata['end date']],
                      'Furnace': ['Gero GLO 10000KE/09-1'],
-                     'RHT Program': ['EDMS '+d['%RHT_CYCLE_EDMS']],
                      'Cable type': [d['%CABLE_ID'] + ' (' + d['%STRAND_TYPE']+ ')'],
                      'CSV file': [d['%CSV_files']]})
 
         d['%FIG_DWELL_PLOT'] = self.figures['fig:dwell_plot']
         d['%FIG_HEATING_RATE'] = self.figures['fig:heating_rate']
-        d['%FIG_HOMOGENITY'] = self.figures['fig:homogenity']
+        d['%FIG_HOMOGENITY'] = self.figures['fig:homogeneity']
         d['%FIG_MIDDEVT_DWELLS'] = self.figures['fig:middevT_dwells-map']
-        d['%FIG_BLOCK_HOMOGENITY_DWELLS'] = self.figures['fig:block_homogenity_dwells-map']
+        d['%FIG_BLOCK_HOMOGENITY_DWELLS'] = self.figures['fig:block_homogeneity_dwells-map']
 
         d['%TAB_PARAM'] = self.table(to_math(pd.DataFrame(param_table)[param_table_keys].transpose().to_latex(header=False)), 'table:data', caption='General RHT parameters')
         d['%TAB_SUMMARY'] = self.tables['table:summary']
@@ -229,6 +245,7 @@ class Report(TexTemplator):
         col_format = "".join(['|p{1.3cm}' for key in program_keys]) + '|'
         df = RHTdata['program']['DataFrame']
         df = df[(df[non_step_keys].T != 0).any()]
+        df['Step'] = df.index+1
         latex_table = self.table(df[program_keys].to_latex(index=False, float_format="{:3.0f}".format, column_format=col_format), 'table:program', caption='The RHT program for the furnace. Only columns with any non-zero values are presented ', resize_textwidth=True)
 
         latex_table = latex_table_fix_units(latex_table, RHTdata['program'], program_keys)
@@ -450,7 +467,7 @@ class Plotter:
                 dwell_mean_hper2 = dwell['Hmean/2']
                 #self.plot_ax(dwell_df['hours'],dwell_df['Tmean'])
                 if not no_txt:
-                    self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'mean(H/2)={:2.1f}\n'.format(dwell_mean_hper2))
+                    self.text(dwell_df['hours'].iloc[0]+delta_horizontal_position, self.rel_pos(vertical_position, 'y'), 'Dwell ' + str(dwell['n']) + ': {:2.1f}'.format(round(dwell_len,1)) + ' hours\nmean(T)={:2.1f}\n'.format(dwell_Tmean)+'mid-range(T)={:2.1f}\n'.format(dwell['Tmid'])+'mean(H/2)={:2.1f}\n'.format(dwell_mean_hper2))
                 if not only_txt:
                     self.ax.axvspan(dwell_df['hours'].iloc[0], dwell_df['hours'].iloc[-1], facecolor='green', alpha=0.2)
                 else:
@@ -474,7 +491,7 @@ class Plotter:
         dwells = RHTdata['dwells']
         for i, online in enumerate(RHTdata['onlines']):
             online_df = online['DataFrame']
-            self.text(online['activation hours'], self.rel_pos(0.8, 'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'])) + ' hours', rotation=90)
+            self.text(online['activation hours'], self.rel_pos(0.8, 'y'), 'Online change ' + str(i+1) + '\nat {:2.1f}'.format(round(online['activation hours'],1)) + ' hours', rotation=90)
             self.ax.axvline(x=online['activation hours'], color='black', linestyle='dashed')
             if plot_curves:
                 self.plot_ax(online_df['hours from'],online_df['From Tp zone B3'], label='Online ' + str(i+1))
@@ -498,10 +515,10 @@ class Plotter:
                 if nc >1: 
                     dwells_note += ', '
                 dwells_note += '$\pm${:2.0f}$\degree$C'.format(args.dwell_mid_deviation) + ' mid-range deviation\n'
-            if args.dwell_target_homogenity != None:
+            if args.dwell_target_homogeneity != None:
                 nc += 1
                 if nc >1: dwells_note += 'and '
-                dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogenity/2.)
+                dwells_note += '{:2.0f}$\degree$C H/2'.format(args.dwell_target_homogeneity/2.)
             if nc == 1:
                 dwells_note += ' criterion'
             elif nc > 1:
@@ -788,13 +805,13 @@ def target_ranges_str(args):
 
 def parameters_str(args):
 #            print "dtdev = dwell target deviation"
-#            print "dthom = dwell target homogenity"
-#            print "dthomhalf = dwell target homogenity half band"
+#            print "dthom = dwell target homogeneity"
+#            print "dthomhalf = dwell target homogeneity half band"
 #            print "dhtol = dwell heat_rate tolerance"
 #            print "dtdev\tdthom\tdthomhalf\tdhtol"
 #            print 
     if args.no_target_ranges:
-        out = "dtdev{}-dthomhalf{}-dhtol{}".format(args.dwell_target_deviation, args.dwell_target_homogenity_half_band, args.dwell_heat_rate_tolerance)
+        out = "dtdev{}-dthomhalf{}-dhtol{}".format(args.dwell_target_deviation, args.dwell_target_homogeneity_half_band, args.dwell_heat_rate_tolerance)
     else:
         out = "dthomhalf{}".format(args.dwell_target_deviation) + "_dtr" + target_ranges_str(args)
     return out.replace('.','_')
@@ -802,7 +819,7 @@ def parameters_str(args):
 
 def parameters_dict(args):
     params = {'dtdev':args.dwell_target_deviation,
-              'dthomhalf':args.dwell_target_homogenity_half_band, 
+              'dthomhalf':args.dwell_target_homogeneity_half_band, 
               'dhtol':args.dwell_heat_rate_tolerance}
     return params
 
@@ -971,18 +988,18 @@ def find_dwells(logging, args):
 
         dwell['DataFrame'] = dwell_df
 
-    if args.dwell_target_homogenity_half_band != None:
-        args.dwell_target_homogenity = 2.* args.dwell_target_homogenity_half_band
+    if args.dwell_target_homogeneity_half_band != None:
+        args.dwell_target_homogeneity = 2.* args.dwell_target_homogeneity_half_band
 
-    if args.dwell_target_homogenity != None:
-        args.dwell_target_homogenity_half_band = args.dwell_target_homogenity/2.
+    if args.dwell_target_homogeneity != None:
+        args.dwell_target_homogeneity_half_band = args.dwell_target_homogeneity/2.
         dwells_tmp = []
         for i, dwell in enumerate(dwells):
             dwell_df = dwell['DataFrame']
             #print i, dwell_df[accepted_TC_keys].min, dwell_df[accepted_TC_keys].max
             accepted_values = dwell_df[accepted_TC_keys]
             diff = accepted_values.min(1)-accepted_values.max(1)
-            dwell_df = dwell_df[diff.abs()<args.dwell_target_homogenity]
+            dwell_df = dwell_df[diff.abs()<args.dwell_target_homogeneity]
             dwell['DataFrame'] = dwell_df 
             dwells_tmp.append(dwell)
     else:
@@ -1075,7 +1092,7 @@ def compute_TC_ITs(RHTdata, args):
         RHTdata['Integrated Temperatures'].append(np.trapz(w_values*TC_values,logging_df['seconds']/(Treact*dt1)))
 
 def print_dwells(dwells, args):
-    print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogenity half band"
+    print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogeneity half band"
     for i, dwell in enumerate(dwells):
         dwell_df = dwell['DataFrame']
         print "{:d}\t{:3.1f}\t{:3.0f}\t{:3.0f}\t{:3.0f}\t{:3.1f}".format(dwell['n'], dwell['duration'], dwell['Tmaxmax'], dwell['Tmeanmean'], dwell['Tminmin'], dwell['Hmax/2'])
@@ -1193,8 +1210,8 @@ def print_parameters_and_dwells(dwells, args):
         else:
             dwell_line += str(n) + ". Tmeanmean (C)\t" + str(n) + ". duration"  + "(h)\t" + str(n) + ". Max H/2 (h)\t"
 #         print "dtdev = dwell target deviation"
-#            print "dthom = dwell target homogenity"
-#            print "dthomhalf = dwell target homogenity half band"
+#            print "dthom = dwell target homogeneity"
+#            print "dthomhalf = dwell target homogeneity half band"
 #            print "dhtol = dwell heat_rate tolerance"
 #            print "dtdev\tdthom\tdthomhalf\tdhtol"
     if print_parameters_and_dwells_calls == 1:
@@ -1357,7 +1374,7 @@ def analyze(RHTdata, args):
     param = summary_df[print_cols]
     file_logger.write(param.to_string())
     #tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tmid', 'Tminmin', 'Hmax/2', 'Tmaxmean','Tmidmean', 'Tminmean', 'Hmean/2', 'Hasmax/2','Hasmean/2']
-    tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tminmean', 'Hmean/2','Hasmean/2']
+    tex_cols = ['Coil ID', 'duration', 'Target_T', 'Allowed_Band', 'Tmaxmax_prec', 'Tmaxmax', 'Tminmin', 'Hmax/2', 'Hasmax/2', 'Tmaxmean', 'Tmidmean', 'Tminmean', 'Hmean/2','Hasmean/2']
     file_logger.write_table(param[tex_cols].transpose().to_latex(index=False, float_format="{:0.1f}".format))
     report.store_table(to_math(param[tex_cols].transpose().to_latex(header=False, float_format="{:0.1f}".format)), 'table:summary', caption='Dwell summary')
     #print_parameters_and_dwells(dwells, args)
@@ -1457,8 +1474,8 @@ def plot_heating_rate(RHTdata, args):
     dwells = RHTdata['dwells']
 
     plotter.set_xlabel('Time (h)')
-    plotter.set_ylabel('Heating Rate ($\degree$C/s)')
-    plotter.plot_ax(logging_df['hours'],logging_df['dmeanTdt'], label='d(mean(T))/dt')
+    plotter.set_ylabel('Heating Rate ($\degree$C/h)')
+    plotter.plot_ax(logging_df['hours'],logging_df['dmeanTdt']*3600., label='d(mean(T))/dt')
     plotter.set_ax2()
     plotter.set_ylabel2('Temperature ($\degree$C)')
     plotter.plot_ax2(logging_df['hours'],logging_df['Tmean'], label='mean(T)')
@@ -1479,14 +1496,14 @@ def plot_heating_rate(RHTdata, args):
         fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, 'fig:heating_rate', '_heating_rate_' + parameters_str(args) + '.png', args=args, caption = 'Heating rate as a function of time.')
 
-def plot_homogenity(RHTdata, args):
+def plot_homogeneity(RHTdata, args):
     logging = RHTdata['data_logging']
     logging_df = logging['DataFrame']
     program_df = RHTdata['program']['DataFrame']
     dwells = RHTdata['dwells']
 
     plotter.set_xlabel('Time (h)')
-    plotter.set_ylabel('Homogenity ($\degree$C)')
+    plotter.set_ylabel('Homogeneity ($\degree$C)')
     plotter.plot_ax(logging_df['hours'],logging_df['H']/2., label='H/2')
     plotter.set_ax2()
     plotter.set_ylabel2('Flow (l/h)')
@@ -1509,7 +1526,7 @@ def plot_homogenity(RHTdata, args):
         plotter.show(args)
     else:
         fig_filename = args.path.replace('.csv','') 
-        plotter.savefig(fig_filename, 'fig:homogenity', '_homogenity_' + parameters_str(args) + '.png', args=args, caption='Homogenity of the fixture according to the accepted thermo-couples.')
+        plotter.savefig(fig_filename, 'fig:homogeneity', '_homogeneity_' + parameters_str(args) + '.png', args=args, caption='Homogeneity of the fixture according to the accepted thermo-couples.')
 
 def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2):
     logging = RHTdata['data_logging']
@@ -1651,8 +1668,8 @@ def plot_map(RHTdata, args, field='Temperature'):
                     plotter.pcolormesh(hours_samples, block_samples, block_field_samples, cmap='coolwarm')
             except:
                 pass
-    elif field == 'block_homogenity':
-        caption='Block-wise homogenity as a function of time and fixture block number.'
+    elif field == 'block_homogeneity':
+        caption='Block-wise homogeneity as a function of time and fixture block number.'
         hours_samples, block_samples = np.meshgrid(logging_df['hours'], block_numbers)
         block_temperatures = get_block_temperatures(logging_df, block_numbers, keys)
 
@@ -1672,8 +1689,8 @@ def plot_map(RHTdata, args, field='Temperature'):
         # set the limits of the plot to the limits of the data
         plotter.set_xlabel('Time (h)')
         plotter.set_ylabel('Block number')
-    elif field == 'block_homogenity_dwells':
-        caption='Block-wise homogenity for each dwell as a function of time and fixture block number.'
+    elif field == 'block_homogeneity_dwells':
+        caption='Block-wise homogeneity for each dwell as a function of time and fixture block number.'
         for i,dwell in enumerate(dwells):
             dwell_df = dwell['DataFrame']
 
@@ -1940,6 +1957,47 @@ def plot_dwell_summary(RHTdatas, n, args, caption='None'):
         fig_filename = args.path.replace('.csv','') 
         plotter.savefig(fig_filename, 'fig:boxplot dwell '+str(n), '_boxplot_' + parameters_str(args) + '.png', args=args, caption=caption)
 
+def plot_TC_IT_summary(RHTdatas, args, caption='None'):
+
+    caption='Integrated weighted temperature of the RHT.'
+
+    plotter.set_xlabel('TC')
+    plotter.set_ylabel('Normalized Integrated Temperature')
+
+    all_key_lists = [data['data_logging']['accepted_TC_keys'] for data in RHTdatas]
+    all_keys = set([key for key_list in all_key_lists for key in key_list])
+    all_keys_sorted = sort_list_by_block_number(all_keys)
+    xticks = range(len(all_keys_sorted))
+    plotter.set_xticks(xticks)
+    plotter.set_xticklabels(all_keys_sorted, rotation=45)
+
+    for i, RHTdata in enumerate(RHTdatas):
+        if not "003_1" in RHTdata['path']:
+            try:
+                accepted_TC_keys = RHTdata['data_logging']['accepted_TC_keys']
+                IT = RHTdata['Integrated Temperatures']
+                xdata = [all_keys_sorted.index(key) for key in accepted_TC_keys]
+
+                plt_data = np.array([xdata,IT]).T
+                plt_data = plt_data[plt_data[:,0].argsort()].T
+
+                #xdata = range(len(accepted_TC_keys))
+                marker = plotter.get_marker()
+                color = plotter.get_color()
+                plotter.plot_ax(plt_data[0], plt_data[1], color=color, marker=marker, label=RHTdata['path'].split('.')[0])
+
+                #plotter.set_ylim((49., 55.))
+            except:
+                print "RHTdata not found", i
+                pass
+
+    plotter.legend(loc='best')
+    if args.show_plot:
+        plotter.show(args)
+    else:
+        fig_filename = args.path.replace('.csv','') 
+        plotter.savefig(fig_filename, 'fig:TC_ITs_comparison', 'TC_ITs_comparison.png', args=args, caption='Integrated temperature of the fixture according to the individual thermo-couples.')
+
 class RHTPrompt(Cmd):
     prompt = 'RHT> '
     intro  = "Welcome to RHT command line interface"
@@ -2028,24 +2086,24 @@ class RHTPrompt(Cmd):
         print "Set dwell target deviation."
 
     def do_dthom(self, inp):
-        print "Setting dwell target homogenity:", inp
+        print "Setting dwell target homogeneity:", inp
         try:
-            args.dwell_target_homogenity = float(inp)
+            args.dwell_target_homogeneity = float(inp)
         except:
             print "command failed!"
 
     def help_dthom(self):
-        print "Set dwell homogenity tolerance."
+        print "Set dwell homogeneity tolerance."
 
     def do_dthomhalf(self, inp):
-        print "Setting dwell target homogenity half band:", inp
+        print "Setting dwell target homogeneity half band:", inp
         try:
-            args.dwell_target_homogenity_half_band = float(inp)
+            args.dwell_target_homogeneity_half_band = float(inp)
         except:
             print "command failed!"
 
     def help_dthomhalf(self):
-        print "Set dwell homogenity tolerance half band."
+        print "Set dwell homogeneity tolerance half band."
 
     def do_dhtol(self, inp):
         print "Setting dwell heat rate tolerance:", inp
@@ -2063,16 +2121,16 @@ class RHTPrompt(Cmd):
     def help_plot_accepted_TC(self):
         print "Plot the accepted thermo-couples."
 
-    def do_plot_homogenity(self, inp):
+    def do_plot_homogeneity(self, inp):
         if not hasattr(self, 'RHTdata'): 
             RHT_csv_reader = RHT_CSV_Reader()
             self.RHTdata = RHT_csv_reader.read_RHT_file(args, args.path, False)
         regenerate_online_data(self.RHTdata)
         analyze(self.RHTdata, args)
-        plot_homogenity(self.RHTdata, args)
+        plot_homogeneity(self.RHTdata, args)
 
-    def help_plot_homogenity(self):
-        print "Plot the homogenity of accepted thermo-couples."
+    def help_plot_homogeneity(self):
+        print "Plot the homogeneity of accepted thermo-couples."
 
     def do_plot_Ar(self, inp):
         if not hasattr(self, 'RHTdata'): 
@@ -2142,11 +2200,11 @@ class RHTPrompt(Cmd):
     def do_parameters(self, inp):
         try:
             print "dtdev = dwell target deviation"
-            print "dthom = dwell target homogenity"
-            print "dthomhalf = dwell target homogenity half band"
+            print "dthom = dwell target homogeneity"
+            print "dthomhalf = dwell target homogeneity half band"
             print "dhtol = dwell heat_rate tolerance"
             print "dtdev\tdthom\tdthomhalf\tdhtol"
-            print "{}\t{}\t{}\t{}".format(args.dwell_target_deviation, args.dwell_target_homogenity, args.dwell_target_homogenity_half_band, args.dwell_heat_rate_tolerance)
+            print "{}\t{}\t{}\t{}".format(args.dwell_target_deviation, args.dwell_target_homogeneity, args.dwell_target_homogeneity_half_band, args.dwell_heat_rate_tolerance)
         except:
             print "command failed!"
 
@@ -2202,8 +2260,8 @@ if __name__ == '__main__':
     parser.add_argument('-dtdev', '--dwell-target-deviation', type=float, nargs='+')
     #parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None, nargs='+')
     parser.add_argument('-dmidev', '--dwell-mid-deviation', type=float, default=None)
-    parser.add_argument('-dthom', '--dwell-target-homogenity', type=float)#, default=5.)
-    parser.add_argument('-dthomhalf', '--dwell-target-homogenity-half-band', type=float, nargs='+')
+    parser.add_argument('-dthom', '--dwell-target-homogeneity', type=float)#, default=5.)
+    parser.add_argument('-dthomhalf', '--dwell-target-homogeneity-half-band', type=float, nargs='+')
     parser.add_argument('-dhtol', '--dwell-heat-rate-tolerance', type=float, default=0.02)
     parser.add_argument('-lv', '--list-variables', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
@@ -2227,10 +2285,10 @@ if __name__ == '__main__':
 
     parse_target_ranges(args)
 
-    if type(args.dwell_target_homogenity_half_band) == type([]):
-        dthomhalfs = args.dwell_target_homogenity_half_band
+    if type(args.dwell_target_homogeneity_half_band) == type([]):
+        dthomhalfs = args.dwell_target_homogeneity_half_band
     else:
-        dthomhalfs = [args.dwell_target_homogenity_half_band]
+        dthomhalfs = [args.dwell_target_homogeneity_half_band]
 
     if type(args.dwell_target_deviation) == type([]):
         dtdevs = args.dwell_target_deviation
@@ -2244,7 +2302,7 @@ if __name__ == '__main__':
         read_RHT_file = RHT_csv_reader.read_RHT_file
         RHTdata = read_RHT_file(args, path, args.override_pickle)
         for args.dwell_target_deviation in dtdevs:
-            for args.dwell_target_homogenity_half_band in dthomhalfs:
+            for args.dwell_target_homogeneity_half_band in dthomhalfs:
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
                 if not args.no_images:
@@ -2252,14 +2310,14 @@ if __name__ == '__main__':
                     plot_all_TC(RHTdata, args)
                     plot_accepted_TC(RHTdata, args)
                     plot(RHTdata, args)
-                    plot_homogenity(RHTdata, args)
+                    plot_homogeneity(RHTdata, args)
                     plot_Ar(RHTdata, args)
                     plot_heating_rate(RHTdata, args)
                     plot_map(RHTdata, args, field='Temperature')
                     plot_map(RHTdata, args, field='middevT')
                     plot_map(RHTdata, args, field='middevT_dwells')
-                    plot_map(RHTdata, args, field='block_homogenity')
-                    plot_map(RHTdata, args, field='block_homogenity_dwells')
+                    plot_map(RHTdata, args, field='block_homogeneity')
+                    plot_map(RHTdata, args, field='block_homogeneity_dwells')
                     plot_TC_dwell_durations(RHTdata, args)
                     plot_TC_IT(RHTdata, args)
                     plot_heater_power(RHTdata, args)
