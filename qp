@@ -13,6 +13,7 @@ import json
 import matplotlib.dates as md
 import datetime 
 import pandas as pd
+import matplotlib.dates as mdates
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -20,6 +21,63 @@ ax.autoscale(enable=True, axis='y', tight=True)
 
 FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
+
+class SortTree():
+    def __init__(self, names, sort_labels=None):
+        self.sort_labels = sort_labels
+        self.names = names
+        self.leafs = []
+        self.sorted_names = []
+
+        #print "-----------------"
+        #print "names:", names
+        #--y-order "LE CE RE" "Coil Shell Rod" "Azimuthal Longitudinal A B C D"
+        if len(sort_labels) > 0:
+            sort_label_str = sort_labels[0]
+            sort_label_list = sort_label_str.split()
+
+            sorted_names_lol = []
+            for label in sort_label_list:
+                if '!' in label:
+                    label = label.replace('!','')
+                    taken = [name for name in names if label not in name]
+                    names = [name for name in names if label in name]
+                else:
+                    taken = [name for name in names if label in name]
+                    names = [name for name in names if label not in name]
+                sorted_names_lol.append(taken)
+
+            if len(names) > 0: sorted_names_lol.append(names)
+        #    print "sorted_names_lol", sorted_names_lol
+
+            for names in sorted_names_lol:
+                self.leafs.append(SortTree(names, sort_labels[1:]))
+        else:
+            self.sorted_names = names
+
+    def list(self, list_out=None):
+        if list_out == None: list_out = list()
+        for leaf in self.leafs:
+            list_out += leaf.list()
+        
+        if len(self.leafs) == 0: 
+            list_out = self.sorted_names
+
+        return list_out
+
+def test_sort_tree(debug=True):
+    test = SortTree(['CE Coil Longitudinal Optical', 'CE Coil Longitudinal', 'RE Coil Longitudinal', 'LE Shell Azimuthal', 'RE Shell Longitudinal', 'LE Coil Longitudinal', 'RE Coil Azimuthal', 'LE Shell Longitudinal', 'RE Shell Azimuthal', 'LE Coil Azimuthal', 'Rod A'], ['LE RE', 'Coil Shell', 'Azimuthal Longitudinal'])
+    test_list = test.list()
+    if debug: print test_list
+
+def test_sort_tree2(debug=True):
+    test_vars = [u'Coil 003 Azimuthal Strain CE', u'Coil 003 Azimuthal Strain LE', u'Coil 003 Azimuthal Strain RE', u'Coil 003 Longitudinal Strain CE', u'Coil 003 Longitudinal Strain LE', u'Coil 003 Longitudinal Strain RE', u'Coil 201 Azimuthal Strain CE', u'Coil 201 Azimuthal Strain LE', u'Coil 201 Azimuthal Strain Optical CE', u'Coil 201 Azimuthal Strain Optical LE',u'Coil 201 Azimuthal Strain Optical RE', u'Coil 201 Azimuthal Strain RE', u'Coil 201 Longitudinal Strain CE', u'Coil 201 Longitudinal Strain LE', u'Coil 201 Longitudinal Strain Optical CE', u'Coil 201 Longitudinal Strain Optical LE', u'Coil 201 Longitudinal Strain Optical RE', u'Coil 201 Longitudinal Strain RE', u'Coil 202 Azimuthal Strain CE', u'Coil 202 Azimuthal Strain LE', u'Coil 202 Azimuthal Strain Optical CE', u'Coil 202 Azimuthal Strain Optical LE', u'Coil 202 Azimuthal Strain Optical RE', u'Coil 202 Azimuthal Strain RE', u'Coil 202 Longitudinal Strain CE', u'Coil 202 Longitudinal Strain LE', u'Coil 202 Longitudinal Strain Optical CE', u'Coil 202 Longitudinal Strain Optical LE', u'Coil 202 Longitudinal Strain Optical RE', u'Coil 202 Longitudinal Strain RE', u'Coil 203 Azimuthal Strain CE', u'Coil 203 Azimuthal Strain LE', u'Coil 203 Azimuthal Strain RE', u'Coil 203 Longitudinal Strain CE', u'Coil 203 Longitudinal Strain LE', u'Coil 203 Longitudinal Strain RE', u'Rod A Longitudinal Strain', u'Rod B Longitudinal Strain', u'Rod C Longitudinal Strain', u'Rod D Longitudinal Strain', 'Shell Bottom Azimuthal Strain CE', 'Shell Bottom Azimuthal Strain LE', 'Shell Bottom Azimuthal Strain RE', 'Shell Bottom Longitudinal Strain CE', 'Shell Bottom Longitudinal Strain LE', 'Shell Bottom Longitudinal Strain RE', 'Shell Left Azimuthal Strain CE', 'Shell Left Azimuthal Strain LE', 'Shell Left Azimuthal Strain RE', 'Shell Left Longitudinal Strain CE', 'Shell Left Longitudinal Strain LE', 'Shell Left Longitudinal Strain RE', 'Shell Right Azimuthal Strain CE', 'Shell Right Azimuthal Strain LE', 'Shell Right Azimuthal Strain RE', 'Shell Right Longitudinal Strain CE', 'Shell Right Longitudinal Strain LE', 'Shell Right Longitudinal Strain RE', 'Shell Top Azimuthal Strain CE', 'Shell Top Azimuthal Strain LE', 'Shell Top Azimuthal Strain RE', 'Shell Top Longitudinal Strain CE', 'Shell Top Longitudinal Strain LE', 'Shell Top Longitudinal Strain RE', 'Time From Start']
+    test_tree = SortTree(test_vars,["LE CE RE", "Optical", "Coil Shell Rod", "Azimuthal Longitudinal A B C D"])
+    test_list = test_tree.list()
+    if debug: print test_list
+
+#test_sort_tree(debug=True)
+#exit()
 
 def autoscale_y(args):
     if args.set_xlim != None and args.set_ylim == None:
@@ -274,8 +332,10 @@ def plot_mtbop_data(mtbop_data, args=None):
             if ax_dict['name'] == 'NTP Time' and args.ntp_to_date:
                 ax_dict['raw_data'] =[datetime.datetime.fromtimestamp(stamp) for stamp in ax_dict['raw_data']]
                 plt.setp(ax.get_xticklabels(), rotation=25, horizontalalignment='right')
-                ax.text(0, -0.2, "Start:" + str(ax_dict['raw_data'][0]), transform = ax.transAxes)
-                ax.text(0, -0.25, "End:" + str(ax_dict['raw_data'][-1]), transform = ax.transAxes)
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+                fig.autofmt_xdate()
+                ax.text(-0.15, -0.27, "Start:" + str(ax_dict['raw_data'][0]), transform = ax.transAxes)
+                ax.text(-0.15, -0.32, "End:" + str(ax_dict['raw_data'][-1]), transform = ax.transAxes)
             elif ax_dict['name'] == 'NTP Time' and args.ntp_to_dsec:
                 ax_dict['raw_data'] = ax_dict['raw_data'] - ax_dict['raw_data'][0] 
             if ax_dict['name'].lower() == 'current':
@@ -1116,6 +1176,27 @@ def add_rod_force_channel_data(plot_dict):
 
     plot_dict['channel_dict_list'] += added_dicts
 
+def add_relative_time_channel_data(plot_dict):
+    added_dicts = []
+    #location_dict = {}
+    channel_dict_list = plot_dict['channel_dict_list']
+    for channel_dict in channel_dict_list:
+        if channel_dict['name'] == 'NTP Time':
+            added_dicts.append(dict(channel_dict))
+            added_dict = added_dicts[-1]
+            channel_dict['physical_quantity'] = 'Time'
+            channel_dict['sensor type'] = 'NTP'
+            channel_dict['longname'] = 'Time From Start'
+            channel_dict['name'] = 'Time From Start'
+            added_dict['unit'] = 's'
+    #        if not added_dict['location'] in location_dict:
+    #            location_dict[added_dict['location']] = {}
+    #            if not added_
+
+    plot_dict['channel_dict_list'] += added_dicts
+
+
+
 def get_average_name(y_axis_names):
     av_set_list = [set(y_axis_name.split()) for y_axis_name in y_axis_names]
     common_words = list(set.intersection(*av_set_list))
@@ -1335,7 +1416,7 @@ def compute_rod_forces(plot_dict, args):
     mtbop_data_list = plot_dict['mtbop_data_list'] 
     channel_dict_list = plot_dict['channel_dict_list']
     add_rod_force_data_to_dicts(channel_dict_list)
-    d_rod = 0.036
+    d_rod = 0.035
     A_rod = np.pi * (d_rod/2.)**2.
     for mtbop_data in mtbop_data_list:
 	print "Computing rod forces for:", mtbop_data['filepath']
@@ -1354,6 +1435,17 @@ def compute_rod_forces(plot_dict, args):
                     pass
     return
 
+def add_relative_time(plot_dict, args):
+    mtbop_data_list = plot_dict['mtbop_data_list'] 
+    channel_dict_list = plot_dict['channel_dict_list']
+    ntp_start_time = args.ntp_start_time
+    for mtbop_data in mtbop_data_list:
+        #try:
+        ntp_index = mtbop_data['channel_names'].index('NTP Time')
+        add_column_to_mtbop_raw_data(mtbop_data, mtbop_data['raw_data'][:,ntp_index] - ntp_start_time, 'Time From Start')
+        #except:
+        #    print "add_relative_time: NTP Time channel was not found!"
+        #    pass
 
 def create_channel_name_dict(channel_dict_list):
 	channel_name_dict = {}
@@ -1379,6 +1471,10 @@ def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
         if args.rod_force:
             add_rod_force_channel_data(plot_dict)
             compute_rod_forces(plot_dict, args)
+        if args.ntp_start_time != None:
+            print "Adding Time From Start channel"
+            add_relative_time_channel_data(plot_dict)
+            add_relative_time(plot_dict, args)
 
 	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
@@ -1472,12 +1568,14 @@ def store_data(plot_dict, args=None):
     colors = ['b','g','r','c','m','y','k','orange']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
+    if args.ntp_start_time != None: args.store_data_time = 'Time From Start'
+    print "Store data time:", args.store_data_time
     last_points_data_list = []
     find_common_location(plot_dict)
     for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
         if args.store_points != None:
             point_indices = []
-            time_index = mtbop_data['channel_names'].index('Time')
+            time_index = mtbop_data['channel_names'].index(args.store_data_time)
             time_values = mtbop_data['raw_data'][:, time_index]
             for point in args.store_points:
                 point_index = np.abs(time_values-point).argmin()
@@ -1485,9 +1583,8 @@ def store_data(plot_dict, args=None):
 
         y_axis_indices = [mtbop_data['channel_names'].index(name) for name in y_axis_list]
         df = pd.DataFrame(mtbop_data['raw_data'][:,y_axis_indices][point_indices,:], columns=y_axis_list)
-        df.to_csv(mtbop_data['filepath'].replace('.txt','')+'_store_points.csv')
-        
 
+        df.to_csv(mtbop_data['filepath'].replace('.txt','')+'_store_points.csv')
 
 def plot_data(plot_dict, args=None):
     x_axis = plot_dict['x_axis']
@@ -1564,10 +1661,10 @@ def search_channel_names_for_y_axis(plot_dict, args):
     filter_str_list = []
     if args.filter_out_any != None:
         filter_str_list = args.filter_out_any.split()
-        if not args.filter_out_not_any is None:
-            not_filter_words = args.filter_out_not_any.split()
-        else:
-            not_filter_words = []
+    if not args.filter_out_not_any is None:
+        not_filter_words = args.filter_out_not_any.split()
+    else:
+        not_filter_words = []
     print "search_channel_names_for_y_axis: filtering out any: ", filter_str_list
     print "search_channel_names_for_y_axis: filtering out not: ", not_filter_words
     if args.y_axis != None:
@@ -1582,6 +1679,11 @@ def search_channel_names_for_y_axis(plot_dict, args):
                         print "search_channel_names_for_y_axis: found channel:", name, "but this was filtered out."
 
         args.y_axis = sorted(list(set(found_channels)))
+
+        if args.y_sort_labels != None:
+            sort_tree = SortTree(args.y_axis, args.y_sort_labels)
+            args.y_axis = sort_tree.list()
+
         if len(args.y_axis) == 0: 
             print "I didn't find any maching channels... Exiting!"
             exit()
@@ -1635,6 +1737,9 @@ if __name__ == '__main__':
         parser.add_argument('--old-format', action='store_true', default=False)
         parser.add_argument('--font-size', type=float, default=20)
         parser.add_argument('--gradient-filter', type=float, default=None)
+        parser.add_argument('--ntp-start-time', type=float, default=None)
+        parser.add_argument('--store-data-time', type=str, default='Time')
+        parser.add_argument('--y-sort-labels', nargs='+', type=str)
 	#parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
 	args = parser.parse_args()
