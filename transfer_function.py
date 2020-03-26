@@ -1,15 +1,20 @@
 #!env python
 
 import numpy as np
-#import matplotlib
+import matplotlib
 import matplotlib.pyplot as plt
 import time
 #import pandas as pd
 import argparse
 import codecs
+import pandas as pd
+import re
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
+from matplotlib.lines import Line2D
+
+from channel_utils import create_channel_dict_list
 
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
                      edgecolor='None', alpha=0.5):
@@ -86,11 +91,75 @@ def fix_zero_cols_with_average(cols):
     for indx in zero_col_indx:
         cols[:,indx]=average
 
-def create_data_dicts(filepath, args, coil_permutation=None):
-    print "Creating data dictionaries."
-    if coil_permutation == None: coil_permutation = [1,2,3,4]
-    print "Permuting coils with", coil_permutation
-    coil_permutation = [inx-1 for inx in coil_permutation]
+def fill_header(header_line):
+    for i, string in enumerate(header_line):
+        if pd.isnull(string): header_line[i] = ''
+
+        header_line[i] = re.sub(r"\(.*\)", "", header_line[i])
+
+        if i>0 and header_line[i]=='':
+            header_line[i] = header_line[i-1]
+
+def replace_header_strings(header, replace_dict):
+    for replace_word in replace_dict:
+        for i, element in enumerate(header):
+            header[i] = element.replace(replace_word, replace_dict[replace_word])
+
+def load_csv(filepath, times_called, args):
+    header_lines = 3
+    with codecs.open(filepath) as f:
+        head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
+
+    for i,line in enumerate(head):
+        if 'date' in line.lower() and 'time' in line.lower():
+            header = i
+
+    df = pd.read_csv(filepath)
+    fill_header(df.iloc[0])
+    fill_header(df.iloc[1])
+    new_header = df.iloc[0] + df.iloc[1]
+    replace_dict = {
+            'Shell Stress ': '',
+            'Coil Stress ': '',
+            'Rod Stress ': ''
+            }
+    replace_header_strings(new_header, replace_dict)
+
+    df = df[2:]
+    df.columns = new_header
+
+    df['average key'] = df.filter(regex='Keys size.*').astype(float).mean(axis=1)
+    
+    if args.all_points:
+        if not args.bladders:
+            df_out = df[~df['Operation'].str.contains('Bladder')]
+        else:
+            df_out = df
+    else:
+        df_out = df[(df['Operation'].str.contains('Idling')) | (df['Operation'].str.contains('Key')) | (df['Operation'] == 'Initial')]
+        if args.no_mixed_keys:
+            df_out = df_out[~df_out['Operation'].str.contains('Mixed')]
+        if args.no_idle_points:
+            df_out = df_out[~df_out['Operation'].str.contains('Idling')]
+        if args.operations_ignore is not None:
+            for label in args.operations_ignore:
+                df_out = df_out[~df_out['Operation'].str.contains(label)]
+
+    if args.use_fibre != None and args.use_fibre[times_called]==1:
+        keys_data = df_out.filter(regex='Keys.*$|C...T_FBG$|SH.T')
+    else:
+        keys_data = df_out.filter(regex='Keys.*$|C...T$|SH.T')
+
+
+    raw_data = keys_data.astype(float).values
+    col_names = keys_data.columns
+    channel_dict_list = create_channel_dict_list(col_names, col_names, old_format=False)
+
+    print len(col_names)
+
+    return raw_data, col_names, df_out, channel_dict_list
+ 
+def load_txt(filepath, args):
     header_lines = 3
     with codecs.open(filepath) as f:
         head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
@@ -101,6 +170,23 @@ def create_data_dicts(filepath, args, coil_permutation=None):
     with codecs.open(filepath) as f:
         raw_data = np.loadtxt(f, skiprows=header_lines)
 
+    return raw_data, col_names
+
+
+def create_data_dicts(filepath, times_called, file_extension, args, coil_permutation=None):
+
+    print "Creating data dictionaries."
+    if coil_permutation == None: coil_permutation = [1,2,3,4]
+    print "Permuting coils with", coil_permutation
+    coil_permutation = [inx-1 for inx in coil_permutation]
+
+    if file_extension == '.txt':
+        raw_data, col_names = load_txt(filepath, args)
+        df = None
+        channel_dict_list = None
+    elif file_extension == '.csv':
+        raw_data, col_names, df, channel_dict_list = load_csv(filepath, times_called, args)
+
     key_dict = {}
     shell_dict = {}
     coil_dict = {}
@@ -110,19 +196,33 @@ def create_data_dicts(filepath, args, coil_permutation=None):
     if len(col_names) == 9 or len(col_names) == 10:
         key_dict['raw_data'] = raw_data[:,0]
         key_dict['col_names'] = col_names[0]
+        key_dict['channel_dict_list'] = None
         shell_dict['raw_data'] = raw_data[:,1:5]
         shell_dict['col_names'] = col_names[1:5]
         ypicker = map([5,6,7,8].__getitem__,coil_permutation)
         coil_dict['raw_data'] = raw_data[:,ypicker]
         coil_dict['col_names'] = map(col_names[5:9].__getitem__,coil_permutation)
+        if channel_dict_list is not None:
+            shell_dict['channel_dict_list'] = channel_dict_list[1:5]
+            coil_dict['channel_dict_list'] = map(channel_dict_list[5:9].__getitem__,coil_permutation)
+        else:
+            shell_dict['channel_dict_list'] = None
+            coil_dict['channel_dict_list'] = None
     elif len(col_names) == 12:
         key_dict['raw_data'] = raw_data[:,0:4]
         key_dict['col_names'] = col_names[0:4]
+        key_dict['channel_dict_list'] = None
         shell_dict['raw_data'] = raw_data[:,1+3:5+3]
         shell_dict['col_names'] = col_names[1+3:5+3]
         ypicker = map([5+3,6+3,7+3,8+3].__getitem__,coil_permutation)
         coil_dict['raw_data'] = raw_data[:,ypicker]
         coil_dict['col_names'] = map(col_names[5+3:9+3].__getitem__,coil_permutation)
+        if channel_dict_list is not None:
+            shell_dict['channel_dict_list'] = channel_dict_list[1+3:5+3]
+            coil_dict['channel_dict_list'] = map(channel_dict_list[5+3:9+3].__getitem__,coil_permutation)
+        else:
+            shell_dict['channel_dict_list'] = None
+            coil_dict['channel_dict_list'] = None
     else:
         print "You have", str(col_names), "columns in your datafile! (it should be 9, 10 or 12)"
         exit()
@@ -151,7 +251,7 @@ def create_data_dicts(filepath, args, coil_permutation=None):
     compute_data_dict_avg_min_max(shell_dict)
     compute_data_dict_avg_min_max(coil_dict)
 
-    return key_dict, shell_dict, coil_dict
+    return key_dict, shell_dict, coil_dict, df
 
 def plot_tf(ax, times_called, filepath, args):
 
@@ -163,9 +263,13 @@ def plot_tf(ax, times_called, filepath, args):
     neighbour_shell_averages = not args.no_neighbour_shell_averages
     coil_permutation = args.coil_permutation
 
-    filebase = filepath.split('.txt')[0]
+    if '.csv' in filepath:
+        file_extension = '.csv'
+    else:
+        file_extension = '.txt'
 
-    key_dict, shell_dict, coil_dict = create_data_dicts(filepath, args, coil_permutation)
+    filebase = filepath.split(file_extension)[0]
+    key_dict, shell_dict, coil_dict, df = create_data_dicts(filepath, times_called, file_extension, args, coil_permutation)
 
     if args.key_shell:
         xdict = key_dict
@@ -202,7 +306,7 @@ def plot_tf(ax, times_called, filepath, args):
         pk_npk_dict = create_pk_npk_dict(pk_npk_file)
 
         if args.curve_colors==None:
-            colors = ['r','g','b','c','m','y','k']
+            colors = ['r','y','b','c','m','y','k']
         else:
             colors = args.curve_colors
 
@@ -222,7 +326,7 @@ def plot_tf(ax, times_called, filepath, args):
             ax.plot(pk_npk_dict['npk-scyl'],pk_npk_dict['npk-spole'],'-bd',label=npklabel, markersize=args.marker_size, linewidth=args.line_width)
 
         if args.label_type == 'filename':
-            data_label=filepath.replace('.txt','').replace('TRANSFER1_','')
+            data_label=filepath.replace('.txt','').replace('TRANSFER1_','').replace('.csv','')
         elif args.label_type == 'imagename':
             data_label=args.image_name
         elif args.meas_legend_label != '':
@@ -251,34 +355,94 @@ def plot_tf(ax, times_called, filepath, args):
                     if i==0:print "vs single shell gauges."
                     xdata = xdict['raw_data'][:,i]
                     ydata = ydict['raw_data'][:,i]
-                    label = xdict['col_names'][i]+'-'+ydict['col_names'][i]
+                    if xdict['channel_dict_list'] is not None:
+                        labelx = xdict['channel_dict_list'][i]['location']
+                    else:
+                        labelx = xdict['col_names'][i]
+                    if ydict['channel_dict_list'] is not None:
+                        labely = ydict['channel_dict_list'][i]['location']
+                    else:
+                        labely = ydict['col_names'][i]
+                    label = labelx+'-'+labely
                 else:
                     if i==0:print "vs single shell gauges."
                     nof_cols = np.shape(xdict['raw_data'])[1]
                     xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
                     ydata = ydict['raw_data'][:,i]
-                    label = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]+'-'+ydict['col_names'][i]
+                    if xdict['channel_dict_list'] is not None:
+                        labelx = xdict['channel_dict_list'][i]['location']+xdict['channel_dict_list'][(i+1)%nof_cols]['location']
+                    else:
+                        labelx = xdict['col_names'][i]+xdict['col_names'][(i+1)%nof_cols]
+                    if ydict['channel_dict_list'] is not None:
+                        labely = ydict['channel_dict_list'][i]['location']
+                    else:
+                        labely = ydict['col_names'][i]
+                    label = labelx+'-'+labely
+
+                label = label.replace('Shell ','').replace('Keys size ','')
 
                 ax.plot(xdata, ydata,'--'+colors[i]+markers[i],label=label, markersize=args.marker_size, linewidth=args.line_width)
 
-        if args.fit: fit = fit_data(ax, xdata, ydata, args.fit_range, data_label+' fit', args)
-        if args.fit2: fit = fit_data(ax, xdata, ydata, args.fit2_range, data_label+' fit 2', args)
+        try:
+            if args.fit: fit = fit_data(ax, xdata, ydata, args.fit_range, data_label+' fit', args)
+            if args.fit2: fit = fit_data(ax, xdata, ydata, args.fit2_range, data_label+' fit 2', args)
 
-        if args.fit or args.fit2:
-            if args.key_shell or args.key_pole:
-                fit_text = 'Fitted initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
-                fit_text += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
-            else: 
-                fit_text = 'Fitted initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
-                fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
-            fitfilename = plotname + '.fit'
-            fitfile = open(fitfilename, 'w')
-            print "writing fit parameters to file: ", fitfilename
-            fitfile.write(fit_text)
+            if args.fit or args.fit2:
+                if args.key_shell or args.key_pole:
+                    fit_text = 'Fitted initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
+                    fit_text += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
+                else: 
+                    fit_text = 'Fitted initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
+                    fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
+                fitfilename = plotname + '.fit'
+                fitfile = open(fitfilename, 'w')
+                print "writing fit parameters to file: ", fitfilename
+                fitfile.write(fit_text)
+        except:
+            print "fitting failed!"
 
 
         ax.set_xlabel(xdict['axis label'])
         ax.set_ylabel(ydict['axis label'])
+
+        if args.annotate_points:
+            if df is not None:
+                values = df['average key'].values
+                value_counts = df['average key'].value_counts()
+                annotations = df.index
+            else:
+                annotations = range(len(xdata))
+
+            if args.annotation_list:
+                textlist = '\n'.join(annotations)
+                x0 = min(ax.get_xlim())
+                y0 = max(ax.get_ylim())
+                ax.text(x0, y0, textlist)
+            else:
+                if args.bladders:
+                    annotation_shift_percent = 0.02
+                    step_percent = 0.02
+                    annotation_font_size = 25
+                else:
+                    annotation_shift_percent = 0.05
+                    step_percent = 0.05
+                    annotation_font_size = 16
+                value_count_dict = {}
+                ylim = ax.get_ylim()
+                yrange = np.max(ylim) - np.min(ylim)
+                step = step_percent*yrange
+                annotation_shift = annotation_shift_percent*yrange
+                for i, txt in enumerate(annotations):
+                    if values[i] not in value_count_dict:
+                        value_count_dict[values[i]] = 0
+                    value_count_dict[values[i]] += 1
+
+                    highest_y = np.max(ydata[np.argwhere(xdata==xdata[i]).transpose()[0]])
+                    x0 = xdata[i]
+                    y0 = highest_y +annotation_shift+ step * (value_counts[values[i]]-value_count_dict[values[i]])
+                    #y0 = annotation_shift + min(ax.get_ylim()) + step * (value_counts[values[i]]-value_count_dict[values[i]])
+                    ax.text(x0, y0, str(txt), ha='center', va='center', fontsize=annotation_font_size)
+
 
 
         #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
@@ -338,11 +502,11 @@ def set_ax_parameters(ax, args):
 #        lgd = ax.legend(loc='best')
 
     if args.legend_location == 'right outside':
-        lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
+        lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1, fontsize=args.legend_font_size)
     elif args.legend_location == 'bottom outside':
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1, fontsize=args.legend_font_size)
     else:
-        lgd = ax.legend(loc=args.legend_location, numpoints=1)
+        lgd = ax.legend(loc=args.legend_location, numpoints=1, fontsize=args.legend_font_size)
 
     return lgd, name_suffix
 
@@ -382,6 +546,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-xlabel', action='store_true', default=False) 
     parser.add_argument('--no-ylabel', action='store_true', default=False) 
     parser.add_argument('--font-size', type=float, default=16)
+    parser.add_argument('--legend-font-size', type=float, default=16)
     parser.add_argument('--marker-size', type=float, default=8)
     parser.add_argument('--line-width', type=float, default=1.5)
     parser.add_argument('--fig-height', type=float, default=8)
@@ -396,6 +561,15 @@ if __name__ == '__main__':
     parser.add_argument('--plot-style', type=str, default='')
     parser.add_argument('--curve-colors', nargs='+', type=str, default=None)
     parser.add_argument('--curve-markers', nargs='+', type=str, default=None)
+    parser.add_argument('--operations-ignore', nargs='+', type=str, default=None)
+    parser.add_argument('-uf', '--use-fibre', nargs='+', type=int) 
+    parser.add_argument('--no-mixed-keys', action='store_true', default=False) 
+    parser.add_argument('--no-idle-points', action='store_true', default=False) 
+    parser.add_argument('--all-points', action='store_true', default=False) 
+    parser.add_argument('--annotate-points', action='store_true', default=False) 
+    parser.add_argument('--annotation-list', action='store_true', default=False) 
+    parser.add_argument('--annotation-text', action='store_true', default=False) 
+    parser.add_argument('--bladders', action='store_true', default=False) 
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -407,14 +581,21 @@ if __name__ == '__main__':
         args.set_xlim = "0 120"
         args.set_ylim = "-140 0" 
         args.font_size = 30 
+        args.legend_font_size = 22
         args.no_pk_legend = True
         args.fig_width = 12
+        args.marker_size = 15
     elif args.plot_style == 'TF2 paper':
         args.set_xlim = "0 200"
         args.set_ylim = "-200 0" 
         args.font_size = 30 
         args.no_pk_legend = True
         args.fig_width = 12
+        args.marker_size = 15
+
+    if args.annotate_points and args.bladders:
+        args.fig_width = 30
+        args.fig_height = 20
         
     fig.set_figheight(args.fig_height)
     fig.set_figwidth(args.fig_width)
@@ -445,8 +626,10 @@ if __name__ == '__main__':
             if args.image_name != '': imagename = args.image_name
             print "creating image file", imagename+'.png'
             if args.legend_outside:
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
+                        fontsize=args.legend_font_size)
             else:
-                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1,
+                        fontsize=args.legend_font_size)
 
 
