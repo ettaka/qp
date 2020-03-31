@@ -14,6 +14,8 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 
+from scipy.stats import linregress
+
 from channel_utils import create_channel_dict_list
 
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
@@ -270,6 +272,38 @@ def plot_tf(ax, times_called, filepath, args):
 
     filebase = filepath.split(file_extension)[0]
     key_dict, shell_dict, coil_dict, df = create_data_dicts(filepath, times_called, file_extension, args, coil_permutation)
+
+    if args.sg_vs_fbg and df is not None:
+        FBG_list = [key for key in df if "FBG" in key]
+        for key in df:
+            df[key] = pd.to_numeric(df[key], errors='ignore')
+        for fbg_key in FBG_list:
+            key = fbg_key.replace('_FBG','')
+            df_not_nan = df.dropna(subset=[key,fbg_key])
+            if len(df_not_nan) == 0: df_not_nan=df.fillna(0)
+            ax = df_not_nan.plot.scatter(x=key, y=fbg_key)
+            try:
+                coef, cov = np.polyfit(df_not_nan[key], df_not_nan[fbg_key], 1, cov=True)
+                slope, intercept, r_value, p_value, std_err = linregress(df_not_nan[key], df_not_nan[fbg_key])
+            except:
+                coef = (0,0)
+                cov = ((0,0),(0,0))
+                r_value = 0
+                pass
+            sigma = np.sqrt(cov)
+            fit = np.poly1d(coef)
+            ax.plot(df_not_nan[key], fit(df_not_nan[key]), label='y=({:0.1f}$\pm${:0.1f})x + ({:0.0f}$\pm${:.0f})\n$R^2$={:.2f}'.format(coef[0],sigma[0,0], coef[1],sigma[1,1], r_value**2.), marker="None", color='black', linestyle='-')  
+            lgd = ax.legend(loc='best')
+            imagename = filepath+'_sg-vs-fbg_' + key
+            imagename = imagename.replace('.','_').replace(' ','_')
+            print "creating image file", imagename+'.png'
+            if args.legend_outside:
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
+                        fontsize=args.legend_font_size)
+            else:
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1,
+                        fontsize=args.legend_font_size)
+        exit()
 
     if args.key_shell:
         xdict = key_dict
@@ -570,6 +604,7 @@ if __name__ == '__main__':
     parser.add_argument('--annotation-list', action='store_true', default=False) 
     parser.add_argument('--annotation-text', action='store_true', default=False) 
     parser.add_argument('--bladders', action='store_true', default=False) 
+    parser.add_argument('--sg-vs-fbg', action='store_true', default=False) 
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
