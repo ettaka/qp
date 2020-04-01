@@ -274,17 +274,34 @@ def plot_tf(ax, times_called, filepath, args):
     key_dict, shell_dict, coil_dict, df = create_data_dicts(filepath, times_called, file_extension, args, coil_permutation)
 
     if args.sg_vs_fbg and df is not None:
+        plt.close()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.autoscale(enable=True, axis='y', tight=True)
+
         FBG_list = [key for key in df if "FBG" in key]
         for key in df:
             df[key] = pd.to_numeric(df[key], errors='ignore')
         for fbg_key in FBG_list:
+            ax.cla()
             key = fbg_key.replace('_FBG','')
             df_not_nan = df.dropna(subset=[key,fbg_key])
             if len(df_not_nan) == 0: df_not_nan=df.fillna(0)
-            ax = df_not_nan.plot.scatter(x=key, y=fbg_key)
+            #if args.fit_range is not None: 
+            #    lower_limit, upper_limit = tuple(float(s) for s in args.fit_range.split())
+            #    df_not_nan = df_not_nan[df_not_nan[key] > lower_limit]
+            #    df_not_nan = df_not_nan[df_not_nan[key] < upper_limit]
+            if args.fit_point_range is not None:
+                lower_limit, upper_limit = tuple(int(s) for s in args.fit_point_range.split())
+                print "upper/lower", lower_limit, upper_limit
+                df_fit = df_not_nan[lower_limit:upper_limit]
+            else:
+                df_fit = df_not_nan
+            ax.plot(df_not_nan[key], df_not_nan[fbg_key], marker='d', markersize=args.marker_size, label='__nolegend__', linestyle = "None")
+
             try:
-                coef, cov = np.polyfit(df_not_nan[key], df_not_nan[fbg_key], 1, cov=True)
-                slope, intercept, r_value, p_value, std_err = linregress(df_not_nan[key], df_not_nan[fbg_key])
+                coef, cov = np.polyfit(df_fit[key], df_fit[fbg_key], 1, cov=True)
+                slope, intercept, r_value, p_value, std_err = linregress(df_fit[key], df_fit[fbg_key])
             except:
                 coef = (0,0)
                 cov = ((0,0),(0,0))
@@ -293,6 +310,10 @@ def plot_tf(ax, times_called, filepath, args):
             sigma = np.sqrt(cov)
             fit = np.poly1d(coef)
             ax.plot(df_not_nan[key], fit(df_not_nan[key]), label='y=({:0.1f}$\pm${:0.1f})x + ({:0.0f}$\pm${:.0f})\n$R^2$={:.2f}'.format(coef[0],sigma[0,0], coef[1],sigma[1,1], r_value**2.), marker="None", color='black', linestyle='-')  
+            ax.plot(df_fit[key], df_fit[fbg_key], color='red', linestyle="None", marker='d', markersize=args.marker_size, label='__nolegend__')  
+            ax.set_xlabel(key)
+            ax.set_ylabel(fbg_key)
+            plt.title(args.title)
             lgd = ax.legend(loc='best')
             imagename = filepath+'_sg-vs-fbg_' + key
             imagename = imagename.replace('.','_').replace(' ','_')
@@ -568,6 +589,7 @@ if __name__ == '__main__':
     parser.add_argument('--print-final-stresses', action='store_true', default=False) 
     parser.add_argument('--fit', action='store_true', default=False)
     parser.add_argument('--fit-range', type=str)
+    parser.add_argument('--fit-point-range', type=str)
     parser.add_argument('--fit2', action='store_true', default=False)
     parser.add_argument('--fit2-range', type=str)
     parser.add_argument('--fit-plot-lower', type=float, default=13.2)
