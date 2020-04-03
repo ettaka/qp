@@ -2,3 +2,4 @@ Data/test/01QuenchDC_161013_16236.pickle
 Data/test/02QuenchDC_161013_18055.pickle
 channels.json
 channels_edit.json
+*.pyc
