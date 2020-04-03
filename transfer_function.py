@@ -9,6 +9,7 @@ import argparse
 import codecs
 import pandas as pd
 import re
+import os
 
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
@@ -17,6 +18,7 @@ from matplotlib.lines import Line2D
 from scipy.stats import linregress
 
 from channel_utils import create_channel_dict_list
+from ansys_parse_utils import parse_ansys_2d_files
 
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
                      edgecolor='None', alpha=0.5):
@@ -255,8 +257,15 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
 
     return key_dict, shell_dict, coil_dict, df
 
-def plot_tf(ax, times_called, filepath, args):
+def plot_ansys_data(ax, args):
+    ansys_file_data_list = parse_ansys_2d_files(args)
+    for i, data in enumerate(ansys_file_data_list):
+        name = data['name']
+        df = data['DataFrame']
 
+        ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
+
+def plot_tf(ax, times_called, filepath, args):
     tr_type = args.type
     pk_npk_file = args.pk_npk_file
     single_coils = args.single_coils
@@ -571,6 +580,7 @@ if __name__ == '__main__':
     parser.add_argument('paths', nargs='+', type=str)
     parser.add_argument('-t', '--type', type=int, default=1) 
     parser.add_argument('-pk', '--pk-npk-file', type=str, default='TRANSFER1_PK_NPK_simple.txt') 
+    parser.add_argument('--ansys-2d-files', type=str, nargs='+') 
     parser.add_argument('-s', '--single-coils', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
@@ -658,6 +668,8 @@ if __name__ == '__main__':
     fig.set_figwidth(args.fig_width)
     plt.rcParams.update({'font.size':args.font_size})
     plt.title(args.title)
+
+    plot_ansys_data(ax, args)
 
     paths = args.paths
     plotnames = []
