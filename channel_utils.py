@@ -43,7 +43,11 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False):
                     channel_dict['longitudinal location'] = 'RE'
 
                 if old_format and '_comp' in channel_name.lower(): 
-                    channel_dict['thermal compensator'] = 'compensator'
+                    print "Using old format!"
+                    if '_compensated' in channel_name.lower(): 
+                        channel_dict['thermal compensator'] = 'compensated'
+                    else:
+                        channel_dict['thermal compensator'] = 'compensator'
 
                 if 'SG_' == channel_name[0:3]:
                     channel_name = channel_name.replace('SG_','')
