@@ -19,6 +19,7 @@ from scipy.stats import linregress
 
 from channel_utils import create_channel_dict_list
 from ansys_parse_utils import parse_ansys_2d_files
+from ansys_parse_utils import parse_ansys_3d_files
 
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
                      edgecolor='None', alpha=0.5):
@@ -264,6 +265,14 @@ def plot_ansys_data(ax, args):
         df = data['DataFrame']
 
         ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
+
+    ansys3d_file_data_list = parse_ansys_3d_files(args)
+    for i, data in enumerate(ansys3d_file_data_list):
+        name = data['name']
+
+        df = data['DataFrame']
+        ax.plot([0]+list(df['scyl']), [0]+list(df['spole']), marker='d', markersize=args.marker_size, label=name)
+
 
 def plot_tf(ax, times_called, filepath, args):
     tr_type = args.type
@@ -581,6 +590,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--type', type=int, default=1) 
     parser.add_argument('-pk', '--pk-npk-file', type=str, default='TRANSFER1_PK_NPK_simple.txt') 
     parser.add_argument('--ansys-2d-files', type=str, nargs='+') 
+    parser.add_argument('--ansys-3d-files', type=str, nargs='+') 
     parser.add_argument('-s', '--single-coils', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
