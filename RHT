@@ -14,6 +14,7 @@ import shutil
 import glob
 import scipy.interpolate
 import json
+from matplotlib.patches import Rectangle
 from collections import OrderedDict
 
 from cmd import Cmd
@@ -323,6 +324,7 @@ class Plotter:
         self.reset()
         self.colors = ['r','g','b','k','c','y','m']
         self.markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
+        self.lg_extra_text = None
 
     def insert_color(self, color):
         self.colors.insert(self.plot_counter+1, color)
@@ -332,6 +334,7 @@ class Plotter:
         self.fig_counter = 0
 
     def clear(self, figsize=(35,10)):
+        self.lg_extra_text = None
         self.plot_counter = 0
         plt.close("all")
         self.fig = plt.figure(figsize=figsize)
@@ -392,6 +395,9 @@ class Plotter:
         plt.show()
         self.clear()
 
+    def annotate(self, *args, **kwargs):
+        plt.annotate(*args, **kwargs)
+
     def get_color(self):
         return self.colors[self.plot_counter%len(self.colors)]
 
@@ -434,10 +440,18 @@ class Plotter:
         plot = self.plots[-1]
         #self.ax.axis([hours_samples.min(), hours_samples.max(), block_samples.min(), block_samples.max()])
 
-
     def legend(self, *args, **kwargs):
         self.plot_labels = [ax.get_label() for ax in self.plots]
-        self.lgd = self.ax.legend(self.plots, self.plot_labels, **kwargs)
+        if self.lg_extra_text != None:
+            self.plot_labels += self.lg_extra_text
+            self.plots.append(Rectangle((0,0), 1, 1, fc='w', fill = False, edgecolor = 'none', linewidth=0))
+        if self.ax2 == None:
+            self.lgd = self.ax.legend(self.plots, self.plot_labels, **kwargs)
+        else:
+            self.lgd = self.ax2.legend(self.plots, self.plot_labels, **kwargs)
+
+    def add_text_to_legend(self, text):
+        self.lg_extra_text = [text]
 
     def text(self, *args, **kwargs):
         ax = self.ax
@@ -811,6 +825,7 @@ def parameters_str(args):
 #            print "dhtol = dwell heat_rate tolerance"
 #            print "dtdev\tdthom\tdthomhalf\tdhtol"
 #            print 
+    return ""
     if args.no_target_ranges:
         out = "dtdev{}-dthomhalf{}-dhtol{}".format(args.dwell_target_deviation, args.dwell_target_homogeneity_half_band, args.dwell_heat_rate_tolerance)
     else:
@@ -1067,11 +1082,12 @@ def find_TC_durations(RHTdata, args):
         dwell['TC durations3']['start'] = []
         dwell['TC durations3']['end'] = []
         dwell_df = dwell['DataFrame']
+        T0 = args.T0
         for key in accepted_TC_keys:
             test_df = logging_df.copy(deep=True)
             TC_mean = dwell_df[key].mean()
             diff = test_df[key] - TC_mean 
-            test_df = test_df[diff.abs()<250.]
+            test_df = test_df[diff.abs()<665.-T0]
             dwell['TC durations2']['TC'].append(key)
             dwell['TC durations2']['start'].append(test_df['hours'].values[0])
             dwell['TC durations2']['end'].append(test_df['hours'].values[-1])
@@ -1079,7 +1095,7 @@ def find_TC_durations(RHTdata, args):
         for key in accepted_TC_keys:
             test_df = logging_df.copy(deep=True)
             diff = test_df[key] - 665.
-            test_df = test_df[diff.abs()<250.]
+            test_df = test_df[diff.abs()<665-T0]
             dwell['TC durations3']['TC'].append(key)
             dwell['TC durations3']['start'].append(test_df['hours'].values[0])
             dwell['TC durations3']['end'].append(test_df['hours'].values[-1])
@@ -1099,6 +1115,7 @@ def compute_TC_ITs(RHTdata, args):
     accepted_TC_keys = logging['accepted_TC_keys']
     RHTdata['Integrated Temperatures'] = []
     RHTdata['Integrated Durations'] = []
+    RHTdata['Sharp Durations'] = []
     Treact = args.dwell_target_temperatures[2]
     for key in accepted_TC_keys:
         TC_values = logging_df[key].values
@@ -1106,13 +1123,19 @@ def compute_TC_ITs(RHTdata, args):
         while np.size(nan_index) > 0:
             TC_values[nan_index] = TC_values[nan_index-1]
             nan_index=np.argwhere(np.isnan(TC_values)).T[0]
-        T1 = 650.
-        T0 = 400.
+        T1 = args.T1
+        T0 = args.T0
         Tref = T0
         dt1 = 50. * 3600.
         w_values = IT_weights(TC_values, T0=T0, T1=T1, w0=0., w1=1.)
-        RHTdata['Integrated Temperatures'].append(np.trapz(w_values*(TC_values-Tref),logging_df['seconds'])/dt1/(665.-Tref))
+        t_r = np.trapz(np.heaviside(TC_values-Tref,1),logging_df['seconds'])/3600.
+        RHTdata['Sharp Durations'].append(t_r)
         RHTdata['Integrated Durations'].append(np.trapz(w_values,logging_df['seconds'])/3600.)
+        RHTdata['Integrated Temperatures'].append((T1-T0)*np.divide(np.trapz(w_values,logging_df['seconds'])/3600.,t_r)+T0)
+    RHTdata['Sharp Durations'] = np.array(RHTdata['Sharp Durations'])
+    RHTdata['Integrated Durations'] = np.array(RHTdata['Integrated Durations'])
+    RHTdata['Integrated Temperatures'] = np.array(RHTdata['Integrated Temperatures'])
+
 
 def print_dwells(dwells, args):
     print "Dwell\tduration(h)\tmax(T)\tmean(T)\tmin(T)\t Max Homogeneity half band"
@@ -1560,8 +1583,12 @@ def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2, f_of_position=False):
 
     fig_filename = args.path.replace('.csv','') 
     #try:
+    T0T1text = '$T_0$ = {:0.0f} $^\circ C$'.format(args.T0)
+    T0T1text += '\n$T_1$ = {:0.0f} $^\circ C$'.format(args.T1)
     if f_of_position:
         plotter.clear((16,10))
+        T0T1text = '$T_0$ = {:0.0f} $^\circ C$'.format(args.T0)
+        plotter.add_text_to_legend(T0T1text)
         plotter.set_xlabel('Longitudinal position(m)')
         plotter.set_ylabel('Dwell duration')
         xdata = [block_to_position(float(key.split(':')[1].split('block ')[1])) for key in accepted_TC_keys]
@@ -1604,9 +1631,11 @@ def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2, f_of_position=False):
         plotter.set_xticklabels(dwell['TC durations']['TC'], rotation=45)
         
         ITD = RHTdata['Integrated Durations']
+        SD = RHTdata['Sharp Durations']
         IT = RHTdata['Integrated Temperatures']
 
         plotter.set_ax2()
+        plotter.plot_ax(xdata, SD, label="sharp", marker=marker, color=color)
         plotter.plot_ax2(xdata, ITD, label="integrated", marker=marker, color=color)
         plotter.set_ylabel2('Integrated duration (h)')
 
@@ -1615,7 +1644,8 @@ def plot_TC_dwell_durations(RHTdata, args, dwell_nr=2, f_of_position=False):
     if args.show_plot:
         plotter.show(args)
     else:
-        plotter.savefig(fig_filename, 'fig:dwell_'+str(dwell_nr+1)+'durations', '_dwell'+str(dwell_nr+1)+'_durations_' + parameters_str(args) + '.png', args=args, caption='Dwell durations of the fixture according to the individual thermo-couples.')
+        T0T1_str = 'durations_T0_'+str(args.T0)+'_T1_'+str(args.T1)
+        plotter.savefig(fig_filename, 'fig:dwell_'+str(dwell_nr+1)+T0T1_str, '_dwell'+str(dwell_nr+1)+T0T1_str+ '.png', args=args, caption='Dwell durations of the fixture according to the individual thermo-couples.')
     #except:
     #    print "Dwell", str(dwell_nr+1), "was not found: I'm not going to plot TC dwell durations"
 
@@ -1633,16 +1663,20 @@ def block_to_position(block_number, middle=True):
 
     return pos
 
-def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=False):
+def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=False, RRR_vs_SD=False):
     IT = RHTdata['Integrated Temperatures']
     accepted_TC_keys = RHTdata['data_logging']['accepted_TC_keys']
 
     fig_filename = args.path.replace('.csv','') 
 
+
+    T0T1text = '$T_0$ = {:0.0f} $^\circ C$'.format(args.T0)
+    T0T1text += '\n$T_1$ = {:0.0f} $^\circ C$'.format(args.T1)
+    RRR = np.array([306,289,286,266,242,260,247,243,247,236])
     if RRR_vs_ITD:
         plotter.clear((16,10))
+        plotter.add_text_to_legend(T0T1text)
         if 'CR114' in fig_filename:
-            plotter.clear((16,10))
             plotter.set_xlabel('Integrated Duration (h)')
             xdata = [block_to_position(float(key.split(':')[1].split('block ')[1])) for key in accepted_TC_keys]
             ITD = RHTdata['Integrated Durations']
@@ -1650,7 +1684,7 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
             #color = plotter.get_color()
             IT_df = pd.DataFrame({'xdata':xdata, 'IT':IT, 'ITD':ITD})
             IT_df = IT_df.groupby('xdata').mean().reset_index()
-            #plotter.plot_ax(IT_df['xdata'], IT_df['IT']/IT_df['IT'][0], label="weighted Int. TC", marker=marker, color=color)
+            #plotter.plot_ax(IT_df['xdata'], IT_df['IT']/IT_df['IT'][0], label="TC", marker=marker, color=color)
 
             #marker = plotter.get_marker()
             #color = plotter.get_color()
@@ -1658,7 +1692,6 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
 
 
             #plotter.set_ax2()
-            RRR = np.array([306,289,286,266,242,260,247,243,247,236])
             RRRdeg = (354.-RRR)/354. * 100.
             ind = np.array(range(len(RRR)))+1
             blocks = np.array([3,7,13,23,33,43,53,63,73,78])
@@ -1666,10 +1699,11 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
             pos = block_to_position(blocks)
             marker = plotter.get_marker()
             color = plotter.get_color()
-            coef = np.polyfit(ITD_interp[:-1], RRRdeg[:-1], 1)
+            coef, cov = np.polyfit(ITD_interp[:-1], RRRdeg[:-1], 1, cov=True)
+            sigma = np.sqrt(cov)
             fit = np.poly1d(coef)
             plotter.plot_ax(ITD_interp, RRRdeg, label="RRR deg.", marker=marker, color=color, linestyle="None")
-            plotter.plot_ax(ITD_interp, fit(ITD_interp), label='y={:0.1f}x{:0.0f}'.format(coef[0],coef[1]), marker="None", color='black', linestyle='-')
+            plotter.plot_ax(ITD_interp, fit(ITD_interp), label='y=({:0.1f}$\pm${:0.0f})x + ({:0.0f}$\pm${:.0f})'.format(coef[0],sigma[0,0],coef[1],sigma[1,1]), marker="None", color='black', linestyle='-')
             #plotter.text(0.5,0.5, 'y={:0.0f}x{:0.0f}'.format(coef[0],coef[1]), transform=plotter.ax.transAxes)
             plotter.set_ylabel('RRR degradation (%)')
 
@@ -1682,15 +1716,16 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
  
     elif RRR_vs_IT:
         plotter.clear((16,10))
+        plotter.add_text_to_legend(T0T1text)
         if 'CR114' in fig_filename:
-            plotter.set_xlabel('Normalized Integrated Magnitude')
+            plotter.set_xlabel('Integrated Temperature')
             xdata = [block_to_position(float(key.split(':')[1].split('block ')[1])) for key in accepted_TC_keys]
             ITD = RHTdata['Integrated Durations']
             #marker = plotter.get_marker()
             #color = plotter.get_color()
             IT_df = pd.DataFrame({'xdata':xdata, 'IT':IT, 'ITD':ITD})
             IT_df = IT_df.groupby('xdata').mean().reset_index()
-            #plotter.plot_ax(IT_df['xdata'], IT_df['IT']/IT_df['IT'][0], label="weighted Int. TC", marker=marker, color=color)
+            #plotter.plot_ax(IT_df['xdata'], IT_df['IT']/IT_df['IT'][0], label="TC", marker=marker, color=color)
 
             #marker = plotter.get_marker()
             #color = plotter.get_color()
@@ -1698,7 +1733,6 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
 
 
             #plotter.set_ax2()
-            RRR = np.array([306,289,286,266,242,260,247,243,247,236])
             RRRdeg = (354.-RRR)/354. * 100.
             ind = np.array(range(len(RRR)))+1
             blocks = np.array([3,7,13,23,33,43,53,63,73,78])
@@ -1706,27 +1740,70 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
             pos = block_to_position(blocks)
             marker = plotter.get_marker()
             color = plotter.get_color()
-            coef = np.polyfit(IT_interp[:-1], RRRdeg[:-1], 1)
+            coef, cov = np.polyfit(IT_interp[:-1], RRRdeg[:-1], 1, cov=True)
+            sigma = np.sqrt(cov)
             fit = np.poly1d(coef)
             plotter.plot_ax(IT_interp, RRRdeg, label="RRR deg.", marker=marker, color=color, linestyle="None")
-            plotter.plot_ax(IT_interp, fit(IT_interp), label="y={:0.1f}x{:0.0f}".format(coef[0],coef[1]), marker="None", color='black', linestyle='-')
+            plotter.plot_ax(IT_interp, fit(IT_interp), label='y=({:0.1f}$\pm${:0.0f})x + ({:0.0f}$\pm${:.0f})'.format(coef[0],sigma[0,0],coef[1],sigma[1,1]), marker="None", color='black', linestyle='-')
             #plotter.text(0.5,0.5, 'y={:0.0f}x{:0.0f}'.format(coef[0],coef[1]), transform=plotter.ax.transAxes)
             plotter.set_ylabel('RRR degradation (%)')
 
             plotter.legend(loc='best')
+        else:
+            return
+        fig_filename += "RRR_vs_IT"
+
+    elif RRR_vs_SD:
+        plotter.clear((16,10))
+        plotter.add_text_to_legend(T0T1text)
+        if 'CR114' in fig_filename:
+            plotter.set_xlabel('Sharp Duration')
+            xdata = [block_to_position(float(key.split(':')[1].split('block ')[1])) for key in accepted_TC_keys]
+            SD = RHTdata['Sharp Durations']
+            #marker = plotter.get_marker()
+            #color = plotter.get_color()
+            IT_df = pd.DataFrame({'xdata':xdata, 'IT':IT, 'SD':SD})
+            IT_df = IT_df.groupby('xdata').mean().reset_index()
+            #plotter.plot_ax(IT_df['xdata'], IT_df['IT']/IT_df['IT'][0], label="TC", marker=marker, color=color)
+
+            #marker = plotter.get_marker()
+            #color = plotter.get_color()
+            #plotter.plot_ax(IT_df['xdata'], IT_df['ITD']/IT_df['ITD'][0], label='Duration', color=color, marker=marker) 
+
+
+            #plotter.set_ax2()
+            RRRdeg = (354.-RRR)/354. * 100.
+            ind = np.array(range(len(RRR)))+1
+            blocks = np.array([3,7,13,23,33,43,53,63,73,78])
+            SD_interp = np.interp(block_to_position(blocks), IT_df['xdata'], IT_df['SD'])
+            pos = block_to_position(blocks)
+            marker = plotter.get_marker()
+            color = plotter.get_color()
+            coef, cov = np.polyfit(SD_interp[:-1], RRRdeg[:-1], 1, cov=True)
+            sigma = np.sqrt(cov)
+            fit = np.poly1d(coef)
+            plotter.plot_ax(SD_interp, RRRdeg, label="RRR deg.", marker=marker, color=color, linestyle="None")
+            plotter.plot_ax(SD_interp, fit(SD_interp), label='y=({:0.1f}$\pm${:0.0f})x + ({:0.0f}$\pm${:.0f})'.format(coef[0],sigma[0,0],coef[1],sigma[1,1]), marker="None", color='black', linestyle='-')
+            #plotter.text(0.5,0.5, 'y={:0.0f}x{:0.0f}'.format(coef[0],coef[1]), transform=plotter.ax.transAxes)
+            plotter.set_ylabel('RRR degradation (%)')
+
+            plotter.legend(loc='best')
+
             #plotter.set_ylim((49., 55.))
         else:
             return
 
-        fig_filename += "RRR_vs_IT"
+        fig_filename += "RRR_vs_SD"
+
     elif f_of_position:
         plotter.clear((16,10))
+        plotter.add_text_to_legend(T0T1text)
         plotter.set_xlabel('Longitudinal position(m)')
-        plotter.set_ylabel('Normalized Integrated Magnitude')
+        plotter.set_ylabel('Normalized Integrated')
         xdata = [block_to_position(float(key.split(':')[1].split('block ')[1])) for key in accepted_TC_keys]
         marker = plotter.get_marker()
         color = plotter.get_color()
-        plotter.plot_ax(xdata, IT/IT[0], label="weighted Int. TC", marker=marker, color=color)
+        plotter.plot_ax(xdata, (IT-args.T0)/(IT[0]-args.T0), label="Temperature $- T_0$", marker=marker, color=color)
 
         marker = plotter.get_marker()
         color = plotter.get_color()
@@ -1735,7 +1812,6 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
 
         if 'CR114' in fig_filename:
             plotter.set_ax2()
-            RRR = np.array([306,289,286,266,242,260,247,243,247,236])
             RRRdeg = (354.-RRR)/354. * 100.
             ind = np.array(range(len(RRR)))+1
             blocks = np.array([3,7,13,23,33,43,53,63,73,78])
@@ -1750,10 +1826,11 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
 
         fig_filename += "fofpos"
     else:
+        plotter.add_text_to_legend(T0T1text)
         plotter.set_xlabel('TC')
-        plotter.set_ylabel('Normalized Integrated Temperature')
+        plotter.set_ylabel('Integrated Temperature')
         xdata = range(len(accepted_TC_keys))
-        plotter.plot_ax(xdata, IT, label="weighted Int. TC")
+        plotter.plot_ax(xdata, IT, label="TC")
 
         #plotter.set_ylim((49., 55.))
 
@@ -1764,10 +1841,12 @@ def plot_TC_IT(RHTdata, args, f_of_position=False, RRR_vs_IT=False, RRR_vs_ITD=F
 
     #plotter.ax.set_xlim((0.,dwells[-1]['hours'].max()+120.))
 
+
     if args.show_plot:
         plotter.show(args)
     else:
-        plotter.savefig(fig_filename, 'fig:TC_ITs', 'TC_ITs' + parameters_str(args) + '.png', args=args, caption='Integrated temperature of the fixture according to the individual thermo-couples.')
+        T0T1_str = '_T0_{:0.0f}'.format(args.T0)+'_T1_{:0.0f}'.format(args.T1)
+        plotter.savefig(fig_filename, 'fig:TC_ITs', 'TC_ITs' + T0T1_str + '.png', args=args, caption='Integrated temperature of the fixture according to the individual thermo-couples.')
 
 
 def get_block_temperatures(logging_df, block_numbers, accepted_keys):
@@ -1966,10 +2045,10 @@ def plot_mean_and_theoretical(RHTdata, args, theoretical=True):
     plotter.set_lim_args(args)
 
     if theoretical:
-        x1 = 210./50.
-        x2 = x1 + 50.
+        x1 = 210./25.
+        x2 = x1 + 48.
         x3 = x2 + (400.-210.)/50.
-        x4 = x3 + 50.
+        x4 = x3 + 48.
         x5 = x4 + (665.-400.)/50.
         x6 = x5 + 50.
         x7 = x6 + 665./50.
@@ -2465,6 +2544,9 @@ if __name__ == '__main__':
     parser.add_argument('--minimum-dwell-duration', type=float, default=10.)
     parser.add_argument('--dwell-close-ups', action='store_true', default=False) 
     parser.add_argument('--no-clock-change-detection', action='store_true', default=False) 
+    parser.add_argument('--only-durations', action='store_true', default=False) 
+    parser.add_argument('--T0', type=float, default=400.) 
+    parser.add_argument('--T1', type=float, default=665.) 
 
     global args 
     args = parser.parse_args()
@@ -2495,6 +2577,16 @@ if __name__ == '__main__':
             for args.dwell_target_homogeneity_half_band in dthomhalfs:
                 regenerate_online_data(RHTdata)
                 analyze(RHTdata, args)
+                if args.only_durations:
+                    plot_mean_and_theoretical(RHTdata, args)
+                    plot_TC_dwell_durations(RHTdata, args)
+                    plot_TC_IT(RHTdata, args)
+                    plot_TC_dwell_durations(RHTdata, args, f_of_position=True)
+                    plot_TC_IT(RHTdata, args, f_of_position=True)
+                    plot_TC_IT(RHTdata, args, RRR_vs_IT = True)
+                    plot_TC_IT(RHTdata, args, RRR_vs_ITD = True)
+                    plot_TC_IT(RHTdata, args, RRR_vs_SD = True)
+                    exit()
                 if not args.no_images:
                     plot_mean_and_theoretical(RHTdata, args)
                     plot_all_TC(RHTdata, args)
@@ -2525,13 +2617,16 @@ if __name__ == '__main__':
                 plotter.reset()
 
     if not args.no_report:
-        if args.compare_analyses:
-            report.compare_analyses(RHTdata, args)
-        report.write_report(RHTdata)
-        report.close()
-        report.compile()
-        file_logger.close()
-        RHTdata_pickle_analysed(RHTdata)
+        try:
+            if args.compare_analyses:
+                report.compare_analyses(RHTdata, args)
+            report.write_report(RHTdata)
+            report.close()
+            report.compile()
+            file_logger.close()
+        except:
+            pass
+    RHTdata_pickle_analysed(RHTdata)
         #dwell_pickle_analysed(RHTdata)
 
 
