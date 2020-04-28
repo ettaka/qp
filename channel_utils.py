@@ -1,9 +1,9 @@
 
 def create_channel_dict_list(channel_names, channel_units, old_format=False):
         channel_dict_list = []
-	for i, channel_name in enumerate(channel_names):
-		channel_dict_list.append({})
-		channel_dict = channel_dict_list[-1]
+        for i, channel_name in enumerate(channel_names):
+                channel_dict_list.append({})
+                channel_dict = channel_dict_list[-1]
 
                 channel_dict['signal'] = 'raw'
 
@@ -26,7 +26,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False):
                     channel_dict['interpolation'] = True
                     channel_name = channel_name.split('_Interpolation')[0]
 
-		channel_dict['name'] = channel_name
+                channel_dict['name'] = channel_name
                 channel_dict['sensor type'] = ''
                 channel_dict['location'] = ''
                 channel_dict['unit'] = channel_units[i]
@@ -43,7 +43,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False):
                     channel_dict['longitudinal location'] = 'RE'
 
                 if old_format and '_comp' in channel_name.lower(): 
-                    print "Using old format!"
+                    print("Using old format!")
                     if '_compensated' in channel_name.lower(): 
                         channel_dict['thermal compensator'] = 'compensated'
                     else:
@@ -119,7 +119,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False):
                     channel_dict['longname'] = get_channel_longname(channel_dict)
                     channel_dict['name'] = get_channel_longname(channel_dict)
 
-	return channel_dict_list
+        return channel_dict_list
 
 
 def get_channel_longname(channel_dict):

@@ -89,7 +89,7 @@ def fix_zero_cols_with_average(cols):
     for i, col in enumerate(cols.T):
         if np.count_nonzero(col) == 0:
             zero_col_indx.append(i)
-            print 'Column', i, 'detected as a zero column'
+            print('Column', i, 'detected as a zero column')
         else:
             average+=col
     average /= i
@@ -113,7 +113,7 @@ def replace_header_strings(header, replace_dict):
 def load_csv(filepath, times_called, args):
     header_lines = 3
     with codecs.open(filepath) as f:
-        head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
+        head = [next(f) for x in range(header_lines)]
 
     for i,line in enumerate(head):
         if 'date' in line.lower() and 'time' in line.lower():
@@ -160,17 +160,17 @@ def load_csv(filepath, times_called, args):
     col_names = keys_data.columns
     channel_dict_list = create_channel_dict_list(col_names, col_names, old_format=False)
 
-    print len(col_names)
+    print(len(col_names))
 
     return raw_data, col_names, df_out, channel_dict_list
  
 def load_txt(filepath, args):
     header_lines = 3
     with codecs.open(filepath) as f:
-        head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
+        head = [next(f) for x in range(header_lines)]
 
     col_names = head[2].strip('\r\n').split('\t')
-    print len(col_names)
+    print(len(col_names))
 
     with codecs.open(filepath) as f:
         raw_data = np.loadtxt(f, skiprows=header_lines)
@@ -180,9 +180,9 @@ def load_txt(filepath, args):
 
 def create_data_dicts(filepath, times_called, file_extension, args, coil_permutation=None):
 
-    print "Creating data dictionaries."
+    print("Creating data dictionaries.")
     if coil_permutation == None: coil_permutation = [1,2,3,4]
-    print "Permuting coils with", coil_permutation
+    print("Permuting coils with", coil_permutation)
     coil_permutation = [inx-1 for inx in coil_permutation]
 
     if file_extension == '.txt':
@@ -204,12 +204,12 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
         key_dict['channel_dict_list'] = None
         shell_dict['raw_data'] = raw_data[:,1:5]
         shell_dict['col_names'] = col_names[1:5]
-        ypicker = map([5,6,7,8].__getitem__,coil_permutation)
+        ypicker = list(map([5,6,7,8].__getitem__,coil_permutation))
         coil_dict['raw_data'] = raw_data[:,ypicker]
-        coil_dict['col_names'] = map(col_names[5:9].__getitem__,coil_permutation)
+        coil_dict['col_names'] = list(map(col_names[5:9].__getitem__,coil_permutation))
         if channel_dict_list is not None:
             shell_dict['channel_dict_list'] = channel_dict_list[1:5]
-            coil_dict['channel_dict_list'] = map(channel_dict_list[5:9].__getitem__,coil_permutation)
+            coil_dict['channel_dict_list'] = list(map(channel_dict_list[5:9].__getitem__,coil_permutation))
         else:
             shell_dict['channel_dict_list'] = None
             coil_dict['channel_dict_list'] = None
@@ -219,27 +219,27 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
         key_dict['channel_dict_list'] = None
         shell_dict['raw_data'] = raw_data[:,1+3:5+3]
         shell_dict['col_names'] = col_names[1+3:5+3]
-        ypicker = map([5+3,6+3,7+3,8+3].__getitem__,coil_permutation)
+        ypicker = list(map([5+3,6+3,7+3,8+3].__getitem__,coil_permutation))
         coil_dict['raw_data'] = raw_data[:,ypicker]
-        coil_dict['col_names'] = map(col_names[5+3:9+3].__getitem__,coil_permutation)
+        coil_dict['col_names'] = list(map(col_names[5+3:9+3].__getitem__,coil_permutation))
         if channel_dict_list is not None:
             shell_dict['channel_dict_list'] = channel_dict_list[1+3:5+3]
-            coil_dict['channel_dict_list'] = map(channel_dict_list[5+3:9+3].__getitem__,coil_permutation)
+            coil_dict['channel_dict_list'] = list(map(channel_dict_list[5+3:9+3].__getitem__,coil_permutation))
         else:
             shell_dict['channel_dict_list'] = None
             coil_dict['channel_dict_list'] = None
     else:
-        print "You have", str(col_names), "columns in your datafile! (it should be 9, 10 or 12)"
+        print("You have", str(col_names), "columns in your datafile! (it should be 9, 10 or 12)")
         exit()
 
     if args.fix_gauges_with_average:
-        print "Fixing shell gauges with average value"
+        print("Fixing shell gauges with average value")
         fix_zero_cols_with_average(shell_dict['raw_data'])
-        print "Fixing coil gauges with average value"
+        print("Fixing coil gauges with average value")
         fix_zero_cols_with_average(coil_dict['raw_data'])
 
     if args.remove_coil_deltas != None:
-        print "removing coil deltas of points with indices:", args.remove_coil_deltas 
+        print("removing coil deltas of points with indices:", args.remove_coil_deltas) 
         for ind in args.remove_coil_deltas.split():
             index = int(ind) - 1
             if index < np.shape(coil_dict['raw_data'])[0]:
@@ -311,7 +311,7 @@ def plot_tf(ax, times_called, filepath, args):
             #    df_not_nan = df_not_nan[df_not_nan[key] < upper_limit]
             if args.fit_point_range is not None:
                 lower_limit, upper_limit = tuple(int(s) for s in args.fit_point_range.split())
-                print "upper/lower", lower_limit, upper_limit
+                print("upper/lower", lower_limit, upper_limit)
                 df_fit = df_not_nan[lower_limit:upper_limit]
             else:
                 df_fit = df_not_nan
@@ -335,7 +335,7 @@ def plot_tf(ax, times_called, filepath, args):
             lgd = ax.legend(loc='best')
             imagename = filepath+'_sg-vs-fbg_' + key
             imagename = imagename.replace('.','_').replace(' ','_')
-            print "creating image file", imagename+'.png'
+            print("creating image file", imagename+'.png')
             if args.legend_outside:
                 plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
                         fontsize=args.legend_font_size)
@@ -358,15 +358,15 @@ def plot_tf(ax, times_called, filepath, args):
         plotname = filebase
 
     if args.print_final_stresses:
-        print "Final stresses:"
-        print "---------------"
-        print "\tmin\tmax\taverage"
-        print "shell\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1])
-        print "pole\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
-        print "---------------"
-        print "::filepath\tshell min\tshell max\tshell average\tpole min\tpole max\tpole average"
-        print ":" + filepath + "\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1]) + "\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1])
-        print "---------------"
+        print("Final stresses:")
+        print("---------------")
+        print("\tmin\tmax\taverage")
+        print("shell\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1]))
+        print("pole\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1]))
+        print("---------------")
+        print("::filepath\tshell min\tshell max\tshell average\tpole min\tpole max\tpole average")
+        print(":" + filepath + "\t" + str(xdict['min'][-1]) + "\t" + str(xdict['max'][-1]) + "\t" + str(xdict['average'][-1]) + "\t" + str(ydict['min'][-1])  + "\t" + str(ydict['max'][-1]) + "\t" + str(ydict['average'][-1]))
+        print("---------------")
  
     else:
 
@@ -415,17 +415,17 @@ def plot_tf(ax, times_called, filepath, args):
             linestyle = ''
 
         if no_plot_average:
-            print "Plot average of all shell vs pole gauges."
+            print("Plot average of all shell vs pole gauges.")
             ax.plot(xdata,ydata,linestyle+data_marker, color=data_color,label=data_label, markersize=args.marker_size, linewidth=args.line_width)
             if no_plot_average_error:
                 _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
 
         if single_coils:
             ax.set_title(data_label)
-            print "Plot single pole gauges",
+            print("Plot single pole gauges", end=' ')
             for i in range(4):
                 if neighbour_shell_averages:
-                    if i==0:print "vs single shell gauges."
+                    if i==0:print("vs single shell gauges.")
                     xdata = xdict['raw_data'][:,i]
                     ydata = ydict['raw_data'][:,i]
                     if xdict['channel_dict_list'] is not None:
@@ -438,7 +438,7 @@ def plot_tf(ax, times_called, filepath, args):
                         labely = ydict['col_names'][i]
                     label = labelx+'-'+labely
                 else:
-                    if i==0:print "vs single shell gauges."
+                    if i==0:print("vs single shell gauges.")
                     nof_cols = np.shape(xdict['raw_data'])[1]
                     xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
                     ydata = ydict['raw_data'][:,i]
@@ -469,10 +469,10 @@ def plot_tf(ax, times_called, filepath, args):
                     fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
                 fitfilename = plotname + '.fit'
                 fitfile = open(fitfilename, 'w')
-                print "writing fit parameters to file: ", fitfilename
+                print("writing fit parameters to file: ", fitfilename)
                 fitfile.write(fit_text)
         except:
-            print "fitting failed!"
+            print("fitting failed!")
 
 
         ax.set_xlabel(xdict['axis label'])
@@ -484,7 +484,7 @@ def plot_tf(ax, times_called, filepath, args):
                 value_counts = df['average key'].value_counts()
                 annotations = df.index
             else:
-                annotations = range(len(xdata))
+                annotations = list(range(len(xdata)))
 
             if args.annotation_list:
                 textlist = '\n'.join(annotations)
@@ -685,7 +685,7 @@ if __name__ == '__main__':
     plotnames = []
     for i, filepath in enumerate(paths):
         #plt.cla()
-        print "filepath", filepath
+        print("filepath", filepath)
         plotname = plot_tf(ax, i, filepath, args)
         plotnames.append(plotname)
     
@@ -703,7 +703,7 @@ if __name__ == '__main__':
                 imagename = 'TRANSFER1_MQXF' + imagename
             imagename += name_suffix
             if args.image_name != '': imagename = args.image_name
-            print "creating image file", imagename+'.png'
+            print("creating image file", imagename+'.png')
             if args.legend_outside:
                 plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
                         fontsize=args.legend_font_size)

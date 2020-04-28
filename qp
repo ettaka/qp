@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 #import pandas as pd
-import cPickle as pickle
+import pickle as pickle
 import os
 import codecs
 import argparse
@@ -72,13 +72,13 @@ class SortTree():
 def test_sort_tree(debug=True):
     test = SortTree(['CE Coil Longitudinal Optical', 'CE Coil Longitudinal', 'RE Coil Longitudinal', 'LE Shell Azimuthal', 'RE Shell Longitudinal', 'LE Coil Longitudinal', 'RE Coil Azimuthal', 'LE Shell Longitudinal', 'RE Shell Azimuthal', 'LE Coil Azimuthal', 'Rod A'], ['LE RE', 'Coil Shell', 'Azimuthal Longitudinal'])
     test_list = test.list()
-    if debug: print test_list
+    if debug: print(test_list)
 
 def test_sort_tree2(debug=True):
-    test_vars = [u'Coil 003 Azimuthal Strain CE', u'Coil 003 Azimuthal Strain LE', u'Coil 003 Azimuthal Strain RE', u'Coil 003 Longitudinal Strain CE', u'Coil 003 Longitudinal Strain LE', u'Coil 003 Longitudinal Strain RE', u'Coil 201 Azimuthal Strain CE', u'Coil 201 Azimuthal Strain LE', u'Coil 201 Azimuthal Strain Optical CE', u'Coil 201 Azimuthal Strain Optical LE',u'Coil 201 Azimuthal Strain Optical RE', u'Coil 201 Azimuthal Strain RE', u'Coil 201 Longitudinal Strain CE', u'Coil 201 Longitudinal Strain LE', u'Coil 201 Longitudinal Strain Optical CE', u'Coil 201 Longitudinal Strain Optical LE', u'Coil 201 Longitudinal Strain Optical RE', u'Coil 201 Longitudinal Strain RE', u'Coil 202 Azimuthal Strain CE', u'Coil 202 Azimuthal Strain LE', u'Coil 202 Azimuthal Strain Optical CE', u'Coil 202 Azimuthal Strain Optical LE', u'Coil 202 Azimuthal Strain Optical RE', u'Coil 202 Azimuthal Strain RE', u'Coil 202 Longitudinal Strain CE', u'Coil 202 Longitudinal Strain LE', u'Coil 202 Longitudinal Strain Optical CE', u'Coil 202 Longitudinal Strain Optical LE', u'Coil 202 Longitudinal Strain Optical RE', u'Coil 202 Longitudinal Strain RE', u'Coil 203 Azimuthal Strain CE', u'Coil 203 Azimuthal Strain LE', u'Coil 203 Azimuthal Strain RE', u'Coil 203 Longitudinal Strain CE', u'Coil 203 Longitudinal Strain LE', u'Coil 203 Longitudinal Strain RE', u'Rod A Longitudinal Strain', u'Rod B Longitudinal Strain', u'Rod C Longitudinal Strain', u'Rod D Longitudinal Strain', 'Shell Bottom Azimuthal Strain CE', 'Shell Bottom Azimuthal Strain LE', 'Shell Bottom Azimuthal Strain RE', 'Shell Bottom Longitudinal Strain CE', 'Shell Bottom Longitudinal Strain LE', 'Shell Bottom Longitudinal Strain RE', 'Shell Left Azimuthal Strain CE', 'Shell Left Azimuthal Strain LE', 'Shell Left Azimuthal Strain RE', 'Shell Left Longitudinal Strain CE', 'Shell Left Longitudinal Strain LE', 'Shell Left Longitudinal Strain RE', 'Shell Right Azimuthal Strain CE', 'Shell Right Azimuthal Strain LE', 'Shell Right Azimuthal Strain RE', 'Shell Right Longitudinal Strain CE', 'Shell Right Longitudinal Strain LE', 'Shell Right Longitudinal Strain RE', 'Shell Top Azimuthal Strain CE', 'Shell Top Azimuthal Strain LE', 'Shell Top Azimuthal Strain RE', 'Shell Top Longitudinal Strain CE', 'Shell Top Longitudinal Strain LE', 'Shell Top Longitudinal Strain RE', 'Time From Start']
+    test_vars = ['Coil 003 Azimuthal Strain CE', 'Coil 003 Azimuthal Strain LE', 'Coil 003 Azimuthal Strain RE', 'Coil 003 Longitudinal Strain CE', 'Coil 003 Longitudinal Strain LE', 'Coil 003 Longitudinal Strain RE', 'Coil 201 Azimuthal Strain CE', 'Coil 201 Azimuthal Strain LE', 'Coil 201 Azimuthal Strain Optical CE', 'Coil 201 Azimuthal Strain Optical LE','Coil 201 Azimuthal Strain Optical RE', 'Coil 201 Azimuthal Strain RE', 'Coil 201 Longitudinal Strain CE', 'Coil 201 Longitudinal Strain LE', 'Coil 201 Longitudinal Strain Optical CE', 'Coil 201 Longitudinal Strain Optical LE', 'Coil 201 Longitudinal Strain Optical RE', 'Coil 201 Longitudinal Strain RE', 'Coil 202 Azimuthal Strain CE', 'Coil 202 Azimuthal Strain LE', 'Coil 202 Azimuthal Strain Optical CE', 'Coil 202 Azimuthal Strain Optical LE', 'Coil 202 Azimuthal Strain Optical RE', 'Coil 202 Azimuthal Strain RE', 'Coil 202 Longitudinal Strain CE', 'Coil 202 Longitudinal Strain LE', 'Coil 202 Longitudinal Strain Optical CE', 'Coil 202 Longitudinal Strain Optical LE', 'Coil 202 Longitudinal Strain Optical RE', 'Coil 202 Longitudinal Strain RE', 'Coil 203 Azimuthal Strain CE', 'Coil 203 Azimuthal Strain LE', 'Coil 203 Azimuthal Strain RE', 'Coil 203 Longitudinal Strain CE', 'Coil 203 Longitudinal Strain LE', 'Coil 203 Longitudinal Strain RE', 'Rod A Longitudinal Strain', 'Rod B Longitudinal Strain', 'Rod C Longitudinal Strain', 'Rod D Longitudinal Strain', 'Shell Bottom Azimuthal Strain CE', 'Shell Bottom Azimuthal Strain LE', 'Shell Bottom Azimuthal Strain RE', 'Shell Bottom Longitudinal Strain CE', 'Shell Bottom Longitudinal Strain LE', 'Shell Bottom Longitudinal Strain RE', 'Shell Left Azimuthal Strain CE', 'Shell Left Azimuthal Strain LE', 'Shell Left Azimuthal Strain RE', 'Shell Left Longitudinal Strain CE', 'Shell Left Longitudinal Strain LE', 'Shell Left Longitudinal Strain RE', 'Shell Right Azimuthal Strain CE', 'Shell Right Azimuthal Strain LE', 'Shell Right Azimuthal Strain RE', 'Shell Right Longitudinal Strain CE', 'Shell Right Longitudinal Strain LE', 'Shell Right Longitudinal Strain RE', 'Shell Top Azimuthal Strain CE', 'Shell Top Azimuthal Strain LE', 'Shell Top Azimuthal Strain RE', 'Shell Top Longitudinal Strain CE', 'Shell Top Longitudinal Strain LE', 'Shell Top Longitudinal Strain RE', 'Time From Start']
     test_tree = SortTree(test_vars,["LE CE RE", "Optical", "Coil Shell Rod", "Azimuthal Longitudinal A B C D"])
     test_list = test_tree.list()
-    if debug: print test_list
+    if debug: print(test_list)
 
 #test_sort_tree(debug=True)
 #exit()
@@ -103,7 +103,7 @@ def autoscale_y(args):
                     if ymin == None or ymax < test:
                         ymax = test
 
-            print "autoscale_y: set ylim:", ymin, ymax
+            print("autoscale_y: set ylim:", ymin, ymax)
             ax.set_ylim((ymin, ymax))
 
 """
@@ -123,207 +123,207 @@ def autoscale_y(args):
   
 """
 MATERIAL_DATA = { 
-		'titanium' : {
-			'elastic_modulus':str(130e9/1e6/1e6),
-			'poisson_ratio':'0.30'
-			},
-		'aluminium' : {
-			'elastic_modulus':str(79e9/1e6/1e6),
-			'poisson_ratio':'0.34'
-			},
-        	'stainless steel' : {
-			'elastic_modulus':str(210e9/1e6/1e6),
-			'poisson_ratio':'0.28'
-			}
+                'titanium' : {
+                        'elastic_modulus':str(130e9/1e6/1e6),
+                        'poisson_ratio':'0.30'
+                        },
+                'aluminium' : {
+                        'elastic_modulus':str(79e9/1e6/1e6),
+                        'poisson_ratio':'0.34'
+                        },
+                'stainless steel' : {
+                        'elastic_modulus':str(210e9/1e6/1e6),
+                        'poisson_ratio':'0.28'
+                        }
 
-		}
+                }
 MATERIAL_DATA_WARM = { 
-		'titanium' : {
-			'elastic_modulus':str(130e9/1e6/1e6),
-			'poisson_ratio':'0.30'
-			},
-		'aluminium' : {
-			'elastic_modulus':str(70e9/1e6/1e6),
-			'poisson_ratio':'0.34'
-			},
-        	'stainless steel' : {
-			'elastic_modulus':str(210e9/1e6/1e6),
-			'poisson_ratio':'0.28'
-			}
+                'titanium' : {
+                        'elastic_modulus':str(130e9/1e6/1e6),
+                        'poisson_ratio':'0.30'
+                        },
+                'aluminium' : {
+                        'elastic_modulus':str(70e9/1e6/1e6),
+                        'poisson_ratio':'0.34'
+                        },
+                'stainless steel' : {
+                        'elastic_modulus':str(210e9/1e6/1e6),
+                        'poisson_ratio':'0.28'
+                        }
 
-		}
+                }
 
 
 
 def compute_stress(strain_theta, strain_z, material, axis, args):
-	"""
-	stress_z     = E/(1-v**2)*(strain_z     * v * strain_theta)
-	stress_theta = E/(1-v**2)*(strain_theta * v * strain_z)
-	"""
+        """
+        stress_z     = E/(1-v**2)*(strain_z     * v * strain_theta)
+        stress_theta = E/(1-v**2)*(strain_theta * v * strain_z)
+        """
         if args.warm:
             mat_data = MATERIAL_DATA_WARM
         else:
             mat_data = MATERIAL_DATA
 
-	E = float(mat_data[material]['elastic_modulus'])
-	v = float(mat_data[material]['poisson_ratio'])
-	if axis.lower()=='azimuthal': 
-		strain_1 = strain_theta
-		strain_2 = strain_z
-	elif axis.lower()=='longitudinal': 
-		strain_1 = strain_z
-		strain_2 = strain_theta
+        E = float(mat_data[material]['elastic_modulus'])
+        v = float(mat_data[material]['poisson_ratio'])
+        if axis.lower()=='azimuthal': 
+                strain_1 = strain_theta
+                strain_2 = strain_z
+        elif axis.lower()=='longitudinal': 
+                strain_1 = strain_z
+                strain_2 = strain_theta
 
-	return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
+        return E/(1.-v**2.)*(strain_1[:] + v * strain_2[:])
 
 def compute_stress_simple(strain, material, args):
-	"""
-	stress     = E*strain
-	"""
+        """
+        stress     = E*strain
+        """
 
         if args.warm:
             mat_data = MATERIAL_DATA_WARM
         else:
             mat_data = MATERIAL_DATA
 
-	E = float(mat_data[material]['elastic_modulus'])
-	return E * strain[:]
+        E = float(mat_data[material]['elastic_modulus'])
+        return E * strain[:]
 
 
 def find_strain_data(mtbop_data, strain_name):
-	basename = strain_name[0:-1]
-	if strain_name[-1] == 'T': 
-		name_theta = strain_name
-		name_z = basename + 'Z'
-		axis = 'theta'
-	elif strain_name[-1] == 'Z':
-		name_theta = basename + 'T'
-		name_z = strain_name
-		axis = 'z'
-	else: 
-		print "Warning: find_strain_data failed for ", strain_name
-	
-	if 'SH' in basename: material = 'aluminium'
-	elif 'CO' in basename: material = 'titanium'
-	elif 'R' in basename: material = 'aluminium'
-	else: print "Warning: find_strain_data failed"
+        basename = strain_name[0:-1]
+        if strain_name[-1] == 'T': 
+                name_theta = strain_name
+                name_z = basename + 'Z'
+                axis = 'theta'
+        elif strain_name[-1] == 'Z':
+                name_theta = basename + 'T'
+                name_z = strain_name
+                axis = 'z'
+        else: 
+                print("Warning: find_strain_data failed for ", strain_name)
+        
+        if 'SH' in basename: material = 'aluminium'
+        elif 'CO' in basename: material = 'titanium'
+        elif 'R' in basename: material = 'aluminium'
+        else: print("Warning: find_strain_data failed")
 
-	raw_data = mtbop_data['raw_data']
-	strain_theta = raw_data[:, find_channel_index(mtbop_data['channel_names'], name_theta)]
-	strain_z =     raw_data[:, find_channel_index(mtbop_data['channel_names'], name_z)]
+        raw_data = mtbop_data['raw_data']
+        strain_theta = raw_data[:, find_channel_index(mtbop_data['channel_names'], name_theta)]
+        strain_z =     raw_data[:, find_channel_index(mtbop_data['channel_names'], name_z)]
 
-	return strain_theta, strain_z, material, axis
+        return strain_theta, strain_z, material, axis
 
 def timeit(func):
-	def wrapper(*args, **kwargs):
-		time_start = time.time()
-		o=func(*args, **kwargs)
-		print 'timeit: ', func.__name__, ':{0:0.2f}s'.format(time.time()-time_start)
-		return o
-	return wrapper
+        def wrapper(*args, **kwargs):
+                time_start = time.time()
+                o=func(*args, **kwargs)
+                print('timeit: ', func.__name__, ':{0:0.2f}s'.format(time.time()-time_start))
+                return o
+        return wrapper
 
 def tol_cols(array):
-	return np.array([np.max(col)-np.min(col) for col in array.transpose()])
+        return np.array([np.max(col)-np.min(col) for col in array.transpose()])
 
 @timeit
 def detect_max_current(mtbop_data):
-	raw_data = mtbop_data['raw_data']
-	current_array = raw_data[:, find_channel_index(mtbop_data['channel_names'], 'Current')]
-	grad_array = np.gradient(current_array)
-	qinx = np.argmin(grad_array)
-	qinx = np.argmax(current_array)
-	mtbop_data['max_current_index'] = qinx
-	mtbop_data['max_current'] = current_array[qinx]
-	print "mtbop_data['filepath']", mtbop_data['filepath']
-	print "mtbop_data['max_current_index']", mtbop_data['max_current_index']
-	print "mtbop_data['max_current']", mtbop_data['max_current']
+        raw_data = mtbop_data['raw_data']
+        current_array = raw_data[:, find_channel_index(mtbop_data['channel_names'], 'Current')]
+        grad_array = np.gradient(current_array)
+        qinx = np.argmin(grad_array)
+        qinx = np.argmax(current_array)
+        mtbop_data['max_current_index'] = qinx
+        mtbop_data['max_current'] = current_array[qinx]
+        print("mtbop_data['filepath']", mtbop_data['filepath'])
+        print("mtbop_data['max_current_index']", mtbop_data['max_current_index'])
+        print("mtbop_data['max_current']", mtbop_data['max_current'])
 
 def detect_max_current_grad(mtbop_data, dt=1):
-	raw_data = mtbop_data['raw_data']
-	current_array = raw_data[:, find_channel_index(mtbop_data['channel_names'], 'Current')]
-	grad_array = np.gradient(current_array, dt)
-	qinx = np.argmax(grad_array)
-	mtbop_data['max_current_grad_index'] = qinx
-	mtbop_data['max_current_grad'] = grad_array[qinx]
-	print "mtbop_data['filepath']", mtbop_data['filepath']
-	print "mtbop_data['max_current_grad_index']", mtbop_data['max_current_grad_index']
-	print "mtbop_data['max_current_grad']", mtbop_data['max_current_grad']
+        raw_data = mtbop_data['raw_data']
+        current_array = raw_data[:, find_channel_index(mtbop_data['channel_names'], 'Current')]
+        grad_array = np.gradient(current_array, dt)
+        qinx = np.argmax(grad_array)
+        mtbop_data['max_current_grad_index'] = qinx
+        mtbop_data['max_current_grad'] = grad_array[qinx]
+        print("mtbop_data['filepath']", mtbop_data['filepath'])
+        print("mtbop_data['max_current_grad_index']", mtbop_data['max_current_grad_index'])
+        print("mtbop_data['max_current_grad']", mtbop_data['max_current_grad'])
 
 def detect_first_values(mtbop_data):
-	raw_data = mtbop_data['raw_data']
-	initial_values = None
-	for i, row in enumerate(raw_data):
-		if np.all(filtered_array[i]==0): 
-			initial_values = raw_data[i]
-			break
-	mtbop_data['initial_values'] = initial_values
-	
+        raw_data = mtbop_data['raw_data']
+        initial_values = None
+        for i, row in enumerate(raw_data):
+                if np.all(filtered_array[i]==0): 
+                        initial_values = raw_data[i]
+                        break
+        mtbop_data['initial_values'] = initial_values
+        
 
 @timeit
 def dist_filter(array, abs_dist, filtered_array, turn_on=False):
-	"""
-	Filter Numpy array column wise. Collect first point of the array and then every point for which the 
-	column wise value deviates a distance from the last collected point.
-	
-	Parameters
-	__________
-	array : numpy.ndarray
-		data array to be filtered
-	abs_tol : numpy.ndarray
-		column wise distances for the filtering
+        """
+        Filter Numpy array column wise. Collect first point of the array and then every point for which the 
+        column wise value deviates a distance from the last collected point.
+        
+        Parameters
+        __________
+        array : numpy.ndarray
+                data array to be filtered
+        abs_tol : numpy.ndarray
+                column wise distances for the filtering
 
-	Returns
-	-------
-	filtered_array : numpy.ndarray (bool)
-		filtered out elements
-	"""
-	abs_dist = np.array(abs_dist)
-	filtered_array_new = []
-	last_mark=None
-	for i, row in enumerate(array):
-		#if np.any(filtered_array[i] > 0):
-			#filtered_row[:] = True
-		if last_mark is None or not turn_on:
-			last_mark=row
-			filtered_row = np.array(np.absolute(row) != np.absolute(row))
-		else:
-			filtered_row = np.absolute(row-last_mark) < abs_dist
-			last_mark = filtered_row*last_mark+(np.logical_not(filtered_row))*row
+        Returns
+        -------
+        filtered_array : numpy.ndarray (bool)
+                filtered out elements
+        """
+        abs_dist = np.array(abs_dist)
+        filtered_array_new = []
+        last_mark=None
+        for i, row in enumerate(array):
+                #if np.any(filtered_array[i] > 0):
+                        #filtered_row[:] = True
+                if last_mark is None or not turn_on:
+                        last_mark=row
+                        filtered_row = np.array(np.absolute(row) != np.absolute(row))
+                else:
+                        filtered_row = np.absolute(row-last_mark) < abs_dist
+                        last_mark = filtered_row*last_mark+(np.logical_not(filtered_row))*row
 
-		filtered_array_new.append(filtered_row)
-	return np.array(filtered_array_new)
+                filtered_array_new.append(filtered_row)
+        return np.array(filtered_array_new)
 
 def filter_indices_after_index(mtbop_data):
-	filtered_array = mtbop_data['filtered_array']
-	index = mtbop_data['max_current_index']
-	filtered_array[index:,:] = 1
-	
+        filtered_array = mtbop_data['filtered_array']
+        index = mtbop_data['max_current_index']
+        filtered_array[index:,:] = 1
+        
 def index_union(filtered_array, selected_axes_dict):
-	inx_sum = np.sum(filtered_array[:,selected_axes_dict], axis=1)
-	inx_union = np.where(inx_sum == 0)[0]
-	return inx_union
+        inx_sum = np.sum(filtered_array[:,selected_axes_dict], axis=1)
+        inx_union = np.where(inx_sum == 0)[0]
+        return inx_union
 
 def index_cut(filtered_array, selected_axes_dict):
-	inx_product = np.prod(filtered_array[:,selected_axes_dict], axis=1)
-	inx_cut = np.where(inx_product == 0)[0]
-	return inx_cut
+        inx_product = np.prod(filtered_array[:,selected_axes_dict], axis=1)
+        inx_cut = np.where(inx_product == 0)[0]
+        return inx_cut
 
 @timeit
 def select_mtbop_data(mtbop_data, selected_axes):
-	filtered_array = mtbop_data['filtered_array']
-	initial_values = mtbop_data['initial_values']
-	raw_data = mtbop_data['raw_data']
-	inxs = index_union(filtered_array, selected_axes)
-	selected_data = raw_data[:,selected_axes][inxs,:]
-	if mtbop_data['plot_delta']:
-		selected_data[:,:] -= initial_values[[selected_axes]]
-	return selected_data
+        filtered_array = mtbop_data['filtered_array']
+        initial_values = mtbop_data['initial_values']
+        raw_data = mtbop_data['raw_data']
+        inxs = index_union(filtered_array, selected_axes)
+        selected_data = raw_data[:,selected_axes][inxs,:]
+        if mtbop_data['plot_delta']:
+                selected_data[:,:] -= initial_values[[selected_axes]]
+        return selected_data
 
 @timeit
 def plot_mtbop_data(mtbop_data, args=None):
         if x_axis == 'Current':
             max_current_index = mtbop_data['max_current_index']
-	raw_data = mtbop_data['raw_data']
+        raw_data = mtbop_data['raw_data']
         x_axis_dict = mtbop_data['x_axis']
         y_axis_dict = mtbop_data['y_axis']
 
@@ -390,7 +390,7 @@ def plot_mtbop_data(mtbop_data, args=None):
         elif mtbop_data['label type'] == 'filename':
             curve_label=mtbop_data['filepath'].replace(FILETYPE, '')
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']) and not mtbop_data['show_min_max_labels']:
-                print "MIN MAX", mtbop_data['show_min_max_labels']
+                print("MIN MAX", mtbop_data['show_min_max_labels'])
                 curve_label=''
                 linestyle = '--'
 
@@ -427,19 +427,19 @@ def plot_mtbop_data(mtbop_data, args=None):
 @timeit
 def plot_selected_list(plot_dict):
         mtbop_data_list = plot_dict['mtbop_data_list']
-	for mtbop_data in mtbop_data_list:
-		plot_selected(mtbop_data)
+        for mtbop_data in mtbop_data_list:
+                plot_selected(mtbop_data)
 
 def plot_raw_current(mtbop_data):
-	raw_data = mtbop_data['raw_data']
-	current_index = mtbop_data['current_index']
-	ax.plot(raw_data[:, current_index], label=mtbop_data['filepath'])
+        raw_data = mtbop_data['raw_data']
+        current_index = mtbop_data['current_index']
+        ax.plot(raw_data[:, current_index], label=mtbop_data['filepath'])
 
 @timeit
 def plot_selected_list_raw_current(mtbop_data_list):
-	for mtbop_data in mtbop_data_list:
-		plot_raw_current(mtbop_data)
-	ax.legend()
+        for mtbop_data in mtbop_data_list:
+                plot_raw_current(mtbop_data)
+        ax.legend()
 
 def filter_plot_dict(plot_dict, args):
     if args.filter_out_any is not None: 
@@ -451,17 +451,17 @@ def filter_plot_dict(plot_dict, args):
         if args.filter_out_any != None: 
             if any(word in channel['name'] for word in filter_words):
                 if args.filter_out_not_any is not None:
-                    print "not_filter_words:", not_filter_words
+                    print("not_filter_words:", not_filter_words)
                     if all([not word in channel['name'] for word in not_filter_words]):
-                        print "filtered:", channel['name']
+                        print("filtered:", channel['name'])
                         channel['active'] = False
                 else:
                     channel['active'] = False
                 if not channel['active']:
-                    print channel['name'], "filtered", "|", filter_words
+                    print(channel['name'], "filtered", "|", filter_words)
 
 def get_cryocorrection(head):
-    print "Getting cryocorrection factor",
+    print("Getting cryocorrection factor", end=' ')
     cryocorrection = None
     for row in head:
         lines_in_row = row.split(';')
@@ -471,13 +471,13 @@ def get_cryocorrection(head):
                     cryocorrection = float(line.split('cryocorrection')[1].split('=')[1])
                     break
                 except:
-                    print "...not found."
+                    print("...not found.")
                     pass
 
     return cryocorrection
 
 def replace_raw_data_channels(mtbop_data):
-    print "Trying to replace channels..."
+    print("Trying to replace channels...")
     try:
         raw_data = mtbop_data['raw_data']
         channel_names = mtbop_data['channel_names']
@@ -485,94 +485,94 @@ def replace_raw_data_channels(mtbop_data):
             replacer_ch = replacement[0]
             replaced_ch = replacement[1]
             raw_data[:,replaced_ch] = raw_data[:,replacer_ch]
-            print "channel replacement:", channel_names[replacer_ch], "->", channel_names[replaced_ch]
-        print "done."
+            print("channel replacement:", channel_names[replacer_ch], "->", channel_names[replaced_ch])
+        print("done.")
     except:
-        print "Channel replacement not done."
-    print "If you want to modify the channel replacements, you need to do it in the data file (AND RERUN THE PICKLE)."
+        print("Channel replacement not done.")
+    print("If you want to modify the channel replacements, you need to do it in the data file (AND RERUN THE PICKLE).")
 
 def get_channel_replacements(mtbop_data, head, channel_names):
     mtbop_data['channel_replacements'] = {}
     chrep = mtbop_data['channel_replacements'] 
-    print "Getting replacement channels data",
+    print("Getting replacement channels data", end=' ')
     replacements_list=None
     for row in head:
         lines_in_row = row.split(';')
         for line in lines_in_row:
             if 'channel_replacements:' in line:
                 try:
-                    print line.split('channel_replacements:')[1]
+                    print(line.split('channel_replacements:')[1])
                     chrep['string_list'] = [line.rstrip().split(':')[1].split(',')]
                     chrep['index_list'] = [[channel_names.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
-                    print "Corresponds to channel numbers:", chrep['index_list'] 
+                    print("Corresponds to channel numbers:", chrep['index_list']) 
                     return
                     break
                 except:
-                    print "...not found."
+                    print("...not found.")
                     pass
                 
-    print "...not found."
+    print("...not found.")
     return replacements_list
 
 @timeit
 def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None):
-	"""
-	Loads mtbop data from txt file.
-	
-	Parameters
-	__________
-	filepath : string
-		path of the mtbop data file
-	header_lines : int
-		number of header lines in mtbop file
-	
-	Returns
-	-------
-	mtbop_data : json?
-		{
-		 'filepath' = string,
-		 channel_names = [string, .., string],
-		 channel_units = [string, .., string],
-		 raw_data = numpy.ndarray}
-	"""
+        """
+        Loads mtbop data from txt file.
+        
+        Parameters
+        __________
+        filepath : string
+                path of the mtbop data file
+        header_lines : int
+                number of header lines in mtbop file
+        
+        Returns
+        -------
+        mtbop_data : json?
+                {
+                 'filepath' = string,
+                 channel_names = [string, .., string],
+                 channel_units = [string, .., string],
+                 raw_data = numpy.ndarray}
+        """
         pathlist = os.path.splitext(filepath)
-	basename = pathlist[0]
-	filetype = pathlist[1]
+        basename = pathlist[0]
+        filetype = pathlist[1]
         if filetype in FILETYPES: FILETYPE = filetype
-	pickle_path = basename + '.pickle'
-	if os.path.isfile(pickle_path) and not override_pickle:
-		print "Found a pickle:", pickle_path, "for", filepath, "using that instead."
-		return cpickle_load(pickle_path)
+        pickle_path = basename + '.pickle'
+        if os.path.isfile(pickle_path) and not override_pickle:
+                print("Found a pickle:", pickle_path, "for", filepath, "using that instead.")
+                return cpickle_load(pickle_path)
 
-	mtbop_data = {}
+        mtbop_data = {}
         mtbop_data['pickle_path'] = pickle_path
-	with codecs.open(basename + FILETYPE) as f:
-		head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
-	channel_names = head[8].strip('\r\n').split('\t')
+        with open(basename + FILETYPE, errors='ignore') as f:
+                head = [next(f) for x in range(header_lines)]
+        channel_names = head[8].strip('\r\n').split('\t')
         get_channel_replacements(mtbop_data, head, channel_names)
 
-	channel_names = [name.split()[0].replace('_cryo','') for name in channel_names]
-	channel_units = head[9].strip('\r\n').split('\t')
+        channel_names = [name.split()[0].replace('_cryo','') for name in channel_names]
+        channel_units = head[9].strip('\r\n').split('\t')
 #        for row in head:
 #            if 'dt' in row:
 #                dt_line = strip('\r\n').split('\t')
 #                mtbop_data['channel_dts'] = [dt_word.split(=)[1] for dt_word in dt_line]
 
-	channel_units = head[9].strip('\r\n').split('\t')
-	#raw_data_df = pd.read_csv(filepath, sep = '\t', skiprows=header_lines, names=channel_names)
+        channel_units = head[9].strip('\r\n').split('\t')
+        #raw_data_df = pd.read_csv(filepath, sep = '\t', skiprows=header_lines, names=channel_names)
 
-	with codecs.open(filepath) as f:
-		raw_data = np.loadtxt(f, skiprows=header_lines)
+        with open(filepath, errors='ignore') as f:
+                raw_data = np.loadtxt(f, skiprows=header_lines)
 
-	mtbop_data['filepath'] = filepath
-	mtbop_data['channel_units'] = channel_units
+        mtbop_data['filepath'] = filepath
+        mtbop_data['channel_units'] = channel_units
         mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units)
-	mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
-	#mtbop_data['raw_data_df'] = raw_data_df
-	#mtbop_data['raw_data'] = raw_data_df.values
-	mtbop_data['raw_data'] = raw_data
+        mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
+        #mtbop_data['raw_data_df'] = raw_data_df
+        #mtbop_data['raw_data'] = raw_data_df.values
+        mtbop_data['raw_data'] = raw_data
         #signal_compensation(mtbop_data)
-	mtbop_data['cryocorrection'] = get_cryocorrection(head)
+        mtbop_data['cryocorrection'] = get_cryocorrection(head)
         if mtbop_data['cryocorrection'] != None: signal_cryocorrection(mtbop_data)
         reconstruct_ntp_time(mtbop_data)
         
@@ -590,15 +590,15 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         mtbop_data['channel_dict_list'].append(data_point_channel_dict)
 
         #convert_units_to_umum(mtbop_data)
-	#mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
-	#mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
-	#detect_max_current(mtbop_data)
+        #mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
+        #mtbop_data['channel_tolerance'] = tol_cols(mtbop_data['raw_data'])
+        #detect_max_current(mtbop_data)
 
-	#filter_indices_after_index(mtbop_data)
-	#detect_first_values(mtbop_data)
-	
-	cpickle_dump(mtbop_data, pickle_path)
-	return mtbop_data
+        #filter_indices_after_index(mtbop_data)
+        #detect_first_values(mtbop_data)
+        
+        cpickle_dump(mtbop_data, pickle_path)
+        return mtbop_data
 
 def signal_compensation(mtbop_data, args):
     for compensator_index, compensator_dict in enumerate(mtbop_data['channel_dict_list']):
@@ -608,7 +608,7 @@ def signal_compensation(mtbop_data, args):
             all_compensators = []
             all_compensator_indexes = []
             if args.use_compensator_average:
-                print "Trying to fetch all compensators for average."
+                print("Trying to fetch all compensators for average.")
                 for term in search_terms:
                     if term.isnumeric():
                         break
@@ -619,35 +619,35 @@ def signal_compensation(mtbop_data, args):
                         all_compensators.append(comp_dict)
                         all_compensator_indexes.append(comp_ind)
                 all_compensators_names = [c['name'] for c in all_compensators]
-                print "For compensator average I found these:", all_compensators_names
+                print("For compensator average I found these:", all_compensators_names)
                         
             try:
                 search_terms.remove('compensator')
             except:
                 pass
             
-            print search_terms
+            print(search_terms)
             for compensated_index, compensated_dict in enumerate(mtbop_data['channel_dict_list']):
                 compensated_dict['compensation done'] = False
                 if all(search_term in compensated_dict['name'] for search_term in search_terms) and compensated_dict['thermal compensator'] == '':
                     if len(all_compensators) != 0:
-                        print "Thermal compensators (" + ','.join(all_compensators_names) + ") found for:", compensated_dict['name']
+                        print("Thermal compensators (" + ','.join(all_compensators_names) + ") found for:", compensated_dict['name'])
                         mtbop_data['raw_data'][:,compensated_index] -= np.mean(mtbop_data['raw_data'][:,all_compensator_indexes], axis=1)
                     else:
-                        print "Thermal compensator (" + compensator_dict['name'] + ") found for:", compensated_dict['name']
+                        print("Thermal compensator (" + compensator_dict['name'] + ") found for:", compensated_dict['name'])
                         mtbop_data['raw_data'][:,compensated_index] -= mtbop_data['raw_data'][:,compensator_index]
                     compensated_dict['compensation done']=True
-                    print "Compensation done."
+                    print("Compensation done.")
 
 def signal_cryocorrection(mtbop_data):
-    print "cryocorrection", mtbop_data['cryocorrection']
+    print("cryocorrection", mtbop_data['cryocorrection'])
     for chind, channel_dict in enumerate(mtbop_data['channel_dict_list']):
         if 'physical_quantity' in channel_dict and channel_dict['physical_quantity'] == 'Strain':
-            print "cryo correction for: ", channel_dict['name']
+            print("cryo correction for: ", channel_dict['name'])
             mtbop_data['raw_data'][:, chind] *= mtbop_data['cryocorrection']
 
 def reconstruct_ntp_time(mtbop_data):
-    print "Check for reconstructing NTP Time"
+    print("Check for reconstructing NTP Time")
     raw_data = mtbop_data['raw_data']
     nof_reconstructs = 0
     nof_failed = 0
@@ -657,14 +657,14 @@ def reconstruct_ntp_time(mtbop_data):
                 if data_point == 0:
                     try:
                         raw_data[row,chind] = int(raw_data[row-1,chind] + raw_data[row-1,chind] - raw_data[row-2,chind])
-                        print "Row", row, "reconstructed", "new value:", raw_data[row,chind] 
+                        print("Row", row, "reconstructed", "new value:", raw_data[row,chind]) 
                         nof_reconstructs += 1
                     except:
-                        print "Reconstruct failed for row", row
+                        print("Reconstruct failed for row", row)
                         nof_failed += 1
-    print "Number of reconstructed NTP time values", nof_reconstructs
+    print("Number of reconstructed NTP time values", nof_reconstructs)
     if nof_failed != 0:
-        print "Number of failed NTP time reconstructs", nof_failed
+        print("Number of failed NTP time reconstructs", nof_failed)
 
 def convert_units_to_umum(mtbop_data):
     raw_data = mtbop_data['raw_data']
@@ -674,7 +674,7 @@ def convert_units_to_umum(mtbop_data):
             channel_dict['unit'] = 'um/um'
 
 def apply_gradient_filter(mtbop_data, args):
-    print "Applying gradient filter with", args.gradient_filter*100, "% mean deviation"
+    print("Applying gradient filter with", args.gradient_filter*100, "% mean deviation")
     raw_data = mtbop_data['raw_data']
     raw_abs_gradient = np.abs(np.gradient(raw_data,axis=0))
     mean_abs_gradient = np.mean(np.abs(raw_abs_gradient),axis=0)
@@ -683,9 +683,9 @@ def apply_gradient_filter(mtbop_data, args):
     mtbop_data['raw_data'] = np.delete(raw_data, remove_indexes, axis=0)
 
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
-	mtbop_data_list = []
-	for filepath in filepath_list:
-		mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
+        mtbop_data_list = []
+        for filepath in filepath_list:
+                mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
                 if not args == None:
                     if args.gradient_filter is not None:
                         apply_gradient_filter(mtbop_data, args)
@@ -707,211 +707,211 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
                                 qreplace_str = str(int(round(1000*mtbop_data['max_current']))) + 'A'
                                 qreplace_str += '-' + str(int(round(1000*mtbop_data['max_current_grad']))) + 'As'
                                 newfilepath = filepath.replace('Quench', qreplace_str)
-                            print "Renaming the", filepath, "to", newfilepath
+                            print("Renaming the", filepath, "to", newfilepath)
                             os.rename(filepath, newfilepath)
                         except: 
-                            print "Tried to rename the file", filepath, "but it failed."
+                            print("Tried to rename the file", filepath, "but it failed.")
 
                         try:
-                            print "I'll remove the old pickle file if it exists."
+                            print("I'll remove the old pickle file if it exists.")
                             if False and 'pickle_path' in mtbop_data:
                                 pickle_path = mtbop_data['pickle_path']
                                 if os.path.exists(pickle_path):
                                     os.remove(pickle_path)
                                 else:
-                                    print "pickle file", pickle_path, "does not exist."
+                                    print("pickle file", pickle_path, "does not exist.")
                             else:
-                                print "pickle path not found in mtbop data."
+                                print("pickle path not found in mtbop data.")
                         except:
-                            print "Tried to rename the file", filepath, "but it failed."
+                            print("Tried to rename the file", filepath, "but it failed.")
 
-		mtbop_data_list.append(mtbop_data)
-	return mtbop_data_list
+                mtbop_data_list.append(mtbop_data)
+        return mtbop_data_list
 
 def find_channel_index(channel_names, channel_name):
-	return channel_names.index(channel_name)
+        return channel_names.index(channel_name)
 
 def find_axes(mtbop_data):
-	channel_names = mtbop_data['channel_names']
-	channel_units = mtbop_data['channel_units']
-	mtbop_data['current_index'] = channel_names.index('Current')
-	axes_list = []
-	for pair in name_pairs:
-		if pair[0] in channel_names and pair[1] in channel_names: 
-			first = channel_names.index(pair[0])
-			second = channel_names.index(pair[1])
-			axes = {'selected_axes': (first,second)}
-			if pair[0].lower() == 'current':
-				axes['0 scaling']='current'
-			else: 
-				axes['0 scaling']=''
-			if pair[1].lower() == 'current':
-				axes['1 scaling']='current'
-			else: 
-				axes['1 scaling']=''
-			axes['0 name'] = pair[0]
-			axes['1 name'] = pair[1]
-			axes['0 unit'] = channel_units[first]
-			#axes['1 unit'] = channel_units[second]
-			axes_list.append(axes)
-	return axes_list
+        channel_names = mtbop_data['channel_names']
+        channel_units = mtbop_data['channel_units']
+        mtbop_data['current_index'] = channel_names.index('Current')
+        axes_list = []
+        for pair in name_pairs:
+                if pair[0] in channel_names and pair[1] in channel_names: 
+                        first = channel_names.index(pair[0])
+                        second = channel_names.index(pair[1])
+                        axes = {'selected_axes': (first,second)}
+                        if pair[0].lower() == 'current':
+                                axes['0 scaling']='current'
+                        else: 
+                                axes['0 scaling']=''
+                        if pair[1].lower() == 'current':
+                                axes['1 scaling']='current'
+                        else: 
+                                axes['1 scaling']=''
+                        axes['0 name'] = pair[0]
+                        axes['1 name'] = pair[1]
+                        axes['0 unit'] = channel_units[first]
+                        #axes['1 unit'] = channel_units[second]
+                        axes_list.append(axes)
+        return axes_list
 
 @timeit
 def test_pandas_load_data(filepath, header_lines=38):
-	raw_data = pd.read_csv(filepath, sep = '\t', skiprows=header_lines,usecols=range(21))
-	print raw_data.values[2]
+        raw_data = pd.read_csv(filepath, sep = '\t', skiprows=header_lines,usecols=list(range(21)))
+        print(raw_data.values[2])
 
 @timeit
 def test_numpy_load_data(filepath, header_lines=38):
-	raw_data = np.loadtxt(filepath, skiprows=header_lines)
-	print raw_data[2]
+        raw_data = np.loadtxt(filepath, skiprows=header_lines)
+        print(raw_data[2])
 
 def test_load_data():
-	filepath = 'Data/test/01QuenchDC_161013_16236.txt'
-	test_pandas_load_data(filepath)
-	test_numpy_load_data(filepath)
+        filepath = 'Data/test/01QuenchDC_161013_16236.txt'
+        test_pandas_load_data(filepath)
+        test_numpy_load_data(filepath)
 
 @timeit
 def test_cpickle_dump():
-	filepath = 'Data/test/01QuenchDC_161013_16236.txt'
-	mtbop_data = load_mtbop_data(filepath)
-	with open('test.pickle', 'wb') as handle:
-		pickle.dump(mtbop_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        filepath = 'Data/test/01QuenchDC_161013_16236.txt'
+        mtbop_data = load_mtbop_data(filepath)
+        with open('test.pickle', 'wb') as handle:
+                pickle.dump(mtbop_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 @timeit
 def cpickle_dump(data, pickle_path):
-	with open(pickle_path, 'wb') as handle:
-		pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-	
+        with open(pickle_path, 'wb') as handle:
+                pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
 @timeit
 def cpickle_load(pickle_path):
-	with open(pickle_path, 'rb') as handle:
-		mtbop_data = pickle.load(handle)
-	return mtbop_data
+        with codecs.open(pickle_path, 'rb') as handle:
+                mtbop_data = pickle.load(handle)
+        return mtbop_data
 
 def print_max_current(mtbop_data):
-    print "!!!!! ---------------------------MAX CURRENT--------------------------!!!!!"
-    print mtbop_data['filepath'], mtbop_data['max_current'],
-    print "!!!!! ----------------------------------------------------------------!!!!!"
+    print("!!!!! ---------------------------MAX CURRENT--------------------------!!!!!")
+    print(mtbop_data['filepath'], mtbop_data['max_current'], end=' ')
+    print("!!!!! ----------------------------------------------------------------!!!!!")
 
 def make_info_table(mtbop_data_list):
-	info_table = [['File path', 'Max Current']]
-	for mtbop_data in mtbop_data_list:
-		info_table.append([mtbop_data['filepath'], mtbop_data['max_current']])
-	return info_table
+        info_table = [['File path', 'Max Current']]
+        for mtbop_data in mtbop_data_list:
+                info_table.append([mtbop_data['filepath'], mtbop_data['max_current']])
+        return info_table
 
 def test_plot_selected():
-	#use_dist_filter = False
-	#nof_points = 1e4
-	filepath = 'Data/test/01QuenchDC_161013_16236.txt'
-	#filepath = 'Data/test/02QuenchDC_161013_18055.txt'
-	selected_channel_names = [('Current','CO105Z_cryo'), ('Current','CO105T_cryo')]
-	#selected_channel_names = [('Current','CO105T_cryo')]
-	plot_delta = True
-	#selected_channel_names = [('CO105T_cryo','Current')]
-	#selected_channel_names = [('Current','SHTT_cryo')]
-	#selected_channel_names = [('CO105T_cryo','SHTT_cryo')]
+        #use_dist_filter = False
+        #nof_points = 1e4
+        filepath = 'Data/test/01QuenchDC_161013_16236.txt'
+        #filepath = 'Data/test/02QuenchDC_161013_18055.txt'
+        selected_channel_names = [('Current','CO105Z_cryo'), ('Current','CO105T_cryo')]
+        #selected_channel_names = [('Current','CO105T_cryo')]
+        plot_delta = True
+        #selected_channel_names = [('CO105T_cryo','Current')]
+        #selected_channel_names = [('Current','SHTT_cryo')]
+        #selected_channel_names = [('CO105T_cryo','SHTT_cryo')]
 
-	mtbop_data = load_mtbop_data(filepath)
-	mtbop_data['selected_channel_names'] = selected_channel_names
-	mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
-	mtbop_data['plot_delta'] = plot_delta
+        mtbop_data = load_mtbop_data(filepath)
+        mtbop_data['selected_channel_names'] = selected_channel_names
+        mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+        mtbop_data['plot_delta'] = plot_delta
 
-	#mtbop_data['filter_approx_points'] = nof_points
-	#filtered_array = dist_filter(raw_data, tol/nof_points, filtered_array, turn_on=use_dist_filter)
+        #mtbop_data['filter_approx_points'] = nof_points
+        #filtered_array = dist_filter(raw_data, tol/nof_points, filtered_array, turn_on=use_dist_filter)
 
-	plot_selected(mtbop_data)
+        plot_selected(mtbop_data)
 
-	plt.show()
+        plt.show()
 
 def test_plot_selected_list():
-	#datadir = 'Data/MQXFS4' 
-	#datadir = 'Data/HCMQXFS004-CR000001' 
-	#filepath_list = [datadir + '/' + f for f in os.listdir(datadir) if FILETYPE in f]
-	max_current_low_limit = 15
-	
-	#filepath_list = ['Data/test/01QuenchDC_161013_16236.txt', 
-		         #'Data/test/02QuenchDC_161013_18055.txt']
-	#selected_channel_names = [('CO105T_cryo','Current')]
+        #datadir = 'Data/MQXFS4' 
+        #datadir = 'Data/HCMQXFS004-CR000001' 
+        #filepath_list = [datadir + '/' + f for f in os.listdir(datadir) if FILETYPE in f]
+        max_current_low_limit = 15
+        
+        #filepath_list = ['Data/test/01QuenchDC_161013_16236.txt', 
+                         #'Data/test/02QuenchDC_161013_18055.txt']
+        #selected_channel_names = [('CO105T_cryo','Current')]
 
-	filepath_list = ['Data/HCMQXFS004-CR000001/180704_12_15_23_Quench.txt', 
+        filepath_list = ['Data/HCMQXFS004-CR000001/180704_12_15_23_Quench.txt', 
                          'Data/HCMQXFS004-CR000001/180709_14_40_50_Quench.txt', 
                          'Data/HCMQXFS004-CR000001/180730_18_07_11_Quench.txt']
 
-	print filepath_list
+        print(filepath_list)
 
-	mtbop_data_list = []
-	selected_channel_names = [('Current','CO109T')]
-	plot_delta = True
-	for filepath in filepath_list:
-		mtbop_data = load_mtbop_data(filepath)
-		if mtbop_data['max_current'] > max_current_low_limit:
-			mtbop_data_list.append(mtbop_data)
-			mtbop_data = mtbop_data_list[-1]
-			mtbop_data['selected_channel_names'] = selected_channel_names
-			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
-			mtbop_data['plot_delta'] = plot_delta
-			print_max_current(mtbop_data)
+        mtbop_data_list = []
+        selected_channel_names = [('Current','CO109T')]
+        plot_delta = True
+        for filepath in filepath_list:
+                mtbop_data = load_mtbop_data(filepath)
+                if mtbop_data['max_current'] > max_current_low_limit:
+                        mtbop_data_list.append(mtbop_data)
+                        mtbop_data = mtbop_data_list[-1]
+                        mtbop_data['selected_channel_names'] = selected_channel_names
+                        mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+                        mtbop_data['plot_delta'] = plot_delta
+                        print_max_current(mtbop_data)
 
-	plot_selected_list(mtbop_data_list)
-	#plot_selected_list_raw_current(mtbop_data_list)
+        plot_selected_list(mtbop_data_list)
+        #plot_selected_list_raw_current(mtbop_data_list)
 
-	plt.show()
+        plt.show()
 
 def plot_selected_files(filepath_list, selected_channel_names):
-	max_current_low_limit = 15
+        max_current_low_limit = 15
 
-	mtbop_data_list = []
-	plot_delta = True
-	for filepath in filepath_list:
-		mtbop_data = load_mtbop_data(filepath)
-		if mtbop_data['max_current'] > max_current_low_limit:
-			mtbop_data_list.append(mtbop_data)
-			mtbop_data = mtbop_data_list[-1]
-			mtbop_data['selected_channel_names'] = selected_channel_names
-			mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
-			mtbop_data['plot_delta'] = plot_delta
-			print_max_current(mtbop_data)
+        mtbop_data_list = []
+        plot_delta = True
+        for filepath in filepath_list:
+                mtbop_data = load_mtbop_data(filepath)
+                if mtbop_data['max_current'] > max_current_low_limit:
+                        mtbop_data_list.append(mtbop_data)
+                        mtbop_data = mtbop_data_list[-1]
+                        mtbop_data['selected_channel_names'] = selected_channel_names
+                        mtbop_data['selected_axes_dict'] = find_axes(mtbop_data)
+                        mtbop_data['plot_delta'] = plot_delta
+                        print_max_current(mtbop_data)
 
-	plot_selected_list(mtbop_data_list)
-	#plot_selected_list_raw_current(mtbop_data_list)
+        plot_selected_list(mtbop_data_list)
+        #plot_selected_list_raw_current(mtbop_data_list)
 
-	plt.show()
+        plt.show()
 
 def testing():
-	test_plot_selected()
-	#test_plot_selected_list()
-	#test_load_data()
-	#test_cpickle_dump()
-	#cpickle_load('test.pickle')
+        test_plot_selected()
+        #test_plot_selected_list()
+        #test_load_data()
+        #test_cpickle_dump()
+        #cpickle_load('test.pickle')
 
 
 def print_mtbop_info(filepaths):
-	info_table = make_info_table(mtbop_data_list)
-	print tabulate.tabulate(info_table, headers="firstrow")
+        info_table = make_info_table(mtbop_data_list)
+        print(tabulate.tabulate(info_table, headers="firstrow"))
 
 def find_channel_names(mtbop_data_list):
-	channel_names_list = []
-	for mtbop_data in mtbop_data_list:
-		channel_names_list += mtbop_data['channel_names']
-	return list(set(channel_names_list))
-	
+        channel_names_list = []
+        for mtbop_data in mtbop_data_list:
+                channel_names_list += mtbop_data['channel_names']
+        return list(set(channel_names_list))
+        
 def find_files(paths):
-	filepaths=[]
-	for path in paths:
+        filepaths=[]
+        for path in paths:
                 pathlist = os.path.splitext(path)
                 basename = pathlist[0]
                 filetype = pathlist[1]
                 if filetype in FILETYPES: FILETYPE = filetype
-	
-		if os.path.isdir(path):
-			filepaths += [path + '/' + f for f in os.listdir(path) if FILETYPE in f]
-		elif os.path.isfile(path) and FILETYPE in path:
-			filepaths.append(path)
-	return filepaths
+        
+                if os.path.isdir(path):
+                        filepaths += [path + '/' + f for f in os.listdir(path) if FILETYPE in f]
+                elif os.path.isfile(path) and FILETYPE in path:
+                        filepaths.append(path)
+        return filepaths
 
 def create_channel_data(mtbop_data_list):
     channel_dict_list = get_channel_data(mtbop_data_list)
-    print "Writing channels.json"
+    print("Writing channels.json")
     with open('channels.json', 'w') as outfile:
         json.dump(channel_dict_list, outfile, indent=4)
     return channel_dict_list
@@ -931,40 +931,40 @@ def get_channel_data(mtbop_data_list):
     return channel_dict_list_out
 
 def create_channel_data_original(mtbop_data_list):
-	channel_names = find_channel_names(mtbop_data_list)
-	channel_dict_list = [] 
-	for channel_name in channel_names:
-		channel_dict_list.append({})
-		channel_dict = channel_dict_list[-1]
-		channel_dict['name'] = channel_name
-		if channel_name[0:2] == 'SH':
-			shell_location = ''
-			if channel_name[2] == 'R': shell_location = 'Right'
-			elif channel_name[2] == 'L': shell_location = 'Left'
-			elif channel_name[2] == 'T': shell_location = 'Top'
-			elif channel_name[2] == 'B': shell_location = 'Bottom'
-			channel_dict['location'] = 'Shell ' + shell_location
-			channel_dict['physical_quantity'] = 'Strain'
-			channel_dict['unit'] = 'um/um'
+        channel_names = find_channel_names(mtbop_data_list)
+        channel_dict_list = [] 
+        for channel_name in channel_names:
+                channel_dict_list.append({})
+                channel_dict = channel_dict_list[-1]
+                channel_dict['name'] = channel_name
+                if channel_name[0:2] == 'SH':
+                        shell_location = ''
+                        if channel_name[2] == 'R': shell_location = 'Right'
+                        elif channel_name[2] == 'L': shell_location = 'Left'
+                        elif channel_name[2] == 'T': shell_location = 'Top'
+                        elif channel_name[2] == 'B': shell_location = 'Bottom'
+                        channel_dict['location'] = 'Shell ' + shell_location
+                        channel_dict['physical_quantity'] = 'Strain'
+                        channel_dict['unit'] = 'um/um'
                         channel_dict['material'] = 'aluminium'
-		elif channel_name[0] == 'R': 
-			channel_dict['location'] = 'Rod ' + channel_name[1]
-			channel_dict['physical_quantity'] = 'Strain'
-			channel_dict['unit'] = 'um/um'
+                elif channel_name[0] == 'R': 
+                        channel_dict['location'] = 'Rod ' + channel_name[1]
+                        channel_dict['physical_quantity'] = 'Strain'
+                        channel_dict['unit'] = 'um/um'
                         channel_dict['material'] = 'aluminium'
-		elif channel_name[0:2] == 'CO':
-			channel_dict['location'] = 'Coil ' + channel_name[2:5]
-			channel_dict['physical_quantity'] = 'Strain'
-			channel_dict['unit'] = 'um/um'
+                elif channel_name[0:2] == 'CO':
+                        channel_dict['location'] = 'Coil ' + channel_name[2:5]
+                        channel_dict['physical_quantity'] = 'Strain'
+                        channel_dict['unit'] = 'um/um'
                         channel_dict['material'] = 'titanium'
-		elif channel_name == 'Current':
-			channel_dict['physical_quantity'] = 'Current'
-			channel_dict['location'] = 'None'
-			channel_dict['unit'] = 'A'
-		else:
-			channel_dict['location'] = channel_name 
-			channel_dict['physical_quantity'] = 'None'
-			channel_dict['unit'] = 'None'
+                elif channel_name == 'Current':
+                        channel_dict['physical_quantity'] = 'Current'
+                        channel_dict['location'] = 'None'
+                        channel_dict['unit'] = 'A'
+                else:
+                        channel_dict['location'] = channel_name 
+                        channel_dict['physical_quantity'] = 'None'
+                        channel_dict['unit'] = 'None'
                 if '_SG' in channel_name:
                         channel_dict['sensor type'] = 'Resistive'
                         channel_dict['sensor type'] = ''
@@ -972,42 +972,42 @@ def create_channel_data_original(mtbop_data_list):
                         channel_dict['sensor type'] = 'Optical'
                 else: channel_dict['sensor type'] = ''
                 if '_Z' in channel_name or channel_name[-1] == 'Z':
-			channel_dict['direction'] =  'Longitudinal'
+                        channel_dict['direction'] =  'Longitudinal'
                 elif '_T' in channel_name or channel_name[-1] == 'T':
-			channel_dict['direction'] = 'Azimuthal'
-		else:
-			channel_dict['direction'] = 'None'
+                        channel_dict['direction'] = 'Azimuthal'
+                else:
+                        channel_dict['direction'] = 'None'
 
                 channel_dict['longname'] = get_channel_longname(channel_dict)
                 channel_dict['name'] = get_channel_longname(channel_dict)
 
-	print "Writing channels.json"
-	with open('channels.json', 'w') as outfile:
-		json.dump(channel_dict_list, outfile, indent=4)
-	
-	return channel_dict_list
+        print("Writing channels.json")
+        with open('channels.json', 'w') as outfile:
+                json.dump(channel_dict_list, outfile, indent=4)
+        
+        return channel_dict_list
 
 def create_channel_data_fuji(mtbop_data_list):
-	channel_names = find_channel_names(mtbop_data_list)
-	channel_dict_list = [] 
-	for channel_name in channel_names:
-		channel_dict_list.append({})
-		channel_dict = channel_dict_list[-1]
-		channel_dict['name'] = channel_name
-		if 'Strain_' in channel_name:
-			channel_dict['physical_quantity'] = 'Strain'
-			channel_dict['unit'] = 'um/um'
+        channel_names = find_channel_names(mtbop_data_list)
+        channel_dict_list = [] 
+        for channel_name in channel_names:
+                channel_dict_list.append({})
+                channel_dict = channel_dict_list[-1]
+                channel_dict['name'] = channel_name
+                if 'Strain_' in channel_name:
+                        channel_dict['physical_quantity'] = 'Strain'
+                        channel_dict['unit'] = 'um/um'
                 else:
-			channel_dict['physical_quantity'] = 'Datetime'
+                        channel_dict['physical_quantity'] = 'Datetime'
                         channel_dict['unit'] = 'HH:MM:SS'
                 if '_LE_' in channel_name:
-			channel_dict['location'] = 'Lead End'
+                        channel_dict['location'] = 'Lead End'
                 elif '_CE_':
-			channel_dict['location'] = 'Center'
+                        channel_dict['location'] = 'Center'
                 elif '_RE_':
-			channel_dict['location'] = 'Return End'
+                        channel_dict['location'] = 'Return End'
                 else: 
-			channel_dict['location'] = ''
+                        channel_dict['location'] = ''
                 if '_T' in channel_name[-2:-1]:
                         channel_dict['direction'] = 'Azimuthal'
                 elif '_Z' in channel_name:
@@ -1018,11 +1018,11 @@ def create_channel_data_fuji(mtbop_data_list):
                 channel_dict['longname'] = get_channel_longname(channel_dict)
                 channel_dict['longname'] = get_channel_name(channel_dict)
 
-	print "Writing channels.json"
-	with open('channels.json', 'w') as outfile:
-		json.dump(channel_dict_list, outfile, indent=4)
-	
-	return channel_dict_list
+        print("Writing channels.json")
+        with open('channels.json', 'w') as outfile:
+                json.dump(channel_dict_list, outfile, indent=4)
+        
+        return channel_dict_list
 
 def add_stress_channel_data(plot_dict):
     added_dicts = []
@@ -1102,11 +1102,11 @@ def match_words_channel_dicts(wordlist, channel_dict_list):
     return matched_dicts, matched_names
 
 def add_average_channel_data(plot_dict, y_axis_names):
-    print "Average names:", y_axis_names
+    print("Average names:", y_axis_names)
     wordlist = y_axis_names[0].split()
-    print "wordlist: ", wordlist
+    print("wordlist: ", wordlist)
     matched_dicts, matched_names = match_words_channel_dicts(wordlist, plot_dict['channel_dict_list'])
-    print "matched_names:", matched_names
+    print("matched_names:", matched_names)
     
     plot_dict['matched_names'] = matched_names
     added_dicts = []
@@ -1130,29 +1130,29 @@ def add_average_channel_data(plot_dict, y_axis_names):
     #            if not added_
 
 def find_channels_from_dict(channel_dict_list, location, physical_quantity, direction):
-	channel_dict_sub = []
-	for channel_dict in channel_dict_list: 
-		if channel_dict['location'] == location and channel_dict['physical_quantity'] == physical_quantity and channel_dict['direction'] == direction:
-			   channel_dict_sub.append(channel_dict)
-	return channel_dict_sub
+        channel_dict_sub = []
+        for channel_dict in channel_dict_list: 
+                if channel_dict['location'] == location and channel_dict['physical_quantity'] == physical_quantity and channel_dict['direction'] == direction:
+                           channel_dict_sub.append(channel_dict)
+        return channel_dict_sub
 
 
 def read_channels_json(channels_json_file_path):
-	with open(channels_json_file_path, 'r') as f:
-		data_json = json.load(f)
-	return data_json
+        with open(channels_json_file_path, 'r') as f:
+                data_json = json.load(f)
+        return data_json
 
 def double_array_columns_with_zeros(array):
-	size1, size2 = np.shape(array)
-	new_array = np.zeros((size1, 2*size2))
-	new_array[:,0:size2] = array
-	return new_array
+        size1, size2 = np.shape(array)
+        new_array = np.zeros((size1, 2*size2))
+        new_array[:,0:size2] = array
+        return new_array
 
 def double_vector_with_zeros(vector):
-	size = np.size(vector)
-	new_vector = np.zeros(2*size)
-	new_vector[0:size] = vector
-	vector = new_vector
+        size = np.size(vector)
+        new_vector = np.zeros(2*size)
+        new_vector[0:size] = vector
+        vector = new_vector
 
 def search_channel_dict(channel_dict_list, location, direction, physical_quantity, longitudinal_location, sensor_type):
     for channel_dict in channel_dict_list:
@@ -1160,7 +1160,7 @@ def search_channel_dict(channel_dict_list, location, direction, physical_quantit
     return None
 
 def add_stress_data_to_dicts(channel_dict_list):
-    print "Add strain dicts to stress channel dictionaries:"
+    print("Add strain dicts to stress channel dictionaries:")
     for channel_dict in channel_dict_list:
         if channel_dict['physical_quantity'].lower() == 'stress':
             strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain', channel_dict['longitudinal location'], channel_dict['sensor type'])
@@ -1170,7 +1170,7 @@ def add_stress_data_to_dicts(channel_dict_list):
             channel_dict['strain']['azimuthal'] = strain_azimuthal
 
 def add_rod_force_data_to_dicts(channel_dict_list):
-    print "Add strain dicts to rod force channel dictionaries:"
+    print("Add strain dicts to rod force channel dictionaries:")
     for channel_dict in channel_dict_list:
         if channel_dict['physical_quantity'].lower() == 'force':
             strain_longitudinal = search_channel_dict(channel_dict_list, channel_dict['location'], 'longitudinal', 'strain', channel_dict['longitudinal location'], channel_dict['sensor type'])
@@ -1192,7 +1192,7 @@ def compute_stresses(plot_dict, args):
     channel_dict_list = plot_dict['channel_dict_list']
     add_stress_data_to_dicts(channel_dict_list)
     for mtbop_data in mtbop_data_list:
-	print "Computing stresses for:", mtbop_data['filepath']
+        print("Computing stresses for:", mtbop_data['filepath'])
         for channel_dict in channel_dict_list:
             if channel_dict['physical_quantity'].lower() == 'stress' and 'material' in channel_dict:
                 raw_data = mtbop_data['raw_data']
@@ -1214,73 +1214,73 @@ def compute_stresses(plot_dict, args):
                     pass
     return
 
-#	raw_data = mtbop_data['raw_data']
-#	size1, size2 = np.shape(raw_data)
-#	mtbop_data['raw_data'] = double_array_columns_with_zeros(raw_data)
-#	raw_data = mtbop_data['raw_data']
+#       raw_data = mtbop_data['raw_data']
+#       size1, size2 = np.shape(raw_data)
+#       mtbop_data['raw_data'] = double_array_columns_with_zeros(raw_data)
+#       raw_data = mtbop_data['raw_data']
 #
-#	mtbop_data['filtered_array'] = double_array_columns_with_zeros(mtbop_data['filtered_array'])
-#	print np.shape(mtbop_data['initial_values'])
-#	mtbop_data['initial_values'] = double_vector_with_zeros(mtbop_data['initial_values'])
-#	print np.shape(mtbop_data['initial_values'])
+#       mtbop_data['filtered_array'] = double_array_columns_with_zeros(mtbop_data['filtered_array'])
+#       print np.shape(mtbop_data['initial_values'])
+#       mtbop_data['initial_values'] = double_vector_with_zeros(mtbop_data['initial_values'])
+#       print np.shape(mtbop_data['initial_values'])
 #
-#	locations = list(set([channel_dict['location'] for channel_dict in channel_dicts]))
-#	computed_dicts = []
+#       locations = list(set([channel_dict['location'] for channel_dict in channel_dicts]))
+#       computed_dicts = []
 #
-#	channel_count = 0
-#	for location in locations:
-#		if not location == 'None':
-#			print "location: ", location
-#			azimuthal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Azimuthal')
-#			if len(azimuthal_dicts) == 1: azimuthal_dict = azimuthal_dicts[0]
-#			else: azimuthal_dict = None
-#			longitudinal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Longitudinal')
-#			if len(longitudinal_dicts) == 1: longitudinal_dict = longitudinal_dicts[0]
-#			else: 
-#				print "Error: longitudinal of the location was not found!"
-#				exit()
+#       channel_count = 0
+#       for location in locations:
+#               if not location == 'None':
+#                       print "location: ", location
+#                       azimuthal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Azimuthal')
+#                       if len(azimuthal_dicts) == 1: azimuthal_dict = azimuthal_dicts[0]
+#                       else: azimuthal_dict = None
+#                       longitudinal_dicts = find_channels_from_dict(channel_dicts, location, 'Strain', 'Longitudinal')
+#                       if len(longitudinal_dicts) == 1: longitudinal_dict = longitudinal_dicts[0]
+#                       else: 
+#                               print "Error: longitudinal of the location was not found!"
+#                               exit()
 #
-#			longitudinal_name = longitudinal_dict['name']
-#			longitudinal_index = find_channel_index(mtbop_data['channel_names'], longitudinal_name)
+#                       longitudinal_name = longitudinal_dict['name']
+#                       longitudinal_index = find_channel_index(mtbop_data['channel_names'], longitudinal_name)
 #
-#			if 'Shell' in longitudinal_dict['location']: material = 'aluminium'
-#			elif 'Rod' in longitudinal_dict['location']: material = 'aluminium'
-#			elif 'Coil' in longitudinal_dict['location']: material = 'titanium'
+#                       if 'Shell' in longitudinal_dict['location']: material = 'aluminium'
+#                       elif 'Rod' in longitudinal_dict['location']: material = 'aluminium'
+#                       elif 'Coil' in longitudinal_dict['location']: material = 'titanium'
 #
-#			print channel_count
+#                       print channel_count
 #
-#			if not azimuthal_dict == None:
-#				azimuthal_name = azimuthal_dict['name']
-#				azimuthal_index = find_channel_index(mtbop_data['channel_names'], azimuthal_name)
-#				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'theta')
-#				channel_count += 1
-#				computed_dicts.append({})
-#				channel_name = location + ' Azimuthal Stress'
-#				computed_dicts[-1]['name'] = channel_name
-#				computed_dicts[-1]['location'] = location
-#				computed_dicts[-1]['physical_quantity'] = 'Stress'
-#				computed_dicts[-1]['direction'] = 'Azimuthal'
-#				mtbop_data['channel_names'].append(channel_name)
+#                       if not azimuthal_dict == None:
+#                               azimuthal_name = azimuthal_dict['name']
+#                               azimuthal_index = find_channel_index(mtbop_data['channel_names'], azimuthal_name)
+#                               raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'theta')
+#                               channel_count += 1
+#                               computed_dicts.append({})
+#                               channel_name = location + ' Azimuthal Stress'
+#                               computed_dicts[-1]['name'] = channel_name
+#                               computed_dicts[-1]['location'] = location
+#                               computed_dicts[-1]['physical_quantity'] = 'Stress'
+#                               computed_dicts[-1]['direction'] = 'Azimuthal'
+#                               mtbop_data['channel_names'].append(channel_name)
 #
-#				raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'z')
-#				channel_count += 1
-#				computed_dicts.append({})
-#				channel_name = location + ' Longitudinal Stress'
-#				computed_dicts[-1]['name'] = channel_name
-#				computed_dicts[-1]['location'] = location
-#				computed_dicts[-1]['physical_quantity'] = 'Stress'
-#				computed_dicts[-1]['direction'] = 'Longitudinal'
-#				mtbop_data['channel_names'].append(channel_name)
-#			else:
-#				raw_data[:, size2+channel_count] = compute_stress_simple(raw_data[:,longitudinal_index], material)
-#				channel_count += 1
-#				computed_dicts.append({})
-#				channel_name = location + ' Longitudinal Stress'
-#				computed_dicts[-1]['name'] = channel_name
-#				computed_dicts[-1]['location'] = location
-#				computed_dicts[-1]['physical_quantity'] = 'Stress'
-#				computed_dicts[-1]['direction'] = 'Longitudinal'
-#				mtbop_data['channel_names'].append(channel_name)
+#                               raw_data[:, size2+channel_count] = compute_stress(raw_data[:,azimuthal_index], raw_data[:,longitudinal_index], material, 'z')
+#                               channel_count += 1
+#                               computed_dicts.append({})
+#                               channel_name = location + ' Longitudinal Stress'
+#                               computed_dicts[-1]['name'] = channel_name
+#                               computed_dicts[-1]['location'] = location
+#                               computed_dicts[-1]['physical_quantity'] = 'Stress'
+#                               computed_dicts[-1]['direction'] = 'Longitudinal'
+#                               mtbop_data['channel_names'].append(channel_name)
+#                       else:
+#                               raw_data[:, size2+channel_count] = compute_stress_simple(raw_data[:,longitudinal_index], material)
+#                               channel_count += 1
+#                               computed_dicts.append({})
+#                               channel_name = location + ' Longitudinal Stress'
+#                               computed_dicts[-1]['name'] = channel_name
+#                               computed_dicts[-1]['location'] = location
+#                               computed_dicts[-1]['physical_quantity'] = 'Stress'
+#                               computed_dicts[-1]['direction'] = 'Longitudinal'
+#                               mtbop_data['channel_names'].append(channel_name)
 
 
 def compute_rod_forces(plot_dict, args):
@@ -1290,7 +1290,7 @@ def compute_rod_forces(plot_dict, args):
     d_rod = 0.035
     A_rod = np.pi * (d_rod/2.)**2.
     for mtbop_data in mtbop_data_list:
-	print "Computing rod forces for:", mtbop_data['filepath']
+        print("Computing rod forces for:", mtbop_data['filepath'])
         for channel_dict in channel_dict_list:
             if channel_dict['physical_quantity'].lower() == 'force' and 'material' in channel_dict:
                 raw_data = mtbop_data['raw_data']
@@ -1319,22 +1319,22 @@ def add_relative_time(plot_dict, args):
         #    pass
 
 def create_channel_name_dict(channel_dict_list):
-	channel_name_dict = {}
-	for channel_dict in channel_dict_list:
-		channel_name_dict[channel_dict['name']]=channel_dict
-	return channel_name_dict
+        channel_name_dict = {}
+        for channel_dict in channel_dict_list:
+                channel_name_dict[channel_dict['name']]=channel_dict
+        return channel_name_dict
 
 def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
-	plot_dict = {}
-	plot_dict['paths'] = paths
-	plot_dict['filepaths'] = find_files(paths)
-	plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle, args=args)
-	plot_dict['plot_stress'] = plot_stress
+        plot_dict = {}
+        plot_dict['paths'] = paths
+        plot_dict['filepaths'] = find_files(paths)
+        plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle, args=args)
+        plot_dict['plot_stress'] = plot_stress
 
-	if not channels_json == None: 
-		plot_dict['channel_dict_list'] = read_channels_json(channels_json)
-	else:
-		plot_dict['channel_dict_list'] = create_channel_data(plot_dict['mtbop_data_list'])
+        if not channels_json == None: 
+                plot_dict['channel_dict_list'] = read_channels_json(channels_json)
+        else:
+                plot_dict['channel_dict_list'] = create_channel_data(plot_dict['mtbop_data_list'])
 
         if plot_stress:
             add_stress_channel_data(plot_dict)
@@ -1343,13 +1343,13 @@ def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
             add_rod_force_channel_data(plot_dict)
             compute_rod_forces(plot_dict, args)
         if args.ntp_start_time != None:
-            print "Adding Time From Start channel"
+            print("Adding Time From Start channel")
             add_relative_time_channel_data(plot_dict)
             add_relative_time(plot_dict, args)
 
-	plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
+        plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
-	return plot_dict 
+        return plot_dict 
 
 def get_selected_channel_names(plot_dict):
     plot_dict['selected_channel_names'] = [channel_dict['name'] for channel_dict in plot_dict['channel_dict_list']]
@@ -1357,17 +1357,17 @@ def get_selected_channel_names(plot_dict):
 
 def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
     if not x_axis in selected_channel_names:
-        print "I did't find the channel that you chose with -x (or default 'Current' if you didn't select)"
-        print "These are the available channels that you selected with -c (" + x_axis + "):"
-        print '\n'.join(selected_channel_names)
+        print("I did't find the channel that you chose with -x (or default 'Current' if you didn't select)")
+        print("These are the available channels that you selected with -c (" + x_axis + "):")
+        print('\n'.join(selected_channel_names))
         exit()
 
     if not y_axis == None:
         for selected_y in y_axis:
             if not selected_y in selected_channel_names:
-                print "I did't find the channel '"+selected_y+"' that you chose with -y"
-                print "These are the available channels that you selected with -c (" + selected_y + "):"
-                print '\n'.join(selected_channel_names)
+                print("I did't find the channel '"+selected_y+"' that you chose with -y")
+                print("These are the available channels that you selected with -c (" + selected_y + "):")
+                print('\n'.join(selected_channel_names))
                 exit()
 
 def compute_min_max_avg(plot_dict, y_axis_names):
@@ -1398,17 +1398,17 @@ def compute_channel_deltas(plot_dict):
 
 
 def print_plot_info(plot_dict):
-    print "!!!!! ----------------------------------------------------------------!!!!!"
-    print "!!!!!                            Plot Info                            !!!!!"
-    print "!!!!! ----------------------------------------------------------------!!!!!"
-    print "Available channel names:"
-    print '\n'.join(plot_dict['selected_channel_names'])
+    print("!!!!! ----------------------------------------------------------------!!!!!")
+    print("!!!!!                            Plot Info                            !!!!!")
+    print("!!!!! ----------------------------------------------------------------!!!!!")
+    print("Available channel names:")
+    print('\n'.join(plot_dict['selected_channel_names']))
 
 def find_common_location(plot_dict):
     used_names = plot_dict['y_axis']
     if 'matched_names' in plot_dict and not plot_dict['matched_names'] == None: used_names = plot_dict['matched_names']
     
-    print 'find common location for:', used_names
+    print('find common location for:', used_names)
     selected_channels = [channel for channel in plot_dict['channel_dict_list'] if channel['name'] in used_names]
     location_words_list = [channel['location'].split()+[channel['longitudinal location']] for channel in selected_channels]
     first_words = location_words_list.pop()
@@ -1416,16 +1416,16 @@ def find_common_location(plot_dict):
     if len(location_words_list) != 0:
         common_words_list = []
         rest_of_words = list(set([word for word_list in location_words_list for word in word_list]))
-        print 'location_words_list:', location_words_list
-        print 'first_words:', first_words
-        print 'rest_of_words:', rest_of_words
+        print('location_words_list:', location_words_list)
+        print('first_words:', first_words)
+        print('rest_of_words:', rest_of_words)
         for word in first_words:
             if all(word in word_list for word_list in location_words_list): 
                 common_words_list.append(word)
 
         common_words = ' '.join(common_words_list)
 
-    print 'common location:', common_words
+    print('common location:', common_words)
     plot_dict['common location'] = common_words
 
 
@@ -1433,14 +1433,14 @@ def store_data(plot_dict, args=None):
     x_axis = plot_dict['x_axis']
     y_axis_list = plot_dict['y_axis']
     if y_axis_list == None: 
-        print "You didn't choose any channels on y-axis, exiting..."
+        print("You didn't choose any channels on y-axis, exiting...")
         exit()
 
     colors = ['b','g','r','c','m','y','k','orange']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
     if args.ntp_start_time != None: args.store_data_time = 'Time From Start'
-    print "Store data time:", args.store_data_time
+    print("Store data time:", args.store_data_time)
     last_points_data_list = []
     find_common_location(plot_dict)
     for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
@@ -1461,7 +1461,7 @@ def plot_data(plot_dict, args=None):
     x_axis = plot_dict['x_axis']
     y_axis_list = plot_dict['y_axis']
     if y_axis_list == None: 
-        print "You didn't choose any channels on y-axis, exiting..."
+        print("You didn't choose any channels on y-axis, exiting...")
         exit()
 
     colors = ['b','g','r','c','m','y','k','orange']
@@ -1505,29 +1505,29 @@ def plot_data(plot_dict, args=None):
         last_points_data_frames = [pd.DataFrame(l) for l in last_points_data_list]
         last_points_df = pd.concat(last_points_data_frames)
         if args.last_points_groupby == None:
-            print "Maximum:"
+            print("Maximum:")
             lpout = last_points_df.groupby('filepath').max()
             lpout['sum'] = last_points_df.groupby('filepath').max().sum(axis=1)
             lpout['mean'] = last_points_df.groupby('filepath').max().mean(axis=1)
-            print lpout
-            print "Minimum:"
+            print(lpout)
+            print("Minimum:")
             lpout = last_points_df.groupby('filepath').min()
             lpout['sum'] = last_points_df.groupby('filepath').min().sum(axis=1)
             lpout['mean'] = last_points_df.groupby('filepath').min().mean(axis=1)
-            print lpout
+            print(lpout)
         else:
             try:
-                print "Maximum:"
-                print last_points_df.groupby(args.last_points_groupby).max().dropna(axis=1, how='all')
-                print "Minimum:"
-                print last_points_df.groupby(args.last_points_groupby).min().dropna(axis=1, how='all')
+                print("Maximum:")
+                print(last_points_df.groupby(args.last_points_groupby).max().dropna(axis=1, how='all'))
+                print("Minimum:")
+                print(last_points_df.groupby(args.last_points_groupby).min().dropna(axis=1, how='all'))
             except:
-                print "Last points group by failed with:", args.last_points_groupby
+                print("Last points group by failed with:", args.last_points_groupby)
                 pass
 
 def search_channel_names_for_y_axis(plot_dict, args):
-    print "search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis"
-    print "search_channel_names_for_y_axis: y_axis: = ", args.y_axis
+    print("search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis")
+    print("search_channel_names_for_y_axis: y_axis: = ", args.y_axis)
     found_channels = []
     filter_str_list = []
     if args.filter_out_any != None:
@@ -1536,18 +1536,18 @@ def search_channel_names_for_y_axis(plot_dict, args):
         not_filter_words = args.filter_out_not_any.split()
     else:
         not_filter_words = []
-    print "search_channel_names_for_y_axis: filtering out any: ", filter_str_list
-    print "search_channel_names_for_y_axis: filtering out not: ", not_filter_words
+    print("search_channel_names_for_y_axis: filtering out any: ", filter_str_list)
+    print("search_channel_names_for_y_axis: filtering out not: ", not_filter_words)
     if args.y_axis != None:
         for search_name in args.y_axis:
             search_words = search_name.split()
             for name in plot_dict['selected_channel_names']:
                 if all(word in name for word in search_words):
                     if not any(word in name for word in filter_str_list) or any(word in name for word in not_filter_words):
-                        print "search_channel_names_for_y_axis: found channel:", name
+                        print("search_channel_names_for_y_axis: found channel:", name)
                         found_channels.append(name)
                     else:
-                        print "search_channel_names_for_y_axis: found channel:", name, "but this was filtered out."
+                        print("search_channel_names_for_y_axis: found channel:", name, "but this was filtered out.")
 
         args.y_axis = sorted(list(set(found_channels)))
 
@@ -1556,28 +1556,28 @@ def search_channel_names_for_y_axis(plot_dict, args):
             args.y_axis = sort_tree.list()
 
         if len(args.y_axis) == 0: 
-            print "I didn't find any maching channels... Exiting!"
+            print("I didn't find any maching channels... Exiting!")
             exit()
-    print "search_channel_names_for_y_axis: this is what I found:", args.y_axis
+    print("search_channel_names_for_y_axis: this is what I found:", args.y_axis)
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='Plot mtbop strain data')
-	parser.add_argument('paths', nargs='+', type=str)
-	parser.add_argument('-i', '--info', action='store_true', default=False)
-	parser.add_argument('-c', '--channels-json', nargs='?', type=str)
-	parser.add_argument('-p', '--plot', action='store_true', default=False) 
-	parser.add_argument('-x', '--x-axis', type=str)
-	parser.add_argument('-y', '--y-axis', nargs='+', type=str)
-	parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
-	parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
-	parser.add_argument('-m', '--markevery', type=int) 
-	parser.add_argument('--no-current-squared', action='store_true', default=False) 
-	parser.add_argument('--print-max-current', action='store_true', default=False) 
-	parser.add_argument('--save-fig', type=str)
-	parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
-	parser.add_argument('--min-max-avg', nargs='+', type=str)
-	parser.add_argument('--show-min-max-labels', action='store_true', default=False) 
-	parser.add_argument('--normalize-x', type=str)
+        parser = argparse.ArgumentParser(description='Plot mtbop strain data')
+        parser.add_argument('paths', nargs='+', type=str)
+        parser.add_argument('-i', '--info', action='store_true', default=False)
+        parser.add_argument('-c', '--channels-json', nargs='?', type=str)
+        parser.add_argument('-p', '--plot', action='store_true', default=False) 
+        parser.add_argument('-x', '--x-axis', type=str)
+        parser.add_argument('-y', '--y-axis', nargs='+', type=str)
+        parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
+        parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
+        parser.add_argument('-m', '--markevery', type=int) 
+        parser.add_argument('--no-current-squared', action='store_true', default=False) 
+        parser.add_argument('--print-max-current', action='store_true', default=False) 
+        parser.add_argument('--save-fig', type=str)
+        parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
+        parser.add_argument('--min-max-avg', nargs='+', type=str)
+        parser.add_argument('--show-min-max-labels', action='store_true', default=False) 
+        parser.add_argument('--normalize-x', type=str)
         parser.add_argument('--label-type', type=str)
         parser.add_argument('--curve-coloring', type=str)
         parser.add_argument('--filter-out-any', type=str)
@@ -1587,9 +1587,9 @@ if __name__ == '__main__':
         parser.add_argument('--set-xlim', type=str)
         parser.add_argument('--set-ylim', type=str)
         parser.add_argument('--comment', type=str)
-	parser.add_argument('--grid', action='store_true', default=True) 
-	parser.add_argument('--no-thermal-compensation', action='store_true', default=False) 
-	parser.add_argument('--use-compensator-average', action='store_true', default=False) 
+        parser.add_argument('--grid', action='store_true', default=True) 
+        parser.add_argument('--no-thermal-compensation', action='store_true', default=False) 
+        parser.add_argument('--use-compensator-average', action='store_true', default=False) 
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
@@ -1612,10 +1612,10 @@ if __name__ == '__main__':
         parser.add_argument('--store-data-time', type=str, default='Time')
         parser.add_argument('--y-sort-labels', nargs='+', type=str)
         parser.add_argument('--ansys-2d-files', nargs='+', type=str)
-	#parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
+        #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
-	args = parser.parse_args()
-	paths = args.paths
+        args = parser.parse_args()
+        paths = args.paths
         if args.inspect:
             args.x_axis = 'Data Point'
             args.y_axis = ['Current']
@@ -1629,20 +1629,20 @@ if __name__ == '__main__':
 
         plt.rcParams.update({'font.size':args.font_size})
 
-	info = args.info
-	channels_json = args.channels_json
+        info = args.info
+        channels_json = args.channels_json
         #if channels_json == None: channels_json = 'channels.json'
-	x_axis = args.x_axis
-	plot = args.plot
+        x_axis = args.x_axis
+        plot = args.plot
         if not args.y_axis == None: plot = True
         plot_all = False
         if args.y_axis == None and plot: plot_all = True
-	plot_stress = args.plot_stress
-	override_pickle = args.override_pickle
+        plot_stress = args.plot_stress
+        override_pickle = args.override_pickle
         markevery = args.markevery
 
         if x_axis == None: x_axis = 'Current'
-	plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
+        plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
         plot_dict['x_axis'] = x_axis
         plot_dict['markevery'] = markevery
         plot_dict['plot delta'] = args.plot_delta
@@ -1657,9 +1657,9 @@ if __name__ == '__main__':
 
         min_max_avg = args.min_max_avg
         if not plot_dict['plot delta'] == None and plot_dict['plot delta']: 
-            args.y_axis = map(lambda name: 'Delta ' + name, args.y_axis)
+            args.y_axis = ['Delta ' + name for name in args.y_axis]
             if not min_max_avg == None:
-                min_max_avg = map(lambda name: 'Delta ' + name, min_max_avg)
+                min_max_avg = ['Delta ' + name for name in min_max_avg]
 
         args.path_base_names = args.paths
         for FT in FILETYPES:
@@ -1695,11 +1695,11 @@ if __name__ == '__main__':
         else:
             plot_dict['y_axis'] = args.y_axis
 
-	if info: 
+        if info: 
             print_plot_info(plot_dict)
-            print "!!!!! ----------------------------------------------------------------!!!!!"
-            print "!!!!! NOTE! I didn't plot anything because you used -i or --info flag !!!!!"
-            print "!!!!! ----------------------------------------------------------------!!!!!"
+            print("!!!!! ----------------------------------------------------------------!!!!!")
+            print("!!!!! NOTE! I didn't plot anything because you used -i or --info flag !!!!!")
+            print("!!!!! ----------------------------------------------------------------!!!!!")
             exit()
 
         check_selected_channels(selected_channel_names, x_axis, args.y_axis, plot_dict)
@@ -1723,7 +1723,7 @@ if __name__ == '__main__':
         ax.grid(args.grid)
 
         if args.store_points != None:
-            print "storing points!"
+            print("storing points!")
             store_data(plot_dict, args)
 
         if plot or args.show_plot:
@@ -1752,13 +1752,13 @@ if __name__ == '__main__':
             if args.no_thermal_compensation:
                 xmin, xmax = ax.get_xlim()
                 ymin, ymax = ax.get_ylim()
-                print xmin, ymax
+                print(xmin, ymax)
                 ax.text(xmin + (xmax-xmin)/3., ymin + 2.*(ymax-ymin)/3., "No thermal compensation", style='italic', bbox={'facecolor': 'yellow', 'alpha':0.3, 'pad': 10})
 
             if args.show_plot:
                 plt.show()
             else:
-                print "Saving plot:", args.save_fig
+                print("Saving plot:", args.save_fig)
                 plt.savefig(args.save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 

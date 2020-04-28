@@ -26,7 +26,7 @@ def parse_ansys_2d_files(args):
                 'path':path
                 })
             df = parsed_file_data_list[-1]['DataFrame']
-            for col in df.keys():
+            for col in list(df.keys()):
                 try:
                     df[col] = pd.to_numeric(df[col])
                 except:
@@ -36,9 +36,8 @@ def parse_ansys_2d_files(args):
 
 
 def parse_ansys_3d_files(args):
-    parsed_file_data_list = None
+    parsed_file_data_list = []
     if args.ansys_3d_files is not None:
-        parsed_file_data_list = []
         for path in args.ansys_3d_files:
             paths = []
             path += '/path/'
@@ -102,7 +101,7 @@ def test3d_parse():
     args = argparse.Namespace(ansys_3d_files=['QXF_3D_20200408-113003_MQXFB_i450_npk_alrod'])
     parsed_file_data_list = parse_ansys_3d_files(args)
     df = parsed_file_data_list[0]['DataFrame']
-    print df
+    print(df)
 
 if __name__ == '__main__':
     test3d_parse()
