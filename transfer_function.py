@@ -135,13 +135,15 @@ def load_csv(filepath, times_called, args):
 
     df['average key'] = df.filter(regex='Keys size.*').astype(float).mean(axis=1)
     
+    df_out = df
     if args.all_points:
         if not args.bladders:
             df_out = df[~df['Operation'].str.contains('Bladder')]
-        else:
-            df_out = df
     else:
-        df_out = df[(df['Operation'].str.contains('Idling')) | (df['Operation'].str.contains('Key')) | (df['Operation'] == 'Initial')]
+
+        if args.operations is not None:
+            not_ignore_regex = '|'.join(args.operations)
+            df_out = df_out[(df['Operation'].str.contains(not_ignore_regex))] 
         if args.no_mixed_keys:
             df_out = df_out[~df_out['Operation'].str.contains('Mixed')]
         if args.no_idle_points:
@@ -638,6 +640,7 @@ if __name__ == '__main__':
     parser.add_argument('--curve-colors', nargs='+', type=str, default=None)
     parser.add_argument('--curve-markers', nargs='+', type=str, default=None)
     parser.add_argument('--operations-ignore', nargs='+', type=str, default=None)
+    parser.add_argument('--operations', nargs='+', type=str, default=['Idling','Key','Initial'])
     parser.add_argument('-uf', '--use-fibre', nargs='+', type=int) 
     parser.add_argument('--no-mixed-keys', action='store_true', default=False) 
     parser.add_argument('--no-idle-points', action='store_true', default=False) 
