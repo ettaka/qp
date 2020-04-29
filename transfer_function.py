@@ -625,7 +625,7 @@ if __name__ == '__main__':
     parser.add_argument('--legend-font-size', type=float, default=16)
     parser.add_argument('--marker-size', type=float, default=8)
     parser.add_argument('--line-width', type=float, default=1.5)
-    parser.add_argument('--fig-height', type=float, default=8)
+    parser.add_argument('--fig-height', type=float, default=6)
     parser.add_argument('--fig-width', type=float, default=8)
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--image-name', type=str, default='')
