@@ -334,14 +334,15 @@ def plot_tf(ax, times_called, filepath, args):
             ax.set_xlabel(key)
             ax.set_ylabel(fbg_key)
             plt.title(args.title)
-            lgd = ax.legend(loc='best')
             imagename = filepath+'_sg-vs-fbg_' + key
             imagename = imagename.replace('.','_').replace(' ','_')
             print("creating image file", imagename+'.png')
             if args.legend_outside:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.13), fancybox=True, shadow=True, ncol=2)
                 plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
                         fontsize=args.legend_font_size)
             else:
+                lgd = ax.legend(loc='best')
                 plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1,
                         fontsize=args.legend_font_size)
         exit()
@@ -420,7 +421,7 @@ def plot_tf(ax, times_called, filepath, args):
             print("Plot average of all shell vs pole gauges.")
             ax.plot(xdata,ydata,linestyle+data_marker, color=data_color,label=data_label, markersize=args.marker_size, linewidth=args.line_width)
             if no_plot_average_error:
-                _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.5)
+                _ = make_error_boxes(ax, xdata, ydata, xdict['error'], ydict['error'], facecolor='g', edgecolor='None', alpha=0.3)
 
         if single_coils:
             ax.set_title(data_label)
@@ -623,8 +624,8 @@ if __name__ == '__main__':
     parser.add_argument('--no-yticklabels', action='store_true', default=False) 
     parser.add_argument('--no-xlabel', action='store_true', default=False) 
     parser.add_argument('--no-ylabel', action='store_true', default=False) 
-    parser.add_argument('--font-size', type=float, default=16)
-    parser.add_argument('--legend-font-size', type=float, default=16)
+    parser.add_argument('--font-size', type=float, default=10)
+    parser.add_argument('--legend-font-size', type=float, default=10)
     parser.add_argument('--marker-size', type=float, default=8)
     parser.add_argument('--line-width', type=float, default=1.5)
     parser.add_argument('--fig-height', type=float, default=6)
