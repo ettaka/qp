@@ -1514,7 +1514,7 @@ def plot_data(plot_dict, args=None):
             lpout = last_points_df.groupby('filepath').min()
             lpout['sum'] = last_points_df.groupby('filepath').min().sum(axis=1)
             lpout['mean'] = last_points_df.groupby('filepath').min().mean(axis=1)
-            print(lpout)
+            print(lpout.transpose())
         else:
             try:
                 print("Maximum:")
@@ -1606,7 +1606,7 @@ if __name__ == '__main__':
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
         parser.add_argument('--old-format', action='store_true', default=False)
-        parser.add_argument('--font-size', type=float, default=20)
+        parser.add_argument('--font-size', type=float, default=10)
         parser.add_argument('--gradient-filter', type=float, default=None)
         parser.add_argument('--ntp-start-time', type=float, default=None)
         parser.add_argument('--store-data-time', type=str, default='Time')
@@ -1729,18 +1729,23 @@ if __name__ == '__main__':
         if plot or args.show_plot:
             if args.ansys_2d_files is not None:
                 ansys_file_df_list = parse_ansys_2d_files(args)
+                for name in args.y_axis:
+                    if 'Coil' in name:
+                        ans_yname = 'spole'
+                    elif 'Shell' in name:
+                        ans_yname = 'scyl'
                 for file_df in ansys_file_df_list:
                     name = file_df['name']
                     df = file_df['DataFrame']
                     df = df[df['name'].str.contains('cur') | df['name'].str.contains('cold')]
-                    if 'spole' in df and 'coilcur' in df:
+                    if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
-                        ydata = df['spole']
+                        ydata = df[ans_yname]
                         if args.plot_delta: ydata -= ydata.values[0]
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
-                        ax.plot(xdata, df['spole'], marker='d', label=name)
+                        ax.plot(xdata, df[ans_yname], marker='d', label=name)
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
