@@ -580,7 +580,7 @@ def set_ax_parameters(ax, args):
     if args.legend_location == 'right outside':
         lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1, fontsize=args.legend_font_size)
     elif args.legend_location == 'bottom outside':
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1, fontsize=args.legend_font_size)
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1, fontsize=args.legend_font_size)
     else:
         lgd = ax.legend(loc=args.legend_location, numpoints=1, fontsize=args.legend_font_size)
 
