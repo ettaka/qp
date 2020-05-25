@@ -566,7 +566,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 
         mtbop_data['filepath'] = filepath
         mtbop_data['channel_units'] = channel_units
-        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units)
+        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units, args.old_format)
         mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
         #mtbop_data['raw_data_df'] = raw_data_df
         #mtbop_data['raw_data'] = raw_data_df.values
@@ -1509,7 +1509,7 @@ def plot_data(plot_dict, args=None):
             lpout = last_points_df.groupby('filepath').max()
             lpout['sum'] = last_points_df.groupby('filepath').max().sum(axis=1)
             lpout['mean'] = last_points_df.groupby('filepath').max().mean(axis=1)
-            print(lpout)
+            print(lpout.transpose())
             print("Minimum:")
             lpout = last_points_df.groupby('filepath').min()
             lpout['sum'] = last_points_df.groupby('filepath').min().sum(axis=1)
@@ -1612,6 +1612,8 @@ if __name__ == '__main__':
         parser.add_argument('--store-data-time', type=str, default='Time')
         parser.add_argument('--y-sort-labels', nargs='+', type=str)
         parser.add_argument('--ansys-2d-files', nargs='+', type=str)
+        parser.add_argument('--fig-height', type=float, default=6)
+        parser.add_argument('--fig-width', type=float, default=8)
         #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
         args = parser.parse_args()
@@ -1628,6 +1630,9 @@ if __name__ == '__main__':
             args.last_points = True
 
         plt.rcParams.update({'font.size':args.font_size})
+
+        fig.set_figheight(args.fig_height)
+        fig.set_figwidth(args.fig_width)
 
         info = args.info
         channels_json = args.channels_json
