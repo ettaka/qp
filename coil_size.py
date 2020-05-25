@@ -24,8 +24,8 @@ markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+',
 def read_coil_size_data(filepath,args):
     coil_size_dict = {}
     header_lines = 10
-    with codecs.open(filepath) as f:
-        head = [next(f).decode('utf-8', 'ignore') for x in xrange(header_lines)]
+    with open(filepath) as f:
+        head = [next(f) for x in range(header_lines)]
 
     offset = None
     for line in head:
@@ -35,14 +35,14 @@ def read_coil_size_data(filepath,args):
 
     if args.rshim != None: rshim = args.rshim
 
-    print "_________________________"
-    print "filepath", filepath
-    print "mid-plane shim:", mshim
-    print "radial shim:", rshim
-    print "offset", offset
+    print("_________________________")
+    print("filepath", filepath)
+    print("mid-plane shim:", mshim)
+    print("radial shim:", rshim)
+    print("offset", offset)
 
-    col_names = ['L+R' if 'L+R' in s else s for s in head[-1].strip('\r\n').split('\t')]
-    print "column names:", col_names
+    col_names = ['L+R' if ('L+R' in s and 'spread' not in s) else s for s in head[-1].strip('\r\n').split('\t')]
+    print("column names:", col_names)
     coil_size_dict['mshim'] = mshim
     coil_size_dict['rshim'] = rshim
     coil_size_dict['offset'] = offset
@@ -52,33 +52,34 @@ def read_coil_size_data(filepath,args):
     coil_size_dict['column_indices'] = {}
     col_inds = coil_size_dict['column_indices']
     for i,col_name in enumerate(col_names):
+        print (i, col_name)
         col_inds[col_name] = i
 
-    with codecs.open(filepath) as f:
+    with open(filepath) as f:
         raw_data = np.loadtxt(f, skiprows=header_lines)
     raw_data *= args.unit_scaling
 
     coil_size_dict['raw_data'] = raw_data
     if coil_size_dict['offset'] != None:
-        print "Using offset", coil_size_dict['offset'], "for correcting the L+R data!"
+        print("Using offset", coil_size_dict['offset'], "for correcting the L+R data!")
         coil_size_dict['raw_data'][:, col_inds['L+R']] += coil_size_dict['offset']
 
-    print "Add column L+R+mshim"
+    print("Add column L+R+mshim")
     add_to_raw_data('L+R+mshim', coil_size_dict, raw_data[:,col_inds['L+R']] + mshim)
 
-    print "Add column L+R+mshim-rsr"
+    print("Add column L+R+mshim-rsr")
     add_to_raw_data('L+R+mshim-rsr', coil_size_dict, raw_data[:,col_inds['L+R']] + mshim - args.radial_size_reduction)
 
-    print "Add centered position"
+    print("Add centered position")
     pos = raw_data[:,col_inds['Y']]
     pos_avg = np.average(pos)
     add_to_raw_data('Y centered', coil_size_dict, pos - pos_avg)
 
     coil_size_dict['L+R average'] = 1e6*np.mean(raw_data, axis=0)[col_inds['L+R']]
-    print "L+R average: {:2.0f} um".format(coil_size_dict['L+R average'] )
+    print("L+R average: {:2.0f} um".format(coil_size_dict['L+R average'] ))
 
-    print coil_size_dict['column_names']
-    print coil_size_dict['column_indices']
+    print(coil_size_dict['column_names'])
+    print(coil_size_dict['column_indices'])
 
     return coil_size_dict
 
@@ -283,7 +284,7 @@ def get_average_coil_size_interp(coil_size_dicts, args, col_name='L+R'):
     interp = scipy.interpolate.InterpolatedUnivariateSpline(xdata, LplusRav,k=1)
     return interp, xdata
 
-def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05, location_length_points=100., coilpackdiff = -100.):
+def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05, location_length_points=100, coilpackdiff = -100.):
     if info_locations == None:
         short_shell = 0.3415
         long_shell = 2. * short_shell
@@ -346,15 +347,15 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
     cols = ["Coil", "Location name", "Location", "Loc len", "L+R", "mshim", "L+R+mshim", "dR", "rshim", "Coilpack", "Coil average sector length", "Coilpack e"]
 
     df_out = df[cols].sort_values(sort_values)
-    print df_out.to_string(float_format="{:0.0f}".format, index=False)
+    print(df_out.to_string(float_format="{:0.0f}".format, index=False))
 
     avg_table = df.groupby(['Location name','Location'], as_index=False, group_keys=True).mean()
     avg_table['Coil'] = ['AVG' for dR in avg_table['dR']]
-    print avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False)
+    print(avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
 
     joined_table = df_out.append(avg_table)
 
-    print joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False)
+    print(joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
 
     return df
 
@@ -377,7 +378,7 @@ if __name__ == '__main__':
     parser.add_argument('--pole-slope', type=float, default = -0.20)
     parser.add_argument('--grid', action='store_true', default=False)
     parser.add_argument('--gaps', nargs='+', type=str, default=['gaps_FUJI.size','gaps_final.size'])
-    parser.add_argument('--font-size', type=float, default=30)
+    parser.add_argument('--font-size', type=float, default=10)
 
 
     args = parser.parse_args()
@@ -385,35 +386,35 @@ if __name__ == '__main__':
     try: 
         gaps = [{'file name':gaps_file_name, 'DataFrame':pd.read_table(gaps_file_name)} for gaps_file_name in args.gaps]
     except:
-        print "Gaps data not found."
+        print("Gaps data not found.")
         gaps = None
         pass
 
     plt.rcParams.update({'font.size':args.font_size})
 
-    print "read coil sizes"
+    print("read coil sizes")
     coil_size_dicts = read_coil_size_dicts(args)
     #plot_coil_sizes(coil_size_dicts, args)
     average_coil_size_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R',)
     average_coil_size_shim_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim')
     average_coil_size_shim_rsr_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim-rsr')
-    print "plot coil sizes"
+    print("plot coil sizes")
     plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
     plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
     plot_interpolated_coil_pack_z(coil_size_dicts, args, average_coil_size_interp, gaps)
     plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
 
     shimming_info = get_shimming_info(coil_size_dicts)
-    print shimming_info
-    print "Store average coil size to average_coil.size"
+    print(shimming_info)
+    print("Store average coil size to average_coil.size")
     avdata = np.c_[av_xdata, average_coil_size_interp(av_xdata)]
     np.savetxt('average_coil.size', avdata, header='Y\n Average coil size')
-    print "Store shimmed coil size to average_shimmed_coil.size"
+    print("Store shimmed coil size to average_shimmed_coil.size")
     avshimdata = np.c_[av_xdata, average_coil_size_shim_interp(av_xdata)]
     np.savetxt('average_shimmed_coil.size', avshimdata, header='Y\n Average shimmed coil size')
 
     if args.radial_size_reduction != 0:
-        print "Store shimmed coil size with radial size reduction to average_shimmed_coil_rsr.size"
+        print("Store shimmed coil size with radial size reduction to average_shimmed_coil_rsr.size")
         np.savetxt('average_shimmed_coil_rsr.size', avshimrsrdata, header='Y\n Average shimmed rsr coil size')
         avshimrsrdata = np.c_[av_xdata, average_coil_size_shim_rsr_interp(av_xdata)]
 
