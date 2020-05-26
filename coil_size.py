@@ -112,7 +112,16 @@ def plot_coil_sizes(coil_size_dicts, args):
         ydata = coil_size_dict['raw_data'][:,1] * args.yunit_plot_scaling
         label = coil_size_dict['filepath'] + coil_size_dict['column_names'][1]
         ax.plot(xdata,ydata,'--'+colors[i]+markers[i],label=label)
+    plot_station_vertical_lines()
     plt.show()
+
+def plot_station_vertical_lines():
+    LE = .607
+    CE = 3.407
+    RE = 7.007
+    ax.axvline(x=LE, color='black', linestyle='dashed')
+    ax.axvline(x=CE, color='black', linestyle='dashed')
+    ax.axvline(x=RE, color='black', linestyle='dashed')
 
 def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None):
     plt.cla()
@@ -133,8 +142,9 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
         label += " ({:2.0f} $\mu$m)".format(coil_size_dict['L+R average'])
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
-    ax.set_xlabel("Longitudinal location (m)")
-    ax.set_ylabel("L+R ($\mu$m)")
+    plot_station_vertical_lines()
+    ax.set_xlabel("Longitudinal location (m)",fontsize=args.font_size)
+    ax.set_ylabel("L+R ($\mu$m)", fontsize=args.font_size)
     if av_interp != None:
         ax.plot(xdata* args.xunit_plot_scaling,av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av', linewidth=3)
     #if shimmed_av_interp != None:
@@ -168,6 +178,7 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimm
         label += '+mshim ({:2.0f} $\mu$m)'.format(coil_size_dict['L+R average']+1e6*mshim)
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
+    plot_station_vertical_lines()
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("L+R ($\mu$m)")
     if shimmed_av_interp != None:
@@ -203,7 +214,7 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shi
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("Size w.r.t. minimum ($\mu$m)")
     ax2.set_ylabel("Azimuthal shell stress w.r.t. minimum (MPa)")
-    ax3.set_ylabel("Azimuthal pole stress w.r.t. minimum (MPa)")
+    ax3.set_ylabel("Azimuthal pole compression w.r.t. minimum (MPa)")
     ax3.spines["right"].set_position(("axes", 1.2))
     fig.subplots_adjust(right=0.75)
     if shimmed_av_interp != None:
@@ -211,7 +222,8 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shi
         ax2.plot(xdata* args.xunit_plot_scaling, shell_slope * 2./np.pi*(np.max(shimmed_av_interp(xdata)) - shimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
         mn, mx = ax.get_ylim()
         ax2.set_ylim(shell_slope * mn, shell_slope * mx)
-        ax3.set_ylim(pole_slope * mn, pole_slope * mx)
+        ax3.set_ylim(-pole_slope * mn, -pole_slope * mx)
+    plot_station_vertical_lines()
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -259,6 +271,7 @@ def plot_interpolated_coil_pack_z(coil_size_dicts, args, av_interp, gaps=None):
                     x0 = xdata[i]
                     y0 = ydata[i]+50
                     ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
+    plot_station_vertical_lines()
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -347,15 +360,18 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
     cols = ["Coil", "Location name", "Location", "Loc len", "L+R", "mshim", "L+R+mshim", "dR", "rshim", "Coilpack", "Coil average sector length", "Coilpack e"]
 
     df_out = df[cols].sort_values(sort_values)
-    print(df_out.to_string(float_format="{:0.0f}".format, index=False))
+    #print(df_out.to_string(float_format="{:0.0f}".format, index=False))
+    df_out.to_csv('shimming_info.csv')
 
     avg_table = df.groupby(['Location name','Location'], as_index=False, group_keys=True).mean()
     avg_table['Coil'] = ['AVG' for dR in avg_table['dR']]
-    print(avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
+    #print(avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
+    avg_table.to_csv('shimming_info_avg.csv')
 
     joined_table = df_out.append(avg_table)
 
-    print(joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
+    #print(joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
+    joined_table[cols].sort_values(sort_values).to_csv('shimming_info_joined.csv')
 
     return df
 
@@ -378,7 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--pole-slope', type=float, default = -0.20)
     parser.add_argument('--grid', action='store_true', default=False)
     parser.add_argument('--gaps', nargs='+', type=str, default=['gaps_FUJI.size','gaps_final.size'])
-    parser.add_argument('--font-size', type=float, default=10)
+    parser.add_argument('--font-size', type=float, default=12)
 
 
     args = parser.parse_args()
