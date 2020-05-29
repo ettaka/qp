@@ -564,9 +564,17 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         with open(filepath, errors='ignore') as f:
                 raw_data = np.loadtxt(f, skiprows=header_lines)
 
+        long_magnet = False
+        for channel_name in channel_names:
+            if 'LE' in channel_name or 'CE' in channel_name or 'MI' in channel_name or 'RE' in channel_name:
+                long_magnet = True
+                print ("Based on LE, CE, MI or RE labels, this is a long magnet!")
+                break
+        mtbop_data['long_magnet'] = long_magnet
+
         mtbop_data['filepath'] = filepath
         mtbop_data['channel_units'] = channel_units
-        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units, args.old_format)
+        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units, args.old_format, long_magnet = long_magnet)
         mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
         #mtbop_data['raw_data_df'] = raw_data_df
         #mtbop_data['raw_data'] = raw_data_df.values
