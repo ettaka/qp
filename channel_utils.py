@@ -1,5 +1,5 @@
 
-def create_channel_dict_list(channel_names, channel_units, old_format=False):
+def create_channel_dict_list(channel_names, channel_units, old_format=False, long_magnet=True):
         channel_dict_list = []
         for i, channel_name in enumerate(channel_names):
                 channel_dict_list.append({})
@@ -88,6 +88,9 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False):
                             channel_dict['location'] = 'Rod ' + channel_name[1]
                             channel_dict['physical_quantity'] = 'Strain'
                             channel_dict['material'] = 'aluminium'
+                            if long_magnet: 
+                                print ("Long magnets have stainless steel rods, setting material for:", channel_name)
+                                channel_dict['material'] = 'stainless steel'
                     elif channel_name[0:2] == 'CO':
                             channel_dict['location'] = 'Coil ' + channel_name[2:5]
                             channel_dict['physical_quantity'] = 'Strain'
