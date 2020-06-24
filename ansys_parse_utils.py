@@ -4,6 +4,22 @@ import argparse
 from os import listdir
 from os.path import isfile, join
 
+def parse_ansys_2d_master_to_master(args):
+    parsed_file_data_list = None
+    if args.ansys_2d_bladder_files is not None:
+        parsed_file_data_list = []
+        for path in args.ansys_2d_bladder_files:
+            if os.path.isdir(path):
+                filename = 'master_to_master_dist.txt'
+                name = '_'.join(path.split("QXF_2D")[1].split("-")[1].split("/")[0].split("_")[1:])
+                df = pd.read_csv(path+'/'+filename,delim_whitespace=True)
+                parsed_file_data_list.append({
+                    'DataFrame':df,
+                    'name':name,
+                    'path':path
+                    })
+    return parsed_file_data_list
+
 def parse_ansys_2d_files(args):
     """
     possible octants: ['','_2','_3','_4','X','_2X','_3X','_4X']
@@ -15,6 +31,7 @@ def parse_ansys_2d_files(args):
         for path in args.ansys_2d_files:
             if os.path.isdir(path):
                 filebase = 'MQXF_2d_mech_results_output'
+                name = '_'.join(path.split("QXF_2D")[1].split("-")[1].split("/")[0].split("_")[1:])
                 testfiles = [f for f in listdir(path) if isfile(join(path, f)) and filebase in f]
                 octantfiles = []
                 for octant in possible_octants:
