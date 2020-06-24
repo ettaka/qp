@@ -116,12 +116,13 @@ def plot_coil_sizes(coil_size_dicts, args):
     plt.show()
 
 def plot_station_vertical_lines():
-    LE = .607
-    CE = 3.407
-    RE = 7.007
-    ax.axvline(x=LE, color='black', linestyle='dashed')
-    ax.axvline(x=CE, color='black', linestyle='dashed')
-    ax.axvline(x=RE, color='black', linestyle='dashed')
+    if not args.short_magnet:
+        LE = .607
+        CE = 3.407
+        RE = 7.007
+        ax.axvline(x=LE, color='black', linestyle='dashed')
+        ax.axvline(x=CE, color='black', linestyle='dashed')
+        ax.axvline(x=RE, color='black', linestyle='dashed')
 
 def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None):
     plt.cla()
@@ -395,6 +396,7 @@ if __name__ == '__main__':
     parser.add_argument('--grid', action='store_true', default=False)
     parser.add_argument('--gaps', nargs='+', type=str, default=['gaps_FUJI.size','gaps_final.size'])
     parser.add_argument('--font-size', type=float, default=12)
+    parser.add_argument('--short-magnet', action='store_true', default=False) 
 
 
     args = parser.parse_args()
