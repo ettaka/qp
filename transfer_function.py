@@ -20,6 +20,9 @@ from scipy.stats import linregress
 from channel_utils import create_channel_dict_list
 from ansys_parse_utils import parse_ansys_2d_files
 from ansys_parse_utils import parse_ansys_3d_files
+from ansys_parse_utils import parse_ansys_2d_master_to_master
+
+markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
                      edgecolor='None', alpha=0.5):
@@ -60,8 +63,15 @@ def compute_data_dict_avg_min_max(data_dict):
             if np.any(data_dict['raw_data'][:,i]!=0): use_cols.append(i)
 
         data_dict['average'] = np.average(data_dict['raw_data'][:,use_cols], axis=1)
-        data_dict['min'] = np.min(data_dict['raw_data'][:,use_cols], axis=1)
-        data_dict['max'] = np.max(data_dict['raw_data'][:,use_cols], axis=1)
+        try:
+            data_dict['min'] = np.min(data_dict['raw_data'][:,use_cols], axis=1)
+        except:
+            data_dict['min'] = data_dict['raw_data'][:,0]
+            
+        try:
+            data_dict['max'] = np.max(data_dict['raw_data'][:,use_cols], axis=1)
+        except:
+            data_dict['max'] = data_dict['raw_data'][:,0]
         data_dict['error'] = np.array([data_dict['average'] - data_dict['min'], data_dict['max'] - data_dict['average']])
 
 def create_pk_npk_dict(pk_npk_data_file):
@@ -139,6 +149,8 @@ def load_csv(filepath, times_called, args):
     if args.all_points:
         if not args.bladders:
             df_out = df[~df['Operation'].str.contains('Bladder')]
+    elif args.bladders:
+        df_out = df[df['Operation'] == 'Bladder']
     else:
 
         if args.operations is not None:
@@ -262,19 +274,38 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
 
 def plot_ansys_data(ax, args):
     ansys_file_data_list = parse_ansys_2d_files(args)
-    for i, data in enumerate(ansys_file_data_list):
-        name = data['name']
-        df = data['DataFrame']
+    if ansys_file_data_list is not None:
+        for i, data in enumerate(ansys_file_data_list):
+            name = data['name']
+            df = data['DataFrame']
 
-        ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
+            ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
 
     ansys3d_file_data_list = parse_ansys_3d_files(args)
-    for i, data in enumerate(ansys3d_file_data_list):
-        name = data['name']
+    if ansys3d_file_data_list is not None:
+        for i, data in enumerate(ansys3d_file_data_list):
+            name = data['name']
 
-        df = data['DataFrame']
-        ax.plot([0]+list(df['scyl']), [0]+list(df['spole']), marker='d', markersize=args.marker_size, label=name)
+            df = data['DataFrame']
+            ax.plot([0]+list(df['scyl']), [0]+list(df['spole']), marker='d', markersize=args.marker_size, label=name)
 
+def plot_ansys_bladders(ax, args):
+    ansys_file_data_list = parse_ansys_2d_master_to_master(args)
+    
+    if ansys_file_data_list is not None:
+        for i, data in enumerate(ansys_file_data_list):
+            name = data['name']
+            df = data['DataFrame']
+            xdata = 13.+df['bdisp1']/1e3
+            ydata =  df['bpres']
+            ansplot_name = 'interf. ' + name.split('i')[1].split('_')[0] + r' $\mu$m'
+            marker=markers[0]
+            if 'q1' in name: 
+                ansplot_name += ' quadrant'
+                marker=markers[1]
+            else:
+                ansplot_name += ' all'
+            ax.plot(xdata, ydata, marker=marker, markersize=args.marker_size, label=ansplot_name)
 
 def plot_tf(ax, times_called, filepath, args):
     tr_type = args.type
@@ -293,6 +324,22 @@ def plot_tf(ax, times_called, filepath, args):
     filebase = filepath.split(file_extension)[0]
     key_dict, shell_dict, coil_dict, df = create_data_dicts(filepath, times_called, file_extension, args, coil_permutation)
 
+    if args.bladders:
+        key_cols = [col for col in df.keys() if 'Keys size' in col]
+        for col in key_cols:
+            df[col] = pd.to_numeric(df[col])
+
+        bladder_cols = [col for col in df.keys() if 'Bladder' in col]
+        for col in bladder_cols:
+            df[col] = pd.to_numeric(df[col])
+        xaxis = df[key_cols].mean(axis=1)
+        yaxis = df[bladder_cols].max(axis=1)
+        label = filebase
+        ax.plot(xaxis, yaxis, marker='d', markersize=args.marker_size, label=label, linestyle = "None")
+        ax.set_xlabel('Key size (mm)')
+        ax.set_ylabel('Bladder Pressure (Bars)')
+        plotname = filebase + '_bladders'
+        return plotname
     if args.sg_vs_fbg and df is not None:
         plt.close()
         fig = plt.figure()
@@ -594,6 +641,7 @@ if __name__ == '__main__':
     parser.add_argument('-pk', '--pk-npk-file', type=str, default='TRANSFER1_PK_NPK_simple.txt') 
     parser.add_argument('--ansys-2d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-3d-files', type=str, nargs='+') 
+    parser.add_argument('--ansys-2d-bladder-files', type=str, nargs='+') 
     parser.add_argument('-s', '--single-coils', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
@@ -651,6 +699,7 @@ if __name__ == '__main__':
     parser.add_argument('--annotation-text', action='store_true', default=False) 
     parser.add_argument('--bladders', action='store_true', default=False) 
     parser.add_argument('--sg-vs-fbg', action='store_true', default=False) 
+    parser.add_argument('--delete-dev-higher', type=float, default=1.)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -661,10 +710,10 @@ if __name__ == '__main__':
     if args.plot_style == 'TF paper':
         args.set_xlim = "0 120"
         args.set_ylim = "-140 0" 
-        args.font_size = 30 
-        args.legend_font_size = 22
+        args.font_size = 12 
+        args.legend_font_size = 12
         args.no_pk_legend = True
-        args.fig_width = 12
+        args.fig_width = 8
         args.marker_size = 15
     elif args.plot_style == 'TF2 paper':
         args.set_xlim = "0 200"
@@ -683,7 +732,11 @@ if __name__ == '__main__':
     plt.rcParams.update({'font.size':args.font_size})
     plt.title(args.title)
 
-    plot_ansys_data(ax, args)
+    if args.ansys_2d_files is not None or args.ansys_3d_files is not None:
+        plot_ansys_data(ax, args)
+
+    if args.ansys_2d_bladder_files is not None:
+        plot_ansys_bladders(ax, args)
 
     paths = args.paths
     plotnames = []
