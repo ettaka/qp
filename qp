@@ -564,17 +564,17 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         with open(filepath, errors='ignore') as f:
                 raw_data = np.loadtxt(f, skiprows=header_lines)
 
-        long_magnet = False
-        for channel_name in channel_names:
-            if 'LE' in channel_name or 'CE' in channel_name or 'MI' in channel_name or 'RE' in channel_name:
-                long_magnet = True
-                print ("Based on LE, CE, MI or RE labels, this is a long magnet!")
-                break
-        mtbop_data['long_magnet'] = long_magnet
+        if not args.long_magnet:
+            for channel_name in channel_names:
+                if 'LE' in channel_name or 'CE' in channel_name or 'MI' in channel_name or 'RE' in channel_name:
+                    args.long_magnet = True
+                    print ("Based on LE, CE, MI or RE labels, this is a long magnet!")
+                    break
+        mtbop_data['long_magnet'] = args.long_magnet
 
         mtbop_data['filepath'] = filepath
         mtbop_data['channel_units'] = channel_units
-        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units, args.old_format, long_magnet = long_magnet)
+        mtbop_data['channel_dict_list'] = create_channel_dict_list(channel_names, channel_units, args.old_format, long_magnet = args.long_magnet)
         mtbop_data['channel_names'] = [channel_dict['name'] for channel_dict in mtbop_data['channel_dict_list']]
         #mtbop_data['raw_data_df'] = raw_data_df
         #mtbop_data['raw_data'] = raw_data_df.values
@@ -1164,6 +1164,9 @@ def double_vector_with_zeros(vector):
 
 def search_channel_dict(channel_dict_list, location, direction, physical_quantity, longitudinal_location, sensor_type):
     for channel_dict in channel_dict_list:
+        #if 'Rod D' in channel_dict['name']: 
+            #print ("channel:", channel_dict['location'], channel_dict['direction'], channel_dict['physical_quantity'], channel_dict['longitudinal location'], channel_dict['sensor type'])
+            #print ("ref:", location, direction, physical_quantity, longitudinal_location, sensor_type)
         if channel_dict['sensor type'] == sensor_type and channel_dict['location'].lower() == location.lower() and channel_dict['longitudinal location'].lower() == longitudinal_location.lower() and channel_dict['direction'].lower() == direction.lower() and channel_dict['physical_quantity'].lower() == physical_quantity.lower(): return channel_dict
     return None
 
@@ -1203,6 +1206,7 @@ def compute_stresses(plot_dict, args):
         print("Computing stresses for:", mtbop_data['filepath'])
         for channel_dict in channel_dict_list:
             if channel_dict['physical_quantity'].lower() == 'stress' and 'material' in channel_dict:
+
                 raw_data = mtbop_data['raw_data']
 
                 material = channel_dict['material']
@@ -1497,6 +1501,7 @@ def plot_data(plot_dict, args=None):
             channel_names = mtbop_data['channel_names']
             x_axis = mtbop_data['x_axis']['name']
             y_axis = mtbop_data['y_axis']['name']
+
             if x_axis in channel_names and y_axis in channel_names and not x_axis == y_axis: 
                 mtbop_data['x_axis']['index']= channel_names.index(x_axis)
                 mtbop_data['y_axis']['index']= channel_names.index(y_axis)
@@ -1580,6 +1585,7 @@ if __name__ == '__main__':
         parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
         parser.add_argument('-m', '--markevery', type=int) 
         parser.add_argument('--no-current-squared', action='store_true', default=False) 
+        parser.add_argument('--long-magnet', action='store_true', default=False) 
         parser.add_argument('--print-max-current', action='store_true', default=False) 
         parser.add_argument('--save-fig', type=str)
         parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
