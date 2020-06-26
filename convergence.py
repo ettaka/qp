@@ -59,18 +59,28 @@ if __name__ == '__main__':
     parser.add_argument('paths', nargs='+', type=str)
     parser.add_argument('--times', type=float, nargs='+', default=[1.0])
     parser.add_argument('--show-criteria', action='store_true', default=False)
+    parser.add_argument('-np','--nof-processes', type=float, nargs='+',default=None)
 
     plt.yscale('log')
 
     args = parser.parse_args()
-    for path in args.paths:
+    if args.nof_processes is None:
+        args.nof_processes = [1. for i in args.paths]
+    if len(args.nof_processes) != len(args.nof_processes):
+        print ("The number of processes needs to be given for all paths individually.")
+        exit()
+    for i,path in enumerate(args.paths):
+        print ("path:",path)
         values = read_path(path)
+        print ("reading done")
+        nofp = args.nof_processes[i]
 
         for time in args.times:
             if time in values['fconv'].keys():
                 name = path.split()[0]
-                xdata = (values['fconvcpval'][time] - values['fconvcpval'][time][0])/3600./12.
-                plt.plot(xdata,values['fconvval'][time], label='{} conv time {}'.format(name,time))
+                xdata = (values['fconvcpval'][time] - values['fconvcpval'][time][0])/3600./nofp
+                ydata = values['fconvval'][time]
+                plt.plot(xdata,ydata, label='{} conv time {}'.format(name,time))
                 if args.show_criteria:
                     plt.plot(xdata,values['fconvcrit'][time], label='{} crit time {}'.format(name, time))
     plt.legend()
