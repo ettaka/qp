@@ -397,12 +397,21 @@ if __name__ == '__main__':
     parser.add_argument('--gaps', nargs='+', type=str, default=['gaps_FUJI.size','gaps_final.size'])
     parser.add_argument('--font-size', type=float, default=12)
     parser.add_argument('--short-magnet', action='store_true', default=False) 
+    parser.add_argument('--fix-gaps-kapton-size', type=float, default =None)
 
 
     args = parser.parse_args()
 
     try: 
         gaps = [{'file name':gaps_file_name, 'DataFrame':pd.read_table(gaps_file_name)} for gaps_file_name in args.gaps]
+
+        if args.fix_gaps_kapton_size is not None: 
+            print("Take kapton layer into account, total kapton size", args.fix_gaps_kapton_size)
+            for gap_dict in gaps:
+                for key in gap_dict['DataFrame']:
+                    if 'A' in key or 'B' in key or 'C' in key or 'D' in key:
+                        gap_dict['DataFrame'][key]+=args.fix_gaps_kapton_size
+            #ydata-=args.fix_gaps_kapton_size
     except:
         print("Gaps data not found.")
         gaps = None
