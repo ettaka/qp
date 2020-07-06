@@ -714,14 +714,14 @@ if __name__ == '__main__':
         args.legend_font_size = 12
         args.no_pk_legend = True
         args.fig_width = 8
-        args.marker_size = 15
+        args.marker_size = 10
     elif args.plot_style == 'TF2 paper':
         args.set_xlim = "0 200"
         args.set_ylim = "-200 0" 
         args.font_size = 30 
         args.no_pk_legend = True
         args.fig_width = 12
-        args.marker_size = 15
+        args.marker_size = 10
 
     if args.annotate_points and args.bladders:
         args.fig_width = 30
