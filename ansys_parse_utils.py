@@ -72,6 +72,7 @@ def parse_ansys_3d_files(args):
     if args.ansys_3d_files is not None:
         for path in args.ansys_3d_files:
             paths = []
+            pathroot = str(path)
             path += '/path/'
             file_datas=dict()
             file_datas['filenames']=[]
@@ -81,6 +82,7 @@ def parse_ansys_3d_files(args):
             if os.path.isdir(path): 
                 for root, dirs, filenames in os.walk(path+'.'):
                     for fn in filenames:
+                        print('filename:',fn)
                         file_datas['filenames'].append(fn)
                         pos = fn.replace('MQXF_3D_mech_path_','').replace('.txt','')
                         Step = pos.split('_')[-1]
@@ -88,19 +90,49 @@ def parse_ansys_3d_files(args):
                         file_datas['position'].append(pos)
                         file_datas['Step'].append(Step)
                         file_datas['datas'].append(pd.read_csv(path+fn,delim_whitespace=True))
+                for root, dirs, filenames in os.walk(pathroot+'/rod/.'):
+                    for fn in filenames:
+                        if not 'force' in fn:
+                            print('filename:',fn)
+                            file_datas['filenames'].append(fn)
+                            pos = 'rod' + fn.replace('MQXF_3D_mech_rod_','').replace('.txt','')
+                            Step = pos.split('_')[-1]
+                            pos = pos.replace('_'+Step,'')
+                            file_datas['position'].append(pos)
+                            file_datas['Step'].append(Step)
+                            file_datas['datas'].append(pd.read_csv(pathroot+'/rod/'+fn,delim_whitespace=True))
+                with open(pathroot+'/inp_bkp/MQXF_solution_3d.inp') as fd:
+                    solution_inp = fd.readlines()
+
+                for line in solution_inp:
+                    if 'Iq(' in line and '=' in line:
+                        coilcur = [float(cur) for cur in line.split('=')[1].split(',')]
 
             name = '_'.join(path.split("QXF_3D")[1].split("-")[1].split("/")[0].split("_")[1:])
 
             file_dict = dict()
             file_dict['Step'] = []
+            file_dict['coilcur'] = []
             file_dict['position'] = []
+            rod_dict = dict()
+            rod_dict['Step'] = []
+            rod_dict['coilcur'] = []
+            rod_dict['position'] = []
             cols = ['S', 'ZG', 'STH', 'SZ', 'ETH', 'EZ']
+            rod_cols = ['S', 'XG', 'YG', 'ZG', 'EZ', 'SZ']
             for col in cols:
                 file_dict[col+'_Z0'] = []
+            for col in rod_cols:
+                rod_dict[col+'_Z0'] = []
             for i, data in enumerate(file_datas['datas']):
                 accept = True
+                accept_rod = False
                 for col in cols:
                     if not col in data: accept = False
+                if not accept:
+                    accept_rod = True
+                    for col in rod_cols:
+                        if not col in data: accept_rod = False
 
                 if accept:
                     pos = file_datas['position'][i]
@@ -110,14 +142,38 @@ def parse_ansys_3d_files(args):
                     for col in cols:
                         file_dict[col+'_Z0'].append(data[col].values[0])
 
+                    if 'field' in Step:
+                        curstep = int(Step.split('f')[0])-4
+                        file_dict['coilcur'].append(float(coilcur[curstep]))
+                    else:
+                        file_dict['coilcur'].append(0.)
+                elif accept_rod:
+                    pos = file_datas['position'][i]
+                    Step = file_datas['Step'][i]
+                    rod_dict['position'].append(pos)
+                    rod_dict['Step'].append(Step)
+                    for col in rod_cols:
+                        rod_dict[col+'_Z0'].append(data[col].values[0])
+
+                    if 'field' in Step:
+                        curstep = int(Step.split('f')[0])-4
+                        rod_dict['coilcur'].append(coilcur[curstep])
+                    else:
+                        rod_dict['coilcur'].append(0.)
+
             df_raw = pd.DataFrame(file_dict)
+            df_raw_rod = pd.DataFrame(rod_dict)
 
             df_shell = df_raw[df_raw['position'].str.contains('shell_15')]
             df_pole = df_raw[df_raw['position'].str.contains('pole')]
+            df_rod = df_raw_rod[df_raw_rod['position'].str.contains('rod')]
             df = dict()
-            df['scyl'] = df_shell.sort_values('Step')['STH_Z0'].values/1e6
-            df['spole'] = df_pole.sort_values('Step')['STH_Z0'].values/1e6
-            df['Step'] = df_pole.sort_values('Step')['Step'].values
+            df['scyl'] = list(df_shell.sort_values('Step')['STH_Z0'].values/1e6)
+            df['spole'] = list(df_pole.sort_values('Step')['STH_Z0'].values/1e6)
+            df['Step'] = list(df_pole.sort_values('Step')['Step'].values)
+            df['coilcur'] = list(df_pole.sort_values('Step')['coilcur'].values)
+            df['rod'] = list(df_rod.sort_values('Step')['SZ_Z0'].values/1e6)
+            df = pd.DataFrame(df)
                 #'DataFrame':pd.DataFrame(file_dict),
 
             parsed_file_data_list.append({
