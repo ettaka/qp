@@ -18,6 +18,7 @@ from channel_utils import create_channel_dict_list
 from channel_utils import get_channel_name
 from channel_utils import get_channel_longname
 from ansys_parse_utils import parse_ansys_2d_files
+from ansys_parse_utils import parse_ansys_3d_files
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -1626,6 +1627,7 @@ if __name__ == '__main__':
         parser.add_argument('--store-data-time', type=str, default='Time')
         parser.add_argument('--y-sort-labels', nargs='+', type=str)
         parser.add_argument('--ansys-2d-files', nargs='+', type=str)
+        parser.add_argument('--ansys-3d-files', nargs='+', type=str)
         parser.add_argument('--fig-height', type=float, default=6)
         parser.add_argument('--fig-width', type=float, default=8)
         #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
@@ -1765,6 +1767,30 @@ if __name__ == '__main__':
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
                         ax.plot(xdata, df[ans_yname], marker='d', label=name)
+            if args.ansys_3d_files is not None:
+                ansys_file_df_list = parse_ansys_3d_files(args)
+                print ("plot ansys 3d files")
+                for name in args.y_axis:
+                    if 'Coil' in name:
+                        ans_yname = 'spole'
+                    elif 'Shell' in name:
+                        ans_yname = 'scyl'
+                    elif 'Rod' in name:
+                        ans_yname = 'rod'
+                        print ("Choosing rod data because that is plotted as the experimental data.")
+                for file_df in ansys_file_df_list:
+                    name = file_df['name']
+                    df = file_df['DataFrame']
+                    df = df[df['coilcur']>0]
+                    if ans_yname in df and 'coilcur' in df:
+                        xdata = df['coilcur']
+                        ydata = df[ans_yname]
+                        if args.plot_delta: ydata -= ydata.values[0]
+                        if not args.no_current_squared: xdata **= 2.
+                        if not args.normalize_x is None:
+                            xdata = xdata/float(plot_dict['normalize x'])
+                        ax.plot(xdata, df[ans_yname], marker='d', label='3DFEM '+name)
+
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
