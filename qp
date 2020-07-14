@@ -352,8 +352,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(x_nominal-0.188, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
-                        ax.text(0.8-0.014, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
+                        ax.text(x_nominal-0.17, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
+                        ax.text(0.8+0.005, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
@@ -418,7 +418,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
-                curveline.set_dashes([10,20])
+                curveline.set_dashes([10,10])
 
         mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
         mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
@@ -1617,6 +1617,7 @@ if __name__ == '__main__':
         parser.add_argument('--diff-plot', action='store_true', default=False)
         parser.add_argument('--rod-force', action='store_true', default=False)
         parser.add_argument('--rods', action='store_true', default=False)
+        parser.add_argument('--ansys-show-x', action='store_true', default=False)
         parser.add_argument('--warm', action='store_true', default=False)
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
