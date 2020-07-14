@@ -25,7 +25,10 @@ def parse_ansys_2d_files(args):
     possible octants: ['','_2','_3','_4','X','_2X','_3X','_4X']
     """
     parsed_file_data_list = None
-    possible_octants = ['','_2','_3','_4','X','_2X','_3X','_4X']
+    #possible_octants = ['','_2','_3','_4','X','_2X','_3X','_4X']
+    possible_octants = ['','_2','_3','_4']
+    if args.ansys_show_x:
+        possible_octants = ['','_2','_3','_4','X','_2X','_3X','_4X']
     if args.ansys_2d_files is not None:
         parsed_file_data_list = []
         for path in args.ansys_2d_files:
@@ -41,7 +44,7 @@ def parse_ansys_2d_files(args):
                 for octant,octantfile in octantfiles:
                     octpath = path+'/' + octantfile
                     print (octpath)
-                    name = '_'.join(octpath.split("QXF_2D")[1].split("-")[1].split("/")[0].split("_")[1:])+'_oct{}'.format(octant)
+                    octname = '_'.join(octpath.split("QXF_2D")[1].split("-")[1].split("/")[0].split("_")[1:])+'_oct{}'.format(octant)
                     f = open(octpath, 'r')
                     file_dict=dict()
                     for line in f:
@@ -55,7 +58,8 @@ def parse_ansys_2d_files(args):
                                 file_dict[colname].append(value)
                     parsed_file_data_list.append({
                         'DataFrame':pd.DataFrame(file_dict),
-                        'name':name,
+                        'name':octname,
+                        'parent name':name,
                         'path':octpath
                         })
                     df = parsed_file_data_list[-1]['DataFrame']
