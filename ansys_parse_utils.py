@@ -67,6 +67,23 @@ def parse_ansys_2d_files(args):
 
     return parsed_file_data_list
 
+def get_var_in_inp(inpfile, name):
+
+    with open(inpfile) as fd:
+        lines = fd.readlines()
+
+    var = None
+    for line in lines:
+        line = line.split('!')[0]
+        line = line.replace(' ','')
+        if name+'=' in line:
+            try:
+                var = line.strip().split(name+'=')[1]
+            except:
+                pass
+
+    return var
+
 def parse_ansys_3d_files(args):
     parsed_file_data_list = []
     if args.ansys_3d_files is not None:
@@ -101,12 +118,33 @@ def parse_ansys_3d_files(args):
                             file_datas['position'].append(pos)
                             file_datas['Step'].append(Step)
                             file_datas['datas'].append(pd.read_csv(pathroot+'/rod/'+fn,delim_whitespace=True))
-                with open(pathroot+'/inp_bkp/MQXF_solution_3d.inp') as fd:
+                soluinppath = pathroot+'/inp_bkp/MQXF_solution_3d.inp'
+                nomstr = 'if_nom'
+                ultstr = 'if_ult'
+
+                with open(soluinppath) as fd:
                     solution_inp = fd.readlines()
 
                 for line in solution_inp:
+                    coilcur_found = False
                     if 'Iq(' in line and '=' in line:
+                        coilcur_found = True
                         coilcur = [float(cur) for cur in line.split('=')[1].split(',')]
+                if not coilcur_found:
+                    coilcur = []
+                    if_nom = get_var_in_inp(soluinppath, nomstr)
+                    if if_nom is None:
+                        soluinppath = pathroot+'/inp_bkp/MQXF_parameters.inp'
+                        nomstr = 'if_grad'
+                        ultstr = 'if_grad_ult'
+
+                    if_nom = get_var_in_inp(soluinppath, nomstr)
+                    if if_nom is not None and int(if_nom):
+                        coilcur.append(16.47)
+
+                    if_ult = get_var_in_inp(soluinppath, ultstr)
+                    if if_ult is not None and int(if_ult):
+                        coilcur.append(17.89)
 
             name = '_'.join(path.split("QXF_3D")[1].split("-")[1].split("/")[0].split("_")[1:])
 
@@ -168,11 +206,14 @@ def parse_ansys_3d_files(args):
             df_pole = df_raw[df_raw['position'].str.contains('pole')]
             df_rod = df_raw_rod[df_raw_rod['position'].str.contains('rod')]
             df = dict()
-            df['scyl'] = list(df_shell.sort_values('Step')['STH_Z0'].values/1e6)
-            df['spole'] = list(df_pole.sort_values('Step')['STH_Z0'].values/1e6)
             df['Step'] = list(df_pole.sort_values('Step')['Step'].values)
             df['coilcur'] = list(df_pole.sort_values('Step')['coilcur'].values)
-            df['rod'] = list(df_rod.sort_values('Step')['SZ_Z0'].values/1e6)
+            df['scyl'] = list(df_shell.sort_values('Step')['STH_Z0'].values/1e6)
+            df['spole'] = list(df_pole.sort_values('Step')['STH_Z0'].values/1e6)
+            df['srod'] = list(df_rod.sort_values('Step')['SZ_Z0'].values/1e6)
+            df['ecyl'] = list(df_shell.sort_values('Step')['ETH_Z0'].values*1e6)
+            df['epole'] = list(df_pole.sort_values('Step')['ETH_Z0'].values*1e6)
+            df['erod'] = list(df_rod.sort_values('Step')['EZ_Z0'].values*1e6)
             df = pd.DataFrame(df)
                 #'DataFrame':pd.DataFrame(file_dict),
 
