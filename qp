@@ -352,8 +352,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(x_nominal-0.188, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
-                        ax.text(0.8-0.014, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
+                        ax.text(x_nominal-0.17, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
+                        ax.text(0.8+0.005, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
@@ -418,7 +418,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
-                curveline.set_dashes([10,20])
+                curveline.set_dashes([10,10])
 
         mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
         mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
@@ -516,7 +516,7 @@ def get_channel_replacements(mtbop_data, head, channel_names):
     return replacements_list
 
 @timeit
-def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None):
+def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None, i=None):
         """
         Loads mtbop data from txt file.
         
@@ -539,6 +539,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         pathlist = os.path.splitext(filepath)
         basename = pathlist[0]
         filetype = pathlist[1]
+
         if filetype in FILETYPES: FILETYPE = filetype
         pickle_path = basename + '.pickle'
         if os.path.isfile(pickle_path) and not override_pickle:
@@ -564,6 +565,7 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
 
         with open(filepath, errors='ignore') as f:
                 raw_data = np.loadtxt(f, skiprows=header_lines)
+
 
         if not args.long_magnet:
             for channel_name in channel_names:
@@ -597,6 +599,45 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None)
         data_point_channel_dict['longitudinal location'] = ''
         data_point_channel_dict['unit'] = ''
         mtbop_data['channel_dict_list'].append(data_point_channel_dict)
+
+        if args.sm18_paths is not None and i is not None:
+            
+            print ("Lets try to find SM18 temperature data")
+            time_index = find_channel_index(mtbop_data['channel_names'], "Time")
+            ntp_time_index = find_channel_index(mtbop_data['channel_names'], "NTP Time")
+            if ntp_time_index is not None:
+                print ("Found NTP Time to synchronize SM18 data")
+                time_index = ntp_time_index
+                timekey = 'NTP Time'
+            elif time_index is None:
+                print ("NTP Time nor Time not found in mtbop data cannot syncronize SM18 data!!")
+                exit()
+            else:
+                print ("Found Time to synchronize SM18 data")
+                timekey = 'Time'
+                
+            print ("Time index", time_index)
+            print ("NTP Time index", ntp_time_index)
+            time_data = mtbop_data['raw_data'][:,time_index]
+
+            sm18_path = args.sm18_paths[i]
+            print("sm18_path",sm18_path)
+            sm18_df = pd.read_csv(sm18_path, delimiter="\t")
+            for key in sm18_df.keys():
+                if 'Time' not in key:
+                    interp = np.interp(time_data, sm18_df[timekey], sm18_df[key])
+                    add_column_to_mtbop_raw_data(mtbop_data, interp, key)
+                    data_point_channel_dict = {}
+                    data_point_channel_dict['name'] = key
+                    data_point_channel_dict['longname'] = key
+                    data_point_channel_dict['sensor type'] = 'Temperature'
+                    data_point_channel_dict['location'] = ''
+                    data_point_channel_dict['thermal compensator'] = ''
+                    data_point_channel_dict['direction'] = '' 
+                    data_point_channel_dict['physical_quantity'] = 'Temperature'
+                    data_point_channel_dict['longitudinal location'] = ''
+                    data_point_channel_dict['unit'] = 'K'
+                    mtbop_data['channel_dict_list'].append(data_point_channel_dict)
 
         #convert_units_to_umum(mtbop_data)
         #mtbop_data['filtered_array'] = np.zeros(np.shape(raw_data))
@@ -693,8 +734,8 @@ def apply_gradient_filter(mtbop_data, args):
 
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
         mtbop_data_list = []
-        for filepath in filepath_list:
-                mtbop_data = load_mtbop_data(filepath, override_pickle, args=args)
+        for i, filepath in enumerate(filepath_list):
+                mtbop_data = load_mtbop_data(filepath, override_pickle, args=args, i=i)
                 if not args == None:
                     if args.gradient_filter is not None:
                         apply_gradient_filter(mtbop_data, args)
@@ -738,7 +779,11 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
         return mtbop_data_list
 
 def find_channel_index(channel_names, channel_name):
-        return channel_names.index(channel_name)
+        if channel_name in channel_names:
+            return channel_names.index(channel_name)
+        else:
+            print ("find_channel_index: I couldn't find channel:", channel_name)
+            return None
 
 def find_axes(mtbop_data):
         channel_names = mtbop_data['channel_names']
@@ -1340,6 +1385,7 @@ def create_channel_name_dict(channel_dict_list):
 def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
         plot_dict = {}
         plot_dict['paths'] = paths
+        plot_dict['sm18_paths'] = args.sm18_paths
         plot_dict['filepaths'] = find_files(paths)
         plot_dict['mtbop_data_list'] = load_mtbop_list(plot_dict['filepaths'], override_pickle, args=args)
         plot_dict['plot_stress'] = plot_stress
@@ -1577,6 +1623,7 @@ def search_channel_names_for_y_axis(plot_dict, args):
 if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Plot mtbop strain data')
         parser.add_argument('paths', nargs='+', type=str)
+        parser.add_argument('--sm18-paths', nargs='+', type=str)
         parser.add_argument('-i', '--info', action='store_true', default=False)
         parser.add_argument('-c', '--channels-json', nargs='?', type=str)
         parser.add_argument('-p', '--plot', action='store_true', default=False) 
@@ -1617,6 +1664,7 @@ if __name__ == '__main__':
         parser.add_argument('--diff-plot', action='store_true', default=False)
         parser.add_argument('--rod-force', action='store_true', default=False)
         parser.add_argument('--rods', action='store_true', default=False)
+        parser.add_argument('--ansys-show-x', action='store_true', default=False)
         parser.add_argument('--warm', action='store_true', default=False)
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)

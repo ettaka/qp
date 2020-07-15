@@ -275,11 +275,65 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
 def plot_ansys_data(ax, args):
     ansys_file_data_list = parse_ansys_2d_files(args)
     if ansys_file_data_list is not None:
+        data_by_parent={}
+        parent_names = []
+        for i, data in enumerate(ansys_file_data_list):
+            parent_name = data['parent name']
+            if not parent_name in parent_names:
+                parent_names.append(parent_name)
+            if not parent_name in data_by_parent:
+                data_by_parent[parent_name] = {}
+                data_by_parent[parent_name]['children'] = []
+
+            data_by_parent[parent_name]['children'].append(data)
+
+        for parent_name in parent_names:
+            data_by_parent[parent_name]['scyl'] = {}
+            data_by_parent[parent_name]['spole'] = {}
+            data_by_parent[parent_name]['interf'] = {}
+            scyl = []
+            spole = []
+            interf = []
+            for child in data_by_parent[parent_name]['children']:
+                df = child['DataFrame']
+                scyl.append(df['scyl'])
+                spole.append(df['spole'])
+                interf.append(df['interf'])
+
+            data_by_parent[parent_name]['scyl']['raw_data'] = np.array(scyl).transpose()
+            data_by_parent[parent_name]['spole']['raw_data'] = np.array(spole).transpose()
+            data_by_parent[parent_name]['interf']['raw_data'] = np.array(interf).transpose()
+            scyl_dict = data_by_parent[parent_name]['scyl']
+            spole_dict = data_by_parent[parent_name]['scyl']
+            interf_dict = data_by_parent[parent_name]['interf']
+
+            #def compute_data_dict_avg_min_max(data_dict):
+            
+        for parent_name in parent_names:
+            scyl = data_by_parent[parent_name]['scyl']
+            spole = data_by_parent[parent_name]['spole']
+            interf = data_by_parent[parent_name]['interf']
+
+            compute_data_dict_avg_min_max(scyl)
+            compute_data_dict_avg_min_max(spole)
+            compute_data_dict_avg_min_max(interf)
+
+            #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
+            if args.key_pole:
+                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+            elif args.key_shell:
+                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
+            else:
+                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+
         for i, data in enumerate(ansys_file_data_list):
             name = data['name']
             df = data['DataFrame']
 
-            ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
+            #ax.plot(df['scyl'], df['spole'], marker='d', markersize=args.marker_size, label=name)
 
     ansys3d_file_data_list = parse_ansys_3d_files(args)
     if ansys3d_file_data_list is not None:
@@ -642,6 +696,7 @@ if __name__ == '__main__':
     parser.add_argument('--ansys-2d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-3d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-2d-bladder-files', type=str, nargs='+') 
+    parser.add_argument('--ansys-show-x', action='store_true', default=False)
     parser.add_argument('-s', '--single-coils', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
