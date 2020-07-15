@@ -290,30 +290,44 @@ def plot_ansys_data(ax, args):
         for parent_name in parent_names:
             data_by_parent[parent_name]['scyl'] = {}
             data_by_parent[parent_name]['spole'] = {}
+            data_by_parent[parent_name]['interf'] = {}
             scyl = []
             spole = []
+            interf = []
             for child in data_by_parent[parent_name]['children']:
                 df = child['DataFrame']
                 scyl.append(df['scyl'])
                 spole.append(df['spole'])
+                interf.append(df['interf'])
 
             data_by_parent[parent_name]['scyl']['raw_data'] = np.array(scyl).transpose()
             data_by_parent[parent_name]['spole']['raw_data'] = np.array(spole).transpose()
+            data_by_parent[parent_name]['interf']['raw_data'] = np.array(interf).transpose()
             scyl_dict = data_by_parent[parent_name]['scyl']
             spole_dict = data_by_parent[parent_name]['scyl']
+            interf_dict = data_by_parent[parent_name]['interf']
 
             #def compute_data_dict_avg_min_max(data_dict):
             
         for parent_name in parent_names:
             scyl = data_by_parent[parent_name]['scyl']
             spole = data_by_parent[parent_name]['spole']
+            interf = data_by_parent[parent_name]['interf']
 
             compute_data_dict_avg_min_max(scyl)
             compute_data_dict_avg_min_max(spole)
+            compute_data_dict_avg_min_max(interf)
 
             #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
-            ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name)
-            _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+            if args.key_pole:
+                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+            elif args.key_shell:
+                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
+            else:
+                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name)
+                _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
             name = data['name']
