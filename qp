@@ -1824,12 +1824,12 @@ if __name__ == '__main__':
                     elif 'Shell' in name:
                         ans_yname = 'scyl'
                     elif 'Rod' in name:
-                        ans_yname = 'rod'
+                        ans_yname = 'erod'
                         print ("Choosing rod data because that is plotted as the experimental data.")
                 for file_df in ansys_file_df_list:
                     name = file_df['name']
                     df = file_df['DataFrame']
-                    df = df[df['coilcur']>0]
+                    #df = df[df['coilcur']>0]
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
