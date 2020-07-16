@@ -1,4 +1,79 @@
 
+def replace_with_dict(string, repdict):
+    for key in repdict:
+        string = string.replace(key, repdict[key]).replace(key.lower(), repdict[key])
+    return string
+
+def create_ss_channel(channel_dict):
+    """
+    S1CS4_Comp
+    S1CS1_Comp
+    S1NCS2_Comp
+    S1NCS4_Comp
+    S1NCS3_Comp
+    S1NCS1_Comp
+    S1CS3_Comp
+    S1CS6_Comp
+    S1M5_Comp
+    S1M2_Comp
+    S1NCS7_Comp
+    S1CS7_Comp
+    S1CS2_Comp
+    S1M3_Comp
+    S1M6_Comp
+    S1M1_Comp
+    S1CS5_Comp
+    """
+    naming_convention = {
+            'S1CS8':'Top Right SC Inside',
+            'S1CS7':'Top Right SC Outside',
+            'S1CS6':'Top Left SC Inside',
+            'S1CS5':'Top Left SC Outside',
+            'S1CS4':'Bottom Left SC Inside',
+            'S1CS3':'Bottom Left SC Outside',
+            'S1CS2':'Bottom Right SC Inside',
+            'S1CS1':'Bottom Right SC Outside',
+            'S1M8':'Top Right M Inside',
+            'S1M7':'Top Right M Outside',
+            'S1M6':'Top Left m Inside',
+            'S1M5':'Top Left M Outside',
+            'S1M4':'Bottom Left M Inside',
+            'S1M3':'Bottom Left M Outside',
+            'S1M2':'Bottom Right M Inside',
+            'S1M1':'Bottom Right M Outside',
+            'S1NCS8':'Top Right NCS Inside',
+            'S1NCS7':'Top Right NCS Outside',
+            'S1NCS6':'Top Left NCS Inside',
+            'S1NCS5':'Top Left NCS Outside',
+            'S1NCS4':'Bottom Left NCS Inside',
+            'S1NCS3':'Bottom Left NCS Outside',
+            'S1NCS2':'Bottom Right NCS Inside',
+            'S1NCS1':'Bottom Right NCS Outside',
+            }
+    long_pos_replace = {
+            'NCS':'RE',
+            'SC':'LE',
+            'M':'CE'
+            }
+    ss_channel = False
+    for key in naming_convention:
+        if key in channel_dict['name']:
+            ss_channel = True
+            naming_list = naming_convention[key].split()
+            channel_dict['sensor type'] = ''
+            channel_dict['location'] = 'Vessel ' + naming_list[0] + ' ' + naming_list[1] + ' '+ naming_list[3]
+            channel_dict['unit'] = 'um/m'
+            channel_dict['thermal compensator'] = ''
+            channel_dict['direction'] = '' 
+            channel_dict['physical_quantity'] = 'Strain'
+            long_loc = naming_list[2]
+            long_loc = replace_with_dict(long_loc, long_pos_replace)
+            channel_dict['longitudinal location'] = long_loc
+            channel_dict['longname'] = get_channel_longname(channel_dict)
+            channel_dict['name'] = get_channel_longname(channel_dict)
+
+    return ss_channel, channel_dict
+
 def create_channel_dict_list(channel_names, channel_units, old_format=False, long_magnet=True):
         channel_dict_list = []
         for i, channel_name in enumerate(channel_names):
