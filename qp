@@ -20,6 +20,10 @@ from channel_utils import get_channel_longname
 from ansys_parse_utils import parse_ansys_2d_files
 from ansys_parse_utils import parse_ansys_3d_files
 
+import sympy as sym
+from sympy import lambdify
+from sympy.parsing.sympy_parser import parse_expr
+
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.autoscale(enable=True, axis='y', tight=True)
@@ -650,6 +654,152 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None,
         cpickle_dump(mtbop_data, pickle_path)
         return mtbop_data
 
+def channel_computation(symbol_list, arg_list, expression):
+    expr = parse_expr(expression,evaluate=False)
+    print ("Channel computation: ", expression)
+
+    f = lambdify(symbol_list, expr, "numpy")
+    args = [arg_list[symbol] for symbol in arg_list]
+
+    return f(*args)
+
+def get_ss_computation_dicts():
+    """
+    Vessel Bottom Right Inside Strain CE
+    Vessel Bottom Right Outside Strain CE
+    Vessel Top Left Inside Strain CE
+    Vessel Top Left Outside Strain CE
+
+    #Vessel Bottom Left Outside Strain CE
+
+    Vessel Top Left Inside Strain LE
+    Vessel Top Left Outside Strain LE
+    Vessel Bottom Right Inside Strain LE
+    Vessel Bottom Right Outside Strain LE
+    Vessel Bottom Left Inside Strain LE
+    Vessel Bottom Left Outside Strain LE
+
+    #Vessel Top Right Outside Strain LE
+
+    Vessel Bottom Right Inside Strain RE
+    Vessel Bottom Right Outside Strain RE
+    Vessel Bottom Left Inside Strain RE
+    Vessel Bottom Left Outside Strain RE
+
+    #Vessel Top Right Outside Strain RE
+    """
+    ss_channels_str_pair_list = [
+        ('Vessel Bottom Right Inside Strain CE',
+        'Vessel Bottom Right Outside Strain CE'),
+        ('Vessel Top Left Inside Strain CE',
+        'Vessel Top Left Outside Strain CE'),
+        ('Vessel Top Left Inside Strain LE',
+        'Vessel Top Left Outside Strain LE'),
+        ('Vessel Bottom Right Inside Strain LE',
+        'Vessel Bottom Right Outside Strain LE'),
+        ('Vessel Bottom Left Inside Strain LE',
+        'Vessel Bottom Left Outside Strain LE'),
+        ('Vessel Bottom Right Inside Strain RE',
+        'Vessel Bottom Right Outside Strain RE'),
+        ('Vessel Bottom Left Inside Strain RE',
+        'Vessel Bottom Left Outside Strain RE')]
+
+    ss_computation_dict_list = []
+    for pair in ss_channels_str_pair_list:
+        ss_computation_dict_list.append({})
+
+        ss_computation_dict = ss_computation_dict_list[-1]
+
+        ss_computation_dict['symbol_list'] = ['eps1','eps2']
+        ss_computation_dict['expression'] = '(eps1+eps2)/2'
+
+        ss_computation_dict['symbol_dict'] = {'eps1':pair[0],
+                                                'eps2':pair[1]
+                                             }
+        first_set_list = pair[0].split()
+        first_set = set(first_set_list)
+        second_set = set(pair[1].split())
+        intersection = first_set.intersection(second_set)
+        name = ''
+        i = 0
+        for word in first_set_list:
+            if word in intersection:
+                if i!=0:
+                    name += ' '
+                name += word
+                i+=1
+
+        ss_computation_dict['channel_name'] = name
+        ss_computation_dict['channel_unit'] = 'um/m'
+
+    for pair in ss_channels_str_pair_list:
+        ss_computation_dict_list.append({})
+
+        ss_computation_dict = ss_computation_dict_list[-1]
+
+        ss_computation_dict['symbol_list'] = ['eps1','eps2']
+        ss_computation_dict['expression'] = '(eps1-eps2)/2'
+
+        ss_computation_dict['symbol_dict'] = {'eps1':pair[0],
+                                                'eps2':pair[1]
+                                             }
+        first_set_list = pair[0].split()
+        first_set = set(first_set_list)
+        second_set = set(pair[1].split())
+        intersection = first_set.intersection(second_set)
+        name = ''
+        i = 0
+        for word in first_set_list:
+            if word in intersection:
+                if i!=0:
+                    name += ' '
+                name += word
+                i+=1
+
+        name = name.replace('Strain','Bending Strain')
+
+        ss_computation_dict['channel_name'] = name
+        ss_computation_dict['channel_unit'] = 'um/m'
+
+    return ss_computation_dict_list
+
+def add_computed_channels(mtbop_data, args):
+    ss_computation_dict_list = get_ss_computation_dicts()
+    for ss_computation_dict in ss_computation_dict_list:
+        add_computed_channel(mtbop_data, args, ss_computation_dict)
+
+def add_computed_channel(mtbop_data, args, channel_computation_dict):
+    symbol_list = channel_computation_dict['symbol_list']
+    symbol_dict = channel_computation_dict['symbol_dict']
+    expression = channel_computation_dict['expression']
+    channel_name = channel_computation_dict['channel_name']
+    channel_unit = channel_computation_dict['channel_unit']
+
+    arg_list = {}
+    for symbol in symbol_list:
+        if symbol not in symbol_dict.keys():
+            print ("add_computed_channels: I didn't find a symbol mentioned in symbol_list:", symbol)
+        chstr = symbol_dict[symbol]
+        chindex = find_channel_index(mtbop_data['channel_names'], chstr)
+        if chindex is None: 
+            print("add_computed_channels: channel name was not found:", chstr)
+            return
+        arg_list[chstr] = mtbop_data['raw_data'][:,chindex]
+
+    channel_result = channel_computation(symbol_list, arg_list, expression)
+    add_column_to_mtbop_raw_data(mtbop_data, channel_result, channel_name)
+    data_point_channel_dict = {}
+    data_point_channel_dict['name'] = channel_name
+    data_point_channel_dict['longname'] = channel_name
+    data_point_channel_dict['sensor type'] = 'Temperature'
+    data_point_channel_dict['location'] = ''
+    data_point_channel_dict['thermal compensator'] = ''
+    data_point_channel_dict['direction'] = '' 
+    data_point_channel_dict['physical_quantity'] = 'Temperature'
+    data_point_channel_dict['longitudinal location'] = ''
+    data_point_channel_dict['unit'] = channel_unit
+    mtbop_data['channel_dict_list'].append(data_point_channel_dict)
+
 def signal_compensation(mtbop_data, args):
     for compensator_index, compensator_dict in enumerate(mtbop_data['channel_dict_list']):
         if compensator_dict['thermal compensator'] == 'compensator':
@@ -737,6 +887,8 @@ def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=
         for i, filepath in enumerate(filepath_list):
                 mtbop_data = load_mtbop_data(filepath, override_pickle, args=args, i=i)
                 if not args == None:
+                    if args.channel_computation is not None:
+                        add_computed_channels(mtbop_data, args)
                     if args.gradient_filter is not None:
                         apply_gradient_filter(mtbop_data, args)
                     if args.replace_channels:
@@ -1241,6 +1393,7 @@ def get_raw_data_by_name(mtbop_data, channel_name):
         return mtbop_data['raw_data'][:,index]
 
 def add_column_to_mtbop_raw_data(mtbop_data, data, name):
+    print ('Adding a new channel:', name)
     mtbop_data['channel_names'].append(name)
     mtbop_data['raw_data'] = np.c_[mtbop_data['raw_data'], data]
 
@@ -1649,6 +1802,7 @@ if __name__ == '__main__':
         parser.add_argument('--set-xlim', type=str)
         parser.add_argument('--set-ylim', type=str)
         parser.add_argument('--comment', type=str)
+        parser.add_argument('--channel-computation', type=str, default=None)
         parser.add_argument('--grid', action='store_true', default=True) 
         parser.add_argument('--no-thermal-compensation', action='store_true', default=False) 
         parser.add_argument('--use-compensator-average', action='store_true', default=False) 
