@@ -1418,7 +1418,7 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
     if not x_axis in selected_channel_names:
         print("I did't find the channel that you chose with -x (or default 'Current' if you didn't select)")
         print("These are the available channels that you selected with -c (" + x_axis + "):")
-        print('\n'.join(selected_channel_names))
+        print("'\n'".join(selected_channel_names))
         exit()
 
     if not y_axis == None:
@@ -1426,7 +1426,7 @@ def check_selected_channels(selected_channel_names, x_axis, y_axis, plot_dict):
             if not selected_y in selected_channel_names:
                 print("I did't find the channel '"+selected_y+"' that you chose with -y")
                 print("These are the available channels that you selected with -c (" + selected_y + "):")
-                print('\n'.join(selected_channel_names))
+                print("'\n'".join(selected_channel_names))
                 exit()
 
 def compute_min_max_avg(plot_dict, y_axis_names):
@@ -1461,7 +1461,7 @@ def print_plot_info(plot_dict):
     print("!!!!!                            Plot Info                            !!!!!")
     print("!!!!! ----------------------------------------------------------------!!!!!")
     print("Available channel names:")
-    print('\n'.join(plot_dict['selected_channel_names']))
+    print("'\n'".join(plot_dict['selected_channel_names']))
 
 def find_common_location(plot_dict):
     used_names = plot_dict['y_axis']
@@ -1694,6 +1694,8 @@ if __name__ == '__main__':
             args.last_points = True
 
         plt.rcParams.update({'font.size':args.font_size})
+        plt.rcParams.update({'axes.labelsize':'large'})
+        plt.rcParams.update({'axes.titlesize':args.font_size})
 
         fig.set_figheight(args.fig_height)
         fig.set_figwidth(args.fig_width)
@@ -1829,7 +1831,7 @@ if __name__ == '__main__':
                 for file_df in ansys_file_df_list:
                     name = file_df['name']
                     df = file_df['DataFrame']
-                    #df = df[df['coilcur']>0]
+                    df = df[df['Step']!='1warm']
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
