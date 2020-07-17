@@ -731,6 +731,7 @@ def get_ss_computation_dicts():
 
         ss_computation_dict['channel_name'] = name
         ss_computation_dict['channel_unit'] = 'um/m'
+        ss_computation_dict['physical_quantity'] = 'Strain'
 
     for pair in ss_channels_str_pair_list:
         ss_computation_dict_list.append({})
@@ -760,6 +761,7 @@ def get_ss_computation_dicts():
 
         ss_computation_dict['channel_name'] = name
         ss_computation_dict['channel_unit'] = 'um/m'
+        ss_computation_dict['physical_quantity'] = 'Bending Strain'
 
     return ss_computation_dict_list
 
@@ -791,11 +793,11 @@ def add_computed_channel(mtbop_data, args, channel_computation_dict):
     data_point_channel_dict = {}
     data_point_channel_dict['name'] = channel_name
     data_point_channel_dict['longname'] = channel_name
-    data_point_channel_dict['sensor type'] = 'Temperature'
+    data_point_channel_dict['sensor type'] = ''
     data_point_channel_dict['location'] = ''
     data_point_channel_dict['thermal compensator'] = ''
     data_point_channel_dict['direction'] = '' 
-    data_point_channel_dict['physical_quantity'] = 'Temperature'
+    data_point_channel_dict['physical_quantity'] = channel_computation_dict['physical_quantity']
     data_point_channel_dict['longitudinal location'] = ''
     data_point_channel_dict['unit'] = channel_unit
     mtbop_data['channel_dict_list'].append(data_point_channel_dict)
