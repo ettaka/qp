@@ -198,7 +198,7 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shi
     ax2 = ax.twinx()
     ax3 = ax.twinx()
     #if args.set_xlim != None: ax.set_xlim(args.set_xlim)
-    #if args.set_ylim != None: ax.set_ylim(args.set_ylim)
+    if args.set_theoretical_key_ylim != None: ax.set_ylim(args.set_theoretical_key_ylim)
     ax.grid(args.grid)
 
     for i,coil_size_dict in enumerate(coil_size_dicts):
@@ -391,6 +391,7 @@ if __name__ == '__main__':
     parser.add_argument('--fit', action='store_true', default=False)
     parser.add_argument('--set-xlim', nargs=2, type=float)
     parser.add_argument('--set-ylim', nargs=2, type=float)
+    parser.add_argument('--set-theoretical-key-ylim', nargs=2, type=float)
     parser.add_argument('--shell-slope', type=float, default = 0.12)
     parser.add_argument('--pole-slope', type=float, default = -0.20)
     parser.add_argument('--grid', action='store_true', default=False)

@@ -296,6 +296,8 @@ def plot_ansys_data(ax, args):
             interf = []
             for child in data_by_parent[parent_name]['children']:
                 df = child['DataFrame']
+                df = df[~df['name'].str.contains('cur')]
+                df = df[~df['name'].str.contains('cold')]
                 scyl.append(df['scyl'])
                 spole.append(df['spole'])
                 interf.append(df['interf'])
