@@ -311,7 +311,7 @@ def plot_ansys_data(ax, args):
 
             #def compute_data_dict_avg_min_max(data_dict):
             
-        for parent_name in parent_names:
+        for i,parent_name in enumerate(parent_names):
             scyl = data_by_parent[parent_name]['scyl']
             spole = data_by_parent[parent_name]['spole']
             interf = data_by_parent[parent_name]['interf']
@@ -320,15 +320,18 @@ def plot_ansys_data(ax, args):
             compute_data_dict_avg_min_max(spole)
             compute_data_dict_avg_min_max(interf)
 
+            data_color=args.curve_colors[i%len(args.curve_colors)]
+            #data_marker=markers[i%len(markers)]
+
             #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
             if args.key_pole:
-                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name)
+                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
-                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name)
+                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
-                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name)
+                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color)
                 _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
@@ -484,10 +487,7 @@ def plot_tf(ax, times_called, filepath, args):
      
         pk_npk_dict = create_pk_npk_dict(pk_npk_file)
 
-        if args.curve_colors==None:
-            colors = ['r','y','b','c','m','y','k']
-        else:
-            colors = args.curve_colors
+        colors = args.curve_colors
 
         if args.curve_markers==None:
             markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
@@ -764,6 +764,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.curve_colors is None:
+        args.curve_colors = ['r','y','b','c','m','y','k']
+
     if args.plot_style == 'TF paper':
         args.set_xlim = "0 120"
         args.set_ylim = "-140 0" 
@@ -797,6 +800,7 @@ if __name__ == '__main__':
 
     paths = args.paths
     plotnames = []
+
     for i, filepath in enumerate(paths):
         #plt.cla()
         print("filepath", filepath)
