@@ -325,13 +325,13 @@ def plot_ansys_data(ax, args):
 
             #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
             if args.key_pole:
-                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color)
+                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
-                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color)
+                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
-                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color)
+                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
                 _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
@@ -452,12 +452,10 @@ def plot_tf(ax, times_called, filepath, args):
             print("creating image file", imagename+'.png')
             if args.legend_outside:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.13), fancybox=True, shadow=True, ncol=2)
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
-                        fontsize=args.legend_font_size)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
             else:
                 lgd = ax.legend(loc='best')
-                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1,
-                        fontsize=args.legend_font_size)
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
         exit()
 
     if args.key_shell:
@@ -688,11 +686,11 @@ def set_ax_parameters(ax, args):
 #        lgd = ax.legend(loc='best')
 
     if args.legend_location == 'right outside':
-        lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1, fontsize=args.legend_font_size)
+        lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
     elif args.legend_location == 'bottom outside':
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1, fontsize=args.legend_font_size)
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.12), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
     else:
-        lgd = ax.legend(loc=args.legend_location, numpoints=1, fontsize=args.legend_font_size)
+        lgd = ax.legend(loc=args.legend_location, numpoints=1)
 
     return lgd, name_suffix
 
@@ -765,6 +763,7 @@ if __name__ == '__main__':
     parser.add_argument('--bladders', action='store_true', default=False) 
     parser.add_argument('--sg-vs-fbg', action='store_true', default=False) 
     parser.add_argument('--delete-dev-higher', type=float, default=1.)
+    parser.add_argument('--errorbar-capsize', type=float, default=2.)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -773,12 +772,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.curve_colors is None:
-        args.curve_colors = ['r','y','b','c','m','y','k']
+        args.curve_colors = ['r','g','k','c','m','y','b']
 
     if args.plot_style == 'TF paper':
         args.set_xlim = "0 120"
         args.set_ylim = "-140 0" 
-        args.font_size = 12 
+        args.font_size = 12
         args.legend_font_size = 12
         args.no_pk_legend = True
         args.fig_width = 8
@@ -795,10 +794,27 @@ if __name__ == '__main__':
         args.fig_width = 30
         args.fig_height = 20
         
-    fig.set_figheight(args.fig_height)
-    fig.set_figwidth(args.fig_width)
-    plt.rcParams.update({'font.size':args.font_size})
-    plt.title(args.title)
+    #fig.set_figheight(args.fig_height)
+    #fig.set_figwidth(args.fig_width)
+    plt.rcParams.update({'errorbar.capsize':args.errorbar_capsize})
+    #plt.rcParams.update({'font.size':30})
+    #plt.title(args.title)
+
+    #params = {'legend.fontsize': '20',
+    #      'figure.figsize': (1, 1),
+    #     'axes.labelsize': '200',
+    #     'axes.titlesize':'x-large',
+    #     'xtick.labelsize':'x-large',
+    #     'ytick.labelsize':'x-large'}
+    #matplotlib.rcParams.update(params)
+    
+    #style = {axes.titlesize : 24,
+    #axes.labelsize : 20,
+    #xtick.labelsize : 16,
+    #ytick.labelsize : 16}
+
+    #matplotlib.rcParams.update(style)
+    
 
     if args.ansys_2d_files is not None or args.ansys_3d_files is not None:
         plot_ansys_data(ax, args)
@@ -831,10 +847,8 @@ if __name__ == '__main__':
             if args.image_name != '': imagename = args.image_name
             print("creating image file", imagename+'.png')
             if args.legend_outside:
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, 
-                        fontsize=args.legend_font_size)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
             else:
-                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1,
-                        fontsize=args.legend_font_size)
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
 
 
