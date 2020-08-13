@@ -325,13 +325,13 @@ def plot_ansys_data(ax, args):
 
             #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
             if args.key_pole:
-                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
+                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
-                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
+                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
                 _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
-                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=4)
+                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
                 _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
@@ -688,7 +688,7 @@ def set_ax_parameters(ax, args):
     if args.legend_location == 'right outside':
         lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
     elif args.legend_location == 'bottom outside':
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.12), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.18), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
     else:
         lgd = ax.legend(loc=args.legend_location, numpoints=1)
 
@@ -737,10 +737,10 @@ if __name__ == '__main__':
     parser.add_argument('--no-ylabel', action='store_true', default=False) 
     parser.add_argument('--font-size', type=float, default=10)
     parser.add_argument('--legend-font-size', type=float, default=10)
-    parser.add_argument('--marker-size', type=float, default=8)
+    parser.add_argument('--marker-size', type=float, default=4)
     parser.add_argument('--line-width', type=float, default=1.5)
-    parser.add_argument('--fig-height', type=float, default=6)
-    parser.add_argument('--fig-width', type=float, default=8)
+    parser.add_argument('--fig-height', type=float, default=3)
+    parser.add_argument('--fig-width', type=float, default=4)
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--image-name', type=str, default='')
     parser.add_argument('-fgwa', '--fix-gauges-with-average', action='store_true', default=False) 
@@ -794,8 +794,8 @@ if __name__ == '__main__':
         args.fig_width = 30
         args.fig_height = 20
         
-    #fig.set_figheight(args.fig_height)
-    #fig.set_figwidth(args.fig_width)
+    fig.set_figheight(args.fig_height)
+    fig.set_figwidth(args.fig_width)
     plt.rcParams.update({'errorbar.capsize':args.errorbar_capsize})
     #plt.rcParams.update({'font.size':30})
     #plt.title(args.title)
