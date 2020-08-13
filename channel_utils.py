@@ -141,7 +141,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                         channel_dict['sensor type'] = 'NTP'
                         channel_dict['longname'] = 'NTP Time'
                         channel_dict['name'] = 'NTP Time'
-                    elif 'pressure' in channel_name.lower() or ('bladder' in channel_name.lower()):
+                    elif 'pressure' in channel_name.lower() or ('bladder' in channel_name.lower()) or 'rods_p' in channel_name.lower():
                         channel_dict['unit'] = 'Bar'
                         channel_dict['physical_quantity'] = 'Pressure'
                         if 'rod' in channel_name.lower():
