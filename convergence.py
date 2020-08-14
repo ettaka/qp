@@ -40,9 +40,12 @@ def read_path(path):
         if 'F Convergence Norm' in line:
             values['fconv'][time].append(float(line.split()[3]))
         if 'FORCE CONVERGENCE VALUE' in line:
-            values['fconvval'][time].append(float(line.split()[4]))
-            values['fconvcrit'][time].append(float(line.split()[6]))
-            fconv_changed = True
+            try:
+                values['fconvval'][time].append(float(line.split()[4]))
+                values['fconvcrit'][time].append(float(line.split()[6]))
+                fconv_changed = True
+            except:
+                pass
         if 'Iter.' in line and 'CP=' in line and time!=0:
             try:
                 values['cpval'][time].append(float(line.split('CP=')[1]))
