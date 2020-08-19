@@ -884,6 +884,28 @@ def apply_gradient_filter(mtbop_data, args):
     remove_indexes = np.argwhere(mean_dev/mean_abs_gradient>args.gradient_filter)
     mtbop_data['raw_data'] = np.delete(raw_data, remove_indexes, axis=0)
 
+def ignore_channels(mtbop_data, i, args):
+    if args.ignore_channels_filewise is not None:
+        ignore_words = args.ignore_channels_filewise[i].split()
+        for j, channel in enumerate(mtbop_data['channel_dict_list']):
+            if any(ignore_word in channel['name'] for ignore_word in ignore_words):
+                ignored_channel_name = 'Ignored Channel' +str(i)+str(j)
+                channel['name'] = ignored_channel_name
+                channel['physical_quantity'] = ignored_channel_name
+                mtbop_data['channel_names'][j] = ignored_channel_name
+
+def require_channels(mtbop_data, i, args):
+    if args.require_channels_filewise is not None:
+        require_words = args.require_channels_filewise[i].split()
+        print ('test channels', mtbop_data['channel_dict_list'])
+        for j, channel in enumerate(mtbop_data['channel_dict_list']):
+            print ('test channel', channel['name'])
+            if not any(require_word in channel['name'] for require_word in require_words):
+                ignored_channel_name = 'Ignored Channel' +str(i)+str(j)
+                channel['name'] = ignored_channel_name
+                channel['physical_quantity'] = ignored_channel_name
+                mtbop_data['channel_names'][j] = ignored_channel_name
+
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
         mtbop_data_list = []
         for i, filepath in enumerate(filepath_list):
@@ -1537,6 +1559,11 @@ def create_channel_name_dict(channel_dict_list):
                 channel_name_dict[channel_dict['name']]=channel_dict
         return channel_name_dict
 
+def require_and_ignore(plot_dict, args):
+    for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
+        ignore_channels(mtbop_data, i, args)
+        require_channels(mtbop_data, i, args)
+
 def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
         plot_dict = {}
         plot_dict['paths'] = paths
@@ -1550,6 +1577,19 @@ def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
         else:
                 plot_dict['channel_dict_list'] = create_channel_data(plot_dict['mtbop_data_list'])
 
+
+        if args.ignore_channels_filewise is not None:
+            if len(args.ignore_channels_filewise) != len(plot_dict['mtbop_data_list']):
+                print("You used --ignore-channels-filewise but the file list length is different from the ignore channels length, I'm ignoring this flag...")
+                args.ignore_channels_filewise = None
+
+        if args.require_channels_filewise is not None:
+            if len(args.require_channels_filewise) != len(plot_dict['mtbop_data_list']):
+                print("You used --require-channels-filewise but the file list length is different from the require channels length, I'm ignoring this flag...")
+                args.require_channels_filewise = None
+
+        require_and_ignore(plot_dict, args)
+        
         if plot_stress:
             add_stress_channel_data(plot_dict)
             compute_stresses(plot_dict, args)
@@ -1784,6 +1824,8 @@ if __name__ == '__main__':
         parser.add_argument('-p', '--plot', action='store_true', default=False) 
         parser.add_argument('-x', '--x-axis', type=str)
         parser.add_argument('-y', '--y-axis', nargs='+', type=str)
+        parser.add_argument('-icw', '--ignore-channels-filewise', nargs='+', type=str)
+        parser.add_argument('-rcw', '--require-channels-filewise', nargs='+', type=str)
         parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
         parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
         parser.add_argument('-m', '--markevery', type=int) 
