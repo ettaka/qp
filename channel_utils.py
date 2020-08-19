@@ -132,7 +132,8 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                         channel_dict['sensor type'] = 'Resistive'
                         channel_dict['sensor type'] = ''
 
-                    if channel_name == 'Current':
+                    if channel_name.lower() == 'current':
+                        channel_dict['name'] = 'Current'
                         channel_dict['physical_quantity'] = 'Current'
                     elif channel_name == 'Time':
                         channel_dict['physical_quantity'] = 'Time'
