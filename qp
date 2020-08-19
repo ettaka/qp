@@ -422,7 +422,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
-                curveline.set_dashes([10,10])
+                curveline.set_dashes([5,5])
 
         mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[0])
         mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
@@ -1600,7 +1600,7 @@ def create_plot_dict(paths, channels_json, plot_stress=False, args=None):
             print("Adding Time From Start channel")
             add_relative_time_channel_data(plot_dict)
             add_relative_time(plot_dict, args)
-
+                    
         plot_dict['channel_name_dict'] = create_channel_name_dict(plot_dict['channel_dict_list'])
 
         return plot_dict 
