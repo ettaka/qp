@@ -23,6 +23,7 @@ from ansys_parse_utils import parse_ansys_3d_files
 import sympy as sym
 from sympy import lambdify
 from sympy.parsing.sympy_parser import parse_expr
+from sm18_tdms import load_sm18_tdm
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -626,7 +627,11 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None,
 
             sm18_path = args.sm18_paths[i]
             print("sm18_path",sm18_path)
-            sm18_df = pd.read_csv(sm18_path, delimiter="\t")
+            if sm18_path.split(".")[-1] == 'TDM':
+                sm18_df = load_sm18_tdm(sm18_path)
+            else:
+                sm18_df = pd.read_csv(sm18_path, delimiter="\t")
+
             for key in sm18_df.keys():
                 if 'Time' not in key:
                     interp = np.interp(time_data, sm18_df[timekey], sm18_df[key])
