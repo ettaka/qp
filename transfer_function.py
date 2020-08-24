@@ -699,7 +699,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot transfer function')
     parser.add_argument('paths', nargs='+', type=str)
     parser.add_argument('-t', '--type', type=int, default=1) 
-    parser.add_argument('-pk', '--pk-npk-file', type=str, default='TRANSFER1_PK_NPK_simple.txt') 
+    parser.add_argument('-pk', '--pk-npk-file', type=str, default=None) 
     parser.add_argument('--ansys-2d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-3d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-2d-bladder-files', type=str, nargs='+') 
