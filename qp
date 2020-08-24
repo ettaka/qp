@@ -632,6 +632,8 @@ def load_mtbop_data(filepath, override_pickle=False, header_lines=38, args=None,
             else:
                 sm18_df = pd.read_csv(sm18_path, delimiter="\t")
 
+            sm18_df = sm18_df.dropna()
+
             for key in sm18_df.keys():
                 if 'Time' not in key:
                     interp = np.interp(time_data, sm18_df[timekey], sm18_df[key])
@@ -1879,8 +1881,8 @@ if __name__ == '__main__':
         parser.add_argument('--y-sort-labels', nargs='+', type=str)
         parser.add_argument('--ansys-2d-files', nargs='+', type=str)
         parser.add_argument('--ansys-3d-files', nargs='+', type=str)
-        parser.add_argument('--fig-height', type=float, default=6)
-        parser.add_argument('--fig-width', type=float, default=8)
+        parser.add_argument('--fig-height', type=float, default=3)
+        parser.add_argument('--fig-width', type=float, default=4)
         #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
         args = parser.parse_args()
