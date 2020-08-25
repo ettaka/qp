@@ -918,10 +918,41 @@ def require_channels(mtbop_data, i, args):
                 channel['physical_quantity'] = ignored_channel_name
                 mtbop_data['channel_names'][j] = ignored_channel_name
 
+def np_argnearest(array, value):
+    i = np.argmin(np.abs(array-value))
+    return i
+
+def cut_ranges_mtbop_data(mtbop_data, args):
+    if args.cut_range_name is not None:
+        total_deltax = 0
+        channel_names = mtbop_data['channel_names']
+        crindex = find_channel_index(channel_names, args.cut_range_name)
+        for cut_range in args.cut_ranges:
+            raw_data = mtbop_data['raw_data']
+            range_l = cut_range.split()
+            xmin = int(range_l[0])-total_deltax
+            xmax = int(range_l[1])-total_deltax
+            imin = np_argnearest(raw_data[:,crindex],xmin)
+            imax = np_argnearest(raw_data[:,crindex],xmax)
+            print ("xmin,xmax", xmin,xmax)
+            print ("imin imax", imin,imax)
+            rows, cols = np.shape(raw_data)
+            if not args.cut_range_no_move:
+                deltax = raw_data[imax,crindex] - raw_data[imin,crindex]
+                total_deltax += deltax
+                mtbop_data['raw_data'][imax:,crindex] -= deltax
+            indexes = np.r_[0:imin,imax:rows-1]
+            mtbop_data['raw_data'] = raw_data[indexes,:]
+    else:
+        print ("You had --cut-ranges but no --cut-range-name, I'm ignoring this...")
+        
+
 def load_mtbop_list(filepath_list, override_pickle=False, header_lines=38, args=None):
         mtbop_data_list = []
         for i, filepath in enumerate(filepath_list):
                 mtbop_data = load_mtbop_data(filepath, override_pickle, args=args, i=i)
+                if args.cut_ranges is not None: 
+                    cut_ranges_mtbop_data(mtbop_data, args)
                 if not args == None:
                     if args.channel_computation is not None:
                         add_computed_channels(mtbop_data, args)
@@ -1867,6 +1898,9 @@ if __name__ == '__main__':
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
         parser.add_argument('--fit-range', type=str)
+        parser.add_argument('--cut-ranges', type=str, nargs='+', default=None)
+        parser.add_argument('--cut-range-name', type=str, nargs='+', default='Time')
+        parser.add_argument('--cut-range-no-move', action='store_true', default=False)
         parser.add_argument('--inspect', action='store_true', default=False)
         parser.add_argument('--rename', type=str, default=None)
         parser.add_argument('--last-points', action='store_true', default=False)
