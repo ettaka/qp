@@ -21,6 +21,7 @@ from channel_utils import create_channel_dict_list
 from ansys_parse_utils import parse_ansys_2d_files
 from ansys_parse_utils import parse_ansys_3d_files
 from ansys_parse_utils import parse_ansys_2d_master_to_master
+from ansys_parse_utils import octname_to_Qname
 
 markers = ['o', '^', 'v', '<', '>', 's', 'p', '*', 'h', 'd', '1', '2', '3', '4']
 
@@ -294,20 +295,25 @@ def plot_ansys_data(ax, args):
             scyl = []
             spole = []
             interf = []
+            names = []
             for child in data_by_parent[parent_name]['children']:
                 df = child['DataFrame']
                 df = df[~df['name'].str.contains('cur')]
-                df = df[~df['name'].str.contains('cold')]
+                if not args.TF2:
+                    df = df[~df['name'].str.contains('cold')]
                 scyl.append(df['scyl'])
                 spole.append(df['spole'])
                 interf.append(df['interf'])
+                names.append(child['name'])
 
             data_by_parent[parent_name]['scyl']['raw_data'] = np.array(scyl).transpose()
             data_by_parent[parent_name]['spole']['raw_data'] = np.array(spole).transpose()
             data_by_parent[parent_name]['interf']['raw_data'] = np.array(interf).transpose()
+            data_by_parent[parent_name]['names'] = names
             scyl_dict = data_by_parent[parent_name]['scyl']
             spole_dict = data_by_parent[parent_name]['scyl']
             interf_dict = data_by_parent[parent_name]['interf']
+            names = data_by_parent[parent_name]['names']
 
             #def compute_data_dict_avg_min_max(data_dict):
             
@@ -315,24 +321,48 @@ def plot_ansys_data(ax, args):
             scyl = data_by_parent[parent_name]['scyl']
             spole = data_by_parent[parent_name]['spole']
             interf = data_by_parent[parent_name]['interf']
+            names = data_by_parent[parent_name]['names']
 
             compute_data_dict_avg_min_max(scyl)
             compute_data_dict_avg_min_max(spole)
             compute_data_dict_avg_min_max(interf)
 
             data_color=args.curve_colors[i%len(args.curve_colors)]
-            #data_marker=markers[i%len(markers)]
 
             #ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name)
             if args.key_pole:
-                ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
-                _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                if args.ansys_single_coils:
+                    for j in range(4):
+                        name = names[j]
+                        name = octname_to_Qname(name)
+                        data_color=args.curve_colors[j%len(args.curve_colors)]
+                        data_marker=markers[j%len(markers)]
+                        ax.plot(13.+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                else:
+                    ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
+                    _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
-                ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
-                _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                if args.ansys_single_coils:
+                    for j in range(4):
+                        name = names[j]
+                        name = octname_to_Qname(name)
+                        data_color=args.curve_colors[j%len(args.curve_colors)]
+                        data_marker=markers[j%len(markers)]
+                        ax.plot(13.+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                else:
+                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=name, color=data_color, linewidth=2.5)
+                    _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
-                ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
-                _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                if args.ansys_single_coils:
+                    for j in range(4):
+                        name = names[j]
+                        name = octname_to_Qname(name)
+                        data_color=args.curve_colors[j%len(args.curve_colors)]
+                        data_marker=markers[j%len(markers)]
+                        ax.plot(scyl['raw_data'][:,j], spole['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                else:
+                    ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
+                    _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
             name = data['name']
@@ -704,9 +734,11 @@ if __name__ == '__main__':
     parser.add_argument('--ansys-3d-files', type=str, nargs='+') 
     parser.add_argument('--ansys-2d-bladder-files', type=str, nargs='+') 
     parser.add_argument('--ansys-show-x', action='store_true', default=False)
+    parser.add_argument('--ansys-single-coils', action='store_true', default=False)
     parser.add_argument('-s', '--single-coils', action='store_true', default=False) 
     parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
     parser.add_argument('-nmp', '--no-measurements-plot', action='store_true', default=False) 
+    parser.add_argument('--TF2', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
     parser.add_argument('-nerr', '--no-average-error', action='store_false', default=True) 
     parser.add_argument('-nshav', '--no-neighbour-shell-averages', action='store_false', default=True) 
