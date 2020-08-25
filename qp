@@ -357,8 +357,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(x_nominal-0.17, 0.214, 'Nominal', rotation=90, transform = ax.transAxes)
-                        ax.text(0.8+0.005, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes)
+                        ax.text(x_nominal/1.2, 0.214, 'Nominal', rotation=90, transform = ax.transAxes, ha='right')
+                        ax.text(1/1.2, 0.214, 'Ultimate', rotation=90, transform = ax.transAxes, ha='right')
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
