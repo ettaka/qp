@@ -106,7 +106,7 @@ def autoscale_y(args):
                     if ymin == None or ymin > test:
                         ymin = test
                     test = np.max(visible_y)
-                    if ymin == None or ymax < test:
+                    if ymax == None or ymax < test:
                         ymax = test
 
             print("autoscale_y: set ylim:", ymin, ymax)
@@ -387,6 +387,11 @@ def plot_mtbop_data(mtbop_data, args=None):
         jump_points = 100
 
         if len(xdata) <= 10000: jump_points = 1
+
+        if mtbop_data['plot delta']:
+            if args.delta_zero_location is not None:
+                loc = np.abs(xdata-args.delta_zero_location).argmin()
+                ydata -= ydata[loc]
 
         if mtbop_data['label type'] == None:
             if 'longname' in y_axis_dict: 
@@ -1841,6 +1846,7 @@ if __name__ == '__main__':
         parser.add_argument('--print-max-current', action='store_true', default=False) 
         parser.add_argument('--save-fig', type=str)
         parser.add_argument('-d', '--plot-delta', action='store_true', default=False) 
+        parser.add_argument('--delta-zero-location', type=float, default=None) 
         parser.add_argument('--min-max-avg', nargs='+', type=str)
         parser.add_argument('--show-min-max-labels', action='store_true', default=False) 
         parser.add_argument('--normalize-x', type=str)
@@ -2017,7 +2023,11 @@ if __name__ == '__main__':
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
-                        if args.plot_delta: ydata -= ydata.values[0]
+                        if args.plot_delta: 
+                            loc = 0
+                            if args.delta_zero_location is not None:
+                                loc = np.abs(xdata.values-args.delta_zero_location).argmin()
+                            ydata -= ydata.values[loc]
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
@@ -2040,7 +2050,11 @@ if __name__ == '__main__':
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
-                        if args.plot_delta: ydata -= ydata.values[0]
+                        if args.plot_delta: 
+                            loc = 0
+                            if args.delta_zero_location is not None:
+                                loc = np.abs(xdata.values-args.delta_zero_location).argmin()
+                            ydata -= ydata.values[loc]
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
@@ -2050,7 +2064,7 @@ if __name__ == '__main__':
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
             else:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.13), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
