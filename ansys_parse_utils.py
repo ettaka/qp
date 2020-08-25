@@ -230,6 +230,12 @@ def parse_ansys_3d_files(args):
 
     return parsed_file_data_list
 
+def octname_to_Qname(octname):
+    num = octname.split('oct')[1]
+    if num == '':
+        num = '_1'
+    return 'Q'+num[1]
+
 def test3d_parse():
     args = argparse.Namespace(ansys_3d_files=['QXF_3D_20200408-113003_MQXFB_i450_npk_alrod'])
     parsed_file_data_list = parse_ansys_3d_files(args)
