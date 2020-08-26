@@ -374,6 +374,10 @@ def plot_mtbop_data(mtbop_data, args=None):
         if mtbop_data['plot delta']:
             y_axis_dict['label'] = '$\Delta$' + y_axis_dict['label']
 
+        x_axis_dict['label'] = x_axis_dict['label'].replace('Coil', 'Pole')
+        y_axis_dict['label'] = y_axis_dict['label'].replace('Coil', 'Pole')
+
+
         if mtbop_data['normalize x'] != None:
             xdata = x_axis_dict['raw_data']/float(mtbop_data['normalize x'])
         else:
@@ -399,7 +403,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             else: 
                 curve_label=y_axis_dict['name']
         elif mtbop_data['label type'] == 'filename':
-            curve_label=mtbop_data['filepath'].replace(FILETYPE, '')
+            curve_label=mtbop_data['filepath'].replace(FILETYPE, '').replace('.txt','')
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']) and not mtbop_data['show_min_max_labels']:
                 print("MIN MAX", mtbop_data['show_min_max_labels'])
                 curve_label=''
@@ -410,7 +414,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             curve_label = curve_label.replace(w + ' ','')
             curve_label = curve_label.replace(w,'')
 
-        linewidth = 3
+        linewidth = 2
         if mtbop_data['markevery']==1:
             linewidth = 0.5
             print ("mark every 1, changing linewidth to ", linewidth)
@@ -1953,7 +1957,6 @@ if __name__ == '__main__':
         info = args.info
         channels_json = args.channels_json
         #if channels_json == None: channels_json = 'channels.json'
-        x_axis = args.x_axis
         plot = args.plot
         if not args.y_axis == None: plot = True
         plot_all = False
@@ -1962,7 +1965,8 @@ if __name__ == '__main__':
         override_pickle = args.override_pickle
         markevery = args.markevery
 
-        if x_axis == None: x_axis = 'Current'
+        if args.x_axis == None: args.x_axis = 'Current'
+        x_axis = args.x_axis
         plot_dict = create_plot_dict(paths, channels_json, plot_stress, args=args)
         plot_dict['x_axis'] = x_axis
         plot_dict['markevery'] = markevery
