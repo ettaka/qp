@@ -410,6 +410,11 @@ def plot_mtbop_data(mtbop_data, args=None):
             curve_label = curve_label.replace(w + ' ','')
             curve_label = curve_label.replace(w,'')
 
+        linewidth = 3
+        if mtbop_data['markevery']==1:
+            linewidth = 0.5
+            print ("mark every 1, changing linewidth to ", linewidth)
+
         if args.fit:
             max_x = np.max(xdata)
             fit_max_x = 1.6 * max_x
@@ -421,11 +426,11 @@ def plot_mtbop_data(mtbop_data, args=None):
             dx = max_x-lower_limit
             xfit_extension = np.linspace(max_x,fit_max_x,dindex/dx*(fit_max_x-max_x))
             xfit = np.concatenate([xdata[lower_index:],xfit_extension])
-            ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=3)
+            ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=linewidth)
         if mtbop_data['no_markers']:
-            curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=3)
+            curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=linewidth)
         else:
-            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label)
+            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label,linewidth=linewidth)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([5,5])
@@ -1981,11 +1986,14 @@ if __name__ == '__main__':
         for FT in FILETYPES:
             args.path_base_names = [path.replace(FT, '') for path in args.path_base_names]
         if args.save_fig == None and args.y_axis != None: 
-            args.save_fig = '-'.join([name.replace(' ','_') for name in args.path_base_names]) + '-' + '-'.join([name.replace(' ','_') for name in args.y_axis])
+            args.save_fig = '-'.join([name.replace(' ','_') for name in args.path_base_names]) + '-' + args.x_axis + 'VS'+'-'.join([name.replace(' ','_') for name in args.y_axis])
             if args.comment != None:
                 args.save_fig += '_' + args.comment
             args.save_fig = args.save_fig.replace(' ', '_')
+            if args.cut_ranges is not None:
+                args.save_fig += '_cut_ranges_'
             args.save_fig += '.png'
+
         elif args.save_fig == '':
             args.save_fig =  'plot.png'
 
@@ -2096,9 +2104,9 @@ if __name__ == '__main__':
 
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
             else:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.3), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
@@ -2112,7 +2120,7 @@ if __name__ == '__main__':
                 plt.show()
             else:
                 print("Saving plot:", args.save_fig)
-                plt.savefig(args.save_fig, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                plt.savefig(args.save_fig, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 
