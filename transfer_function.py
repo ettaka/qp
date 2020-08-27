@@ -350,7 +350,7 @@ def plot_ansys_data(ax, args):
                         data_marker=markers[j%len(markers)]
                         ax.plot(13.+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
                 else:
-                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=name, color=data_color, linewidth=2.5)
+                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
                     _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
                 if args.ansys_single_coils:
@@ -482,10 +482,10 @@ def plot_tf(ax, times_called, filepath, args):
             print("creating image file", imagename+'.png')
             if args.legend_outside:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.13), fancybox=True, shadow=True, ncol=2)
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, dpi=200)
             else:
                 lgd = ax.legend(loc='best')
-                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1, dpi=200)
         exit()
 
     if args.key_shell:
@@ -660,7 +660,7 @@ def plot_tf(ax, times_called, filepath, args):
 
 
         #lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.1), fancybox=True, shadow=True, ncol=2)
-        #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        #plt.savefig(plotname, bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=200)
     return plotname
 
 def fit_data(ax, xdata, ydata, fit_range, fit_label, args):
@@ -879,8 +879,8 @@ if __name__ == '__main__':
             if args.image_name != '': imagename = args.image_name
             print("creating image file", imagename+'.png')
             if args.legend_outside:
-                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_extra_artists=(lgd,), bbox_inches='tight', numpoints=1, dpi=200)
             else:
-                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1)
+                plt.savefig(imagename + '.png', bbox_inches='tight', numpoints=1, dpi=200)
 
 
