@@ -444,6 +444,12 @@ def plot_mtbop_data(mtbop_data, args=None):
         mtbop_data['last_points_data'][mtbop_data['y_axis']['name']].append(ydata[-1])
         mtbop_data['last_points_data']['filepath'].append(mtbop_data['filepath'])
 
+        mtbop_data['max_points_data'][mtbop_data['y_axis']['name']].append(ydata.max())
+        mtbop_data['max_points_data']['filepath'].append(mtbop_data['filepath'])
+
+        mtbop_data['min_points_data'][mtbop_data['y_axis']['name']].append(ydata.min())
+        mtbop_data['min_points_data']['filepath'].append(mtbop_data['filepath'])
+
 @timeit
 def plot_selected_list(plot_dict):
         mtbop_data_list = plot_dict['mtbop_data_list']
@@ -1774,6 +1780,8 @@ def plot_data(plot_dict, args=None):
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
     last_points_data_list = []
+    max_points_data_list = []
+    min_points_data_list = []
     find_common_location(plot_dict)
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
@@ -1781,6 +1789,17 @@ def plot_data(plot_dict, args=None):
             mtbop_data['last_points_data'][y_axis] = []
             mtbop_data['last_points_data']['filepath'] = []
             last_points_data_list.append(mtbop_data['last_points_data'])
+
+            mtbop_data['max_points_data'] = {}
+            mtbop_data['max_points_data'][y_axis] = []
+            mtbop_data['max_points_data']['filepath'] = []
+            max_points_data_list.append(mtbop_data['max_points_data'])
+
+            mtbop_data['min_points_data'] = {}
+            mtbop_data['min_points_data'][y_axis] = []
+            mtbop_data['min_points_data']['filepath'] = []
+            min_points_data_list.append(mtbop_data['min_points_data'])
+
             if plot_dict['curve coloring'] == 'filewise':
                 mtbop_data['color'] = colors[i%len(colors)]
                 mtbop_data['marker'] = markers[i%len(markers)]
@@ -1809,6 +1828,8 @@ def plot_data(plot_dict, args=None):
                 plot_mtbop_data(mtbop_data, args)
 
     if args.last_points:
+        print("Printing out information about the first and last points:")
+        print("---------------------------------------------------------")
         last_points_data_frames = [pd.DataFrame(l) for l in last_points_data_list]
         last_points_df = pd.concat(last_points_data_frames)
         if args.last_points_groupby == None:
@@ -1831,6 +1852,62 @@ def plot_data(plot_dict, args=None):
             except:
                 print("Last points group by failed with:", args.last_points_groupby)
                 pass
+        print("Printing out information about the last points: done")
+
+    if args.max_points:
+        print("Printing out information about the max points:")
+        print("----------------------------------------------")
+        max_points_data_frames = [pd.DataFrame(l) for l in max_points_data_list]
+        max_points_df = pd.concat(max_points_data_frames)
+        if args.max_points_groupby == None:
+            print("Maximum:")
+            lpout = max_points_df.groupby('filepath').max()
+            lpout['sum'] = max_points_df.groupby('filepath').max().sum(axis=1)
+            lpout['mean'] = max_points_df.groupby('filepath').max().mean(axis=1)
+            print(lpout.transpose())
+            print("Minimum:")
+            lpout = max_points_df.groupby('filepath').min()
+            lpout['sum'] = max_points_df.groupby('filepath').min().sum(axis=1)
+            lpout['mean'] = max_points_df.groupby('filepath').min().mean(axis=1)
+            print(lpout.transpose())
+        else:
+            try:
+                print("Maximum:")
+                print(max_points_df.groupby(args.max_points_groupby).max().dropna(axis=1, how='all'))
+                print("Minimum:")
+                print(max_points_df.groupby(args.max_points_groupby).min().dropna(axis=1, how='all'))
+            except:
+                print("max points group by failed with:", args.max_points_groupby)
+                pass
+        print("Printing out information about the max points: done")
+
+    if args.min_points:
+        print("Printing out information about the min points:")
+        print("----------------------------------------------")
+        min_points_data_frames = [pd.DataFrame(l) for l in min_points_data_list]
+        min_points_df = pd.concat(min_points_data_frames)
+        if args.min_points_groupby == None:
+            print("minimum:")
+            lpout = min_points_df.groupby('filepath').max()
+            lpout['sum'] = min_points_df.groupby('filepath').max().sum(axis=1)
+            lpout['mean'] = min_points_df.groupby('filepath').max().mean(axis=1)
+            print(lpout.transpose())
+            print("Minimum:")
+            lpout = min_points_df.groupby('filepath').min()
+            lpout['sum'] = min_points_df.groupby('filepath').min().sum(axis=1)
+            lpout['mean'] = min_points_df.groupby('filepath').min().mean(axis=1)
+            print(lpout.transpose())
+        else:
+            try:
+                print("Maximum:")
+                print(min_points_df.groupby(args.min_points_groupby).max().dropna(axis=1, how='all'))
+                print("Minimum:")
+                print(min_points_df.groupby(args.min_points_groupby).min().dropna(axis=1, how='all'))
+            except:
+                print("min points group by failed with:", args.min_points_groupby)
+                pass
+        print("Printing out information about the min points: done")
+
 
 def search_channel_names_for_y_axis(plot_dict, args):
     print("search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis")
@@ -1914,6 +1991,10 @@ if __name__ == '__main__':
         parser.add_argument('--rename', type=str, default=None)
         parser.add_argument('--last-points', action='store_true', default=False)
         parser.add_argument('--last-points-groupby', nargs='+', type=str)
+        parser.add_argument('--max-points', action='store_true', default=False)
+        parser.add_argument('--min-points', action='store_true', default=False)
+        parser.add_argument('--max-points-groupby', nargs='+', type=str)
+        parser.add_argument('--min-points-groupby', nargs='+', type=str)
         parser.add_argument('--store-points', nargs='+', type=float)
         parser.add_argument('--diff-plot', action='store_true', default=False)
         parser.add_argument('--rod-force', action='store_true', default=False)
