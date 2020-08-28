@@ -202,6 +202,7 @@ def create_data_dicts(filepath, times_called, file_extension, args, coil_permuta
 
     if file_extension == '.txt':
         raw_data, col_names = load_txt(filepath, args)
+        if not args.TF2: raw_data = raw_data[:-1,:]
         df = None
         channel_dict_list = None
     elif file_extension == '.csv':
