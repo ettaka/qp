@@ -518,6 +518,7 @@ def replace_raw_data_channels(mtbop_data):
     print("If you want to modify the channel replacements, you need to do it in the data file (AND RERUN THE PICKLE).")
 
 def get_channel_replacements(mtbop_data, head, channel_names):
+    channel_names_clean=[channel_name.split()[0] for channel_name in channel_names]
     mtbop_data['channel_replacements'] = {}
     chrep = mtbop_data['channel_replacements'] 
     print("Getting replacement channels data", end=' ')
@@ -528,8 +529,9 @@ def get_channel_replacements(mtbop_data, head, channel_names):
             if 'channel_replacements:' in line:
                 try:
                     print(line.split('channel_replacements:')[1])
+                    print(channel_names_clean)
                     chrep['string_list'] = [line.rstrip().split(':')[1].split(',')]
-                    chrep['index_list'] = [[channel_names.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
+                    chrep['index_list'] = [[channel_names_clean.index(l) for l in s.strip().split('->')] for s in line.rstrip().split(':')[1].split(',')]
                     print("Corresponds to channel numbers:", chrep['index_list']) 
                     return
                     break
