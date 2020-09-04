@@ -32,6 +32,9 @@ ax.autoscale(enable=True, axis='y', tight=True)
 FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
 
+colors = ['b','g','r','c','m','y','k','orange']
+markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
+
 class SortTree():
     def __init__(self, names, sort_labels=None):
         self.sort_labels = sort_labels
@@ -2010,6 +2013,7 @@ if __name__ == '__main__':
         parser.add_argument('--gradient-filter', type=float, default=None)
         parser.add_argument('--ntp-start-time', type=float, default=None)
         parser.add_argument('--store-data-time', type=str, default='Time')
+        parser.add_argument('--legend-location', type=str, default='bottom outside')
         parser.add_argument('--y-sort-labels', nargs='+', type=str)
         parser.add_argument('--ansys-2d-files', nargs='+', type=str)
         parser.add_argument('--ansys-3d-files', nargs='+', type=str)
@@ -2145,7 +2149,8 @@ if __name__ == '__main__':
                         ans_yname = 'spole'
                     elif 'Shell' in name:
                         ans_yname = 'scyl'
-                for file_df in ansys_file_df_list:
+                for i,file_df in enumerate(ansys_file_df_list):
+                    color=colors[i%len(colors)]
                     name = file_df['name']
                     df = file_df['DataFrame']
                     df = df[df['name'].str.contains('cur') | df['name'].str.contains('cold')]
@@ -2160,7 +2165,7 @@ if __name__ == '__main__':
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
-                        ax.plot(xdata, df[ans_yname], marker='d', label=name)
+                        ax.plot(xdata, df[ans_yname], marker='d', label=name, color=color)
             if args.ansys_3d_files is not None:
                 ansys_file_df_list = parse_ansys_3d_files(args)
                 print ("plot ansys 3d files")
@@ -2193,7 +2198,10 @@ if __name__ == '__main__':
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
             else:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
+                if args.legend_location == 'nolegend':
+                    lgd = None 
+                else:
+                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
@@ -2207,7 +2215,10 @@ if __name__ == '__main__':
                 plt.show()
             else:
                 print("Saving plot:", args.save_fig)
-                plt.savefig(args.save_fig, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                if not args.legend_location == 'nolegend':
+                    plt.savefig(args.save_fig, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                else:
+                    plt.savefig(args.save_fig, dpi=200, bbox_inches='tight')
 
 
 

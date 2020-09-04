@@ -720,6 +720,8 @@ def set_ax_parameters(ax, args):
         lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
     elif args.legend_location == 'bottom outside':
         lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.18), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
+    elif args.legend_location == 'nolegend':
+        lgd = None
     else:
         lgd = ax.legend(loc=args.legend_location, numpoints=1)
 
