@@ -262,7 +262,7 @@ def plot_interpolated_coil_pack_z(coil_size_dicts, args, av_interp, gaps=None):
             totnum = totnum + 1
             theoretical_gap = 15.
             coilpack_to_pad = 10.
-            gap_data_average = gap_df.filter(regex='Gap.*').mean(axis=1)
+            gap_data_average = gap_df['Gap AVG'] 
             xdata = (gap_df['Y']-coilpack_to_pad)/1000. * args.xunit_plot_scaling
             ydata = (gap_data_average-theoretical_gap)/1000. * args.yunit_plot_scaling
             ax.plot(xdata, ydata, '--'+colors[totnum]+markers[totnum],label='Average collar gap '+data_name, linewidth=3)
@@ -298,7 +298,7 @@ def get_average_coil_size_interp(coil_size_dicts, args, col_name='L+R'):
     interp = scipy.interpolate.InterpolatedUnivariateSpline(xdata, LplusRav,k=1)
     return interp, xdata
 
-def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05, location_length_points=100, coilpackdiff = -100.):
+def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05, location_length_points=100, coilpackdiff = -100., gaps=None):
     if info_locations == None:
         short_shell = 0.3415
         long_shell = 2. * short_shell
@@ -322,8 +322,16 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
                     "rshim": [],
                     "Coilpack": [],
                     "Coil average sector length": [],
-                    "Coilpack e": []
+                    "Coilpack e": [],
+                    "Pole key gap": []
                     }
+    
+    if gaps is not None:
+        gaps_interp = gaps[-1]['Gap AVGinterp']
+
+    nominal_collar_gap = 15
+    nominal_polekey = 13.9
+    nominal_GI = 0.125
 
     for loc_name in info_locations:
         for i,coil_size_dict in enumerate(coil_size_dicts):
@@ -337,11 +345,18 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
                 coil_size = coil_size_dict['L+R average']
                 shimming_info['Location'].append(1e3*l/2.)
                 shimming_info['Loc len'].append(1e3*l)
+                location_start = coil_size_dict['raw_data'][0,0]
+                location_end = coil_size_dict['raw_data'][-1,0]
+                location_area = np.linspace(location_start, location_end, location_length_points)
+                collar_gap = np.average(gaps_interp(1e3*location_area))
+                pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
             else:
                 location_start = location-location_length/2.
                 location_end = location+location_length/2.
                 location_area = np.linspace(location_start, location_end, location_length_points)
                 coil_size = 1e6*(np.average(coil_size_dict['interp'][col_inds['L+R']](location_area)))
+                collar_gap = np.average(gaps_interp(1e3*location_area))
+                pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
                 shimming_info['Location'].append(1e3*location)
                 shimming_info['Loc len'].append(1e3*location_length)
 
@@ -352,13 +367,15 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
             shimming_info['L+R+mshim'].append(coil_size+mshim)
             shimming_info['dR'].append(2./math.pi *(coil_size+mshim))
             shimming_info['Coilpack'].append(2./math.pi *(coil_size+mshim)+rshim)
+            coil_pack = shimming_info['Coilpack'][-1]
             shimming_info['Coil average sector length'].append(coil_size+mshim+rshim*math.pi/2.)
             shimming_info['Coilpack e'].append(2./math.pi *(coil_size+mshim)+rshim+coilpackdiff)
+            shimming_info['Pole key gap'].append(1e3*pole_key_gap)
 
 
     sort_values = ['Loc len', 'Location']
     df = pd.DataFrame(shimming_info)
-    cols = ["Coil", "Location name", "Location", "Loc len", "L+R", "mshim", "L+R+mshim", "dR", "rshim", "Coilpack", "Coil average sector length", "Coilpack e"]
+    cols = ["Coil", "Location name", "Location", "Loc len", "L+R", "mshim", "L+R+mshim", "dR", "rshim", "Coilpack", "Coil average sector length", "Coilpack e", "Pole key gap"]
 
     df_out = df[cols].sort_values(sort_values)
     #print(df_out.to_string(float_format="{:0.0f}".format, index=False))
@@ -412,7 +429,12 @@ if __name__ == '__main__':
                 for key in gap_dict['DataFrame']:
                     if 'A' in key or 'B' in key or 'C' in key or 'D' in key:
                         gap_dict['DataFrame'][key]+=args.fix_gaps_kapton_size
-            #ydata-=args.fix_gaps_kapton_size
+        for gap_dict in gaps:
+            gap_df = gap_dict['DataFrame']
+            gap_df['Gap AVG'] = gap_df.filter(regex='Gap.*').mean(axis=1)
+            for key in gap_df:
+                print('computing interpolation function for:', key)
+                gap_dict[key+'interp'] = scipy.interpolate.InterpolatedUnivariateSpline(gap_dict['DataFrame']['Y'], gap_dict['DataFrame'][key],k=1)
     except:
         print("Gaps data not found.")
         gaps = None
@@ -432,7 +454,7 @@ if __name__ == '__main__':
     plot_interpolated_coil_pack_z(coil_size_dicts, args, average_coil_size_interp, gaps)
     plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
 
-    shimming_info = get_shimming_info(coil_size_dicts)
+    shimming_info = get_shimming_info(coil_size_dicts, gaps=gaps)
     print(shimming_info)
     print("Store average coil size to average_coil.size")
     avdata = np.c_[av_xdata, average_coil_size_interp(av_xdata)]
