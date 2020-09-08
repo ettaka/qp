@@ -592,7 +592,16 @@ if __name__ == '__main__':
     produce_figure(args.show_plot, longposstr + 'shimmed_theta_deg_'+str(rshim)+'rshim.png')
 
     plt.clf()
-    plt.figure(figsize=(4,4))
+    plt.figure(figsize=(3.5,3.5))
     plt.subplot(1,1,1)
+    plt.xlim((-150,150))
+    plt.xticks((-150,-100,-50,0,50,100,150))
+    plt.ylim((-150,150))
+    plt.yticks((-150,-100,-50,0,50,100,150))
     plot_coil_cross_sections(coil_dict_list, args, row_plot=False)
-    produce_figure(args.show_plot, longposstr + 'crossection_'+str(rshim)+'rshim.png')
+    plt.xlabel('')
+    plt.ylabel('')
+    magnet_name = ''
+    if args.magnet_name is not None:
+        magnet_name = args.magnet_name.replace('/','')
+    produce_figure(args.show_plot, magnet_name + longposstr + '_crossection.png')
