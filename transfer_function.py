@@ -579,7 +579,8 @@ def plot_tf(ax, times_called, filepath, args):
                         labely = ydict['channel_dict_list'][i]['location']
                     else:
                         labely = ydict['col_names'][i]
-                    label = labelx+'-'+labely
+                    #label = labelx+'-'+labely
+                    label = labely
                 else:
                     if i==0:print("vs single shell gauges.")
                     nof_cols = np.shape(xdict['raw_data'])[1]
@@ -594,9 +595,10 @@ def plot_tf(ax, times_called, filepath, args):
                         labely = ydict['channel_dict_list'][i]['location']
                     else:
                         labely = ydict['col_names'][i]
-                    label = labelx+'-'+labely
+                    #label = labelx+'-'+labely
+                    label = labely
 
-                label = label.replace('Shell ','').replace('Keys size ','')
+                label = label.replace('Shell ','').replace('Keys size ','').replace('T_FBG','')
 
                 ax_plot(xdata, ydata,'--'+colors[i]+markers[i],label=label, markersize=args.marker_size, linewidth=args.line_width, parseargs=args)
 
