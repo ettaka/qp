@@ -418,6 +418,9 @@ def plot_mtbop_data(mtbop_data, args=None):
             curve_label = curve_label.replace(w + ' ','')
             curve_label = curve_label.replace(w,'')
 
+        if args.no_meas_label:
+            curve_label='_nolegend_'
+
         linewidth = 2
         if mtbop_data['markevery']==1:
             linewidth = 0.5
@@ -2010,6 +2013,7 @@ if __name__ == '__main__':
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
         parser.add_argument('--old-format', action='store_true', default=False)
+        parser.add_argument('--no-meas-label', action='store_true', default=False)
         parser.add_argument('--font-size', type=float, default=10)
         parser.add_argument('--gradient-filter', type=float, default=None)
         parser.add_argument('--ntp-start-time', type=float, default=None)
