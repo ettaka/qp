@@ -19,6 +19,7 @@ from channel_utils import get_channel_name
 from channel_utils import get_channel_longname
 from ansys_parse_utils import parse_ansys_2d_files
 from ansys_parse_utils import parse_ansys_3d_files
+from ansys_parse_utils import octname_to_Qname
 
 import sympy as sym
 from sympy import lambdify
@@ -2152,6 +2153,7 @@ if __name__ == '__main__':
                 for i,file_df in enumerate(ansys_file_df_list):
                     color=colors[i%len(colors)]
                     name = file_df['name']
+                    name = octname_to_Qname(name)
                     df = file_df['DataFrame']
                     df = df[df['name'].str.contains('cur') | df['name'].str.contains('cold')]
                     if ans_yname in df and 'coilcur' in df:
