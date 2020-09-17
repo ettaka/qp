@@ -376,7 +376,7 @@ def plot_coil_cross_sections(coil_dict_list, args, row_plot=True):
 
         if quadrant == 0:
             plt.ylabel('z (mm)')
-        plt.xlabel('x (mm)')
+            plt.xlabel('x (mm)')
         plt.legend()
 
 def plot_shimmed_mid_planes(mid_plane_dicts):
