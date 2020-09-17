@@ -569,7 +569,8 @@ def plot_tf(ax, times_called, filepath, args):
                 if neighbour_shell_averages:
                     if i==0:print("vs single shell gauges.")
                     #xdata = xdict['raw_data'][:,i]
-                    xdata = np.mean(xdict['raw_data'][:,1:4],axis=1)
+                    xdata = np.mean(xdict['raw_data'][:,:],axis=1)
+                    #print (xdata, xdict['raw_data'][:,:])
                     ydata = ydict['raw_data'][:,i]
                     if xdict['channel_dict_list'] is not None:
                         labelx = xdict['channel_dict_list'][i]['location']
@@ -585,7 +586,7 @@ def plot_tf(ax, times_called, filepath, args):
                     if i==0:print("vs single shell gauges.")
                     nof_cols = np.shape(xdict['raw_data'])[1]
                     #xdata = (xdict['raw_data'][:,i] + xdict['raw_data'][:,(i+1)%nof_cols])/2.
-                    xdata = np.mean(xdict['raw_data'][:,1:4],axis=1)
+                    xdata = np.mean(xdict['raw_data'][:,:],axis=1)
                     ydata = ydict['raw_data'][:,i]
                     if xdict['channel_dict_list'] is not None:
                         labelx = xdict['channel_dict_list'][i]['location']+xdict['channel_dict_list'][(i+1)%nof_cols]['location']
