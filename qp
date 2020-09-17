@@ -396,6 +396,10 @@ def plot_mtbop_data(mtbop_data, args=None):
 
         if len(xdata) <= 10000: jump_points = 1
 
+        if args.invert_signs:
+            ydata = -ydata
+
+
         if mtbop_data['plot delta']:
             if args.delta_zero_location is not None:
                 loc = np.abs(xdata-args.delta_zero_location).argmin()
@@ -1964,6 +1968,7 @@ if __name__ == '__main__':
         parser.add_argument('-y', '--y-axis', nargs='+', type=str)
         parser.add_argument('-icw', '--ignore-channels-filewise', nargs='+', type=str)
         parser.add_argument('-rcw', '--require-channels-filewise', nargs='+', type=str)
+        parser.add_argument('-invs', '--invert-signs', action='store_true', default=False) 
         parser.add_argument('-s', '--plot-stress', action='store_true', default=False) 
         parser.add_argument('-o', '--override-pickle', action='store_true', default=False) 
         parser.add_argument('-m', '--markevery', type=int) 
