@@ -168,9 +168,11 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                                 channel_dict['physical_quantity'] = 'Strain'
                                 channel_dict['material'] = 'aluminium'
                                 channel_dict['direction'] =  'Longitudinal'
+                                channel_dict['rod diameter'] = 0.036
                                 if long_magnet: 
                                     print ("Long magnets have stainless steel rods, setting material for:", channel_name)
                                     channel_dict['material'] = 'stainless steel'
+                                    channel_dict['rod diameter'] = 0.035
                         elif channel_name[0:2] == 'CO':
                                 channel_dict['location'] = 'Coil ' + channel_name[2:5]
                                 channel_dict['physical_quantity'] = 'Strain'

@@ -1593,8 +1593,6 @@ def compute_rod_forces(plot_dict, args):
     mtbop_data_list = plot_dict['mtbop_data_list'] 
     channel_dict_list = plot_dict['channel_dict_list']
     add_rod_force_data_to_dicts(channel_dict_list)
-    d_rod = 0.035
-    A_rod = np.pi * (d_rod/2.)**2.
     for mtbop_data in mtbop_data_list:
         print("Computing rod forces for:", mtbop_data['filepath'])
         for channel_dict in channel_dict_list:
@@ -1603,6 +1601,14 @@ def compute_rod_forces(plot_dict, args):
 
                 material = channel_dict['material']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
+                d_rod = 0.036
+                if 'rod diameter' in channel_dict:
+                    d_rod = channel_dict['rod diameter']
+                else:
+                    print ("Rod diameter was not found in the channel dict which could be due to old pickle file. I'm using the default.")
+
+                print("Rod diameter:", d_rod)
+                A_rod = np.pi * (d_rod/2.)**2.
 
                 try:
                     longitudinal_strain = get_raw_data_by_name(mtbop_data, longitudinal_dict['name']) 
