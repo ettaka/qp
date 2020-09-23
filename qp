@@ -33,7 +33,7 @@ ax.autoscale(enable=True, axis='y', tight=True)
 FILETYPE = ".ASC"
 FILETYPES = ['.ASC', '.txt']
 
-colors = ['b','g','r','c','m','y','k','orange']
+colors = ['b','g','r','c','m','y','k','orange','rosybrown','firebrick']
 markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
 class SortTree():
@@ -425,27 +425,42 @@ def plot_mtbop_data(mtbop_data, args=None):
         if args.no_meas_label:
             curve_label='_nolegend_'
 
-        linewidth = 2
         if mtbop_data['markevery']==1:
-            linewidth = 0.5
-            print ("mark every 1, changing linewidth to ", linewidth)
+            args.line_width = 0.5
+            print ("mark every 1, changing line width to ", args.line_width)
 
         if args.fit:
             max_x = np.max(xdata)
-            fit_max_x = 1.6 * max_x
-            lower_limit = max_x*0.8
-            lower_index = np.argmax(xdata>lower_limit)
-            fit = np.poly1d(np.polyfit(xdata[lower_index:], ydata[lower_index:], deg=2))
+            max_y = np.max(ydata)
+            fit_upper_limit = 1.6 * max_x
+            fit_lower_limit = max_x*0.8
+            upper_index = np.argmax(xdata>fit_upper_limit)
+            if mtbop_data['normalize x']:
+                fit_lower_limit = 0.0
+                fit_upper_y_limit = max_y * 0.8
+                upper_index = np.argmax(ydata>fit_upper_y_limit)
+                fit_upper_limit = xdata[upper_index]
+            lower_index = np.argmax(xdata>fit_lower_limit)
+            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+            if mtbop_data['plot delta']:
+                delta_add = 'Delta'
+            else:
+                delta_add = ''
 
-            dindex=len(xdata-lower_index)
-            dx = max_x-lower_limit
-            xfit_extension = np.linspace(max_x,fit_max_x,dindex/dx*(fit_max_x-max_x))
+            fit_label=mtbop_data['filepath'].replace(FILETYPE, '').replace('.txt','')+' varname = "'+ delta_add+' '+ y_axis_dict['longname']+'"'
+            fit_text = 'qp fit: '+fit_label+' initial = {:2.4f}'.format(fit.r[0])+'\n'
+            fit_text += 'qp fit: '+fit_label+' slope = {:2.4f}'.format(fit[1]) + '\n'
+            print (fit_text)
+
+            dindex=len(xdata)-lower_index
+            dx = max_x-fit_lower_limit
+            xfit_extension = np.linspace(max_x,fit_upper_limit,int(dindex/dx*(max_x-fit_upper_limit)))
             xfit = np.concatenate([xdata[lower_index:],xfit_extension])
-            ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=linewidth)
+            ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
         if mtbop_data['no_markers']:
-            curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=linewidth)
+            curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=args.line_width, markersize=args.marker_size)
         else:
-            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label,linewidth=linewidth)
+            curveline, = ax.plot(xdata,ydata, color=mtbop_data['color'], linestyle=linestyle, markevery=mtbop_data['markevery'], label=curve_label,linewidth=args.line_width, markersize=args.marker_size)
         if not mtbop_data['label type'] == None and mtbop_data['label type'] == 'filename':
             if 'longname' in y_axis_dict and ('Min' in y_axis_dict['longname'] or 'Max' in y_axis_dict['longname']):
                 curveline.set_dashes([5,5])
@@ -1767,7 +1782,7 @@ def store_data(plot_dict, args=None):
         print("You didn't choose any channels on y-axis, exiting...")
         exit()
 
-    colors = ['b','g','r','c','m','y','k','orange']
+    colors = ['b','g','r','c','m','y','k','orange','rosybrown','firebrick']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
     if args.ntp_start_time != None: args.store_data_time = 'Time From Start'
@@ -1795,7 +1810,7 @@ def plot_data(plot_dict, args=None):
         print("You didn't choose any channels on y-axis, exiting...")
         exit()
 
-    colors = ['b','g','r','c','m','y','k','orange']
+    colors = ['b','g','r','c','m','y','k','orange','rosybrown','firebrick']
     markers = ['o', '^', 'v', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', '+', 'x']
 
     last_points_data_list = []
@@ -2035,6 +2050,8 @@ if __name__ == '__main__':
         parser.add_argument('--ansys-3d-files', nargs='+', type=str)
         parser.add_argument('--fig-height', type=float, default=3)
         parser.add_argument('--fig-width', type=float, default=4)
+        parser.add_argument('--line-width', type=float, default=2)
+        parser.add_argument('--marker-size', type=float, default=2)
         #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
         args = parser.parse_args()
@@ -2182,7 +2199,7 @@ if __name__ == '__main__':
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
-                        ax.plot(xdata, df[ans_yname], marker='d', label=name, color=color)
+                        ax.plot(xdata, df[ans_yname], marker='d', label=name, color=color, linewidth=args.line_width, markersize=args.marker_size)
             if args.ansys_3d_files is not None:
                 ansys_file_df_list = parse_ansys_3d_files(args)
                 print ("plot ansys 3d files")
@@ -2209,16 +2226,16 @@ if __name__ == '__main__':
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
-                        ax.plot(xdata, df[ans_yname], marker='d', label='3DFEM '+name)
+                        ax.plot(xdata, df[ans_yname], marker='d', label='3DFEM '+name, linewidth=args.line_width, markersize=args.marker_size)
 
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
             else:
                 if args.legend_location == 'nolegend':
                     lgd = None 
                 else:
-                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.2), fancybox=True, shadow=True, ncol=2)
+                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
