@@ -338,9 +338,9 @@ def plot_ansys_data(ax, args):
                         name = octname_to_Qname(name)
                         data_color=args.curve_colors[j%len(args.curve_colors)]
                         data_marker=markers[j%len(markers)]
-                        ax.plot(13.+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                        ax.plot(13.+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
-                    ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
+                    ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
                     _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
                 if args.ansys_single_coils:
@@ -349,9 +349,9 @@ def plot_ansys_data(ax, args):
                         name = octname_to_Qname(name)
                         data_color=args.curve_colors[j%len(args.curve_colors)]
                         data_marker=markers[j%len(markers)]
-                        ax.plot(13.+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                        ax.plot(13.+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
-                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
+                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
                     _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
                 if args.ansys_single_coils:
@@ -360,9 +360,9 @@ def plot_ansys_data(ax, args):
                         name = octname_to_Qname(name)
                         data_color=args.curve_colors[j%len(args.curve_colors)]
                         data_marker=markers[j%len(markers)]
-                        ax.plot(scyl['raw_data'][:,j], spole['raw_data'][:,j], marker=data_marker, markersize=3, label=name, color=data_color, linewidth=1, linestyle='-')
+                        ax.plot(scyl['raw_data'][:,j], spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
-                    ax.plot(scyl['average'], spole['average'], marker='d', markersize=1, label=parent_name, color=data_color, linewidth=2.5)
+                    ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
                     _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
@@ -724,7 +724,7 @@ def set_ax_parameters(ax, args):
     if args.legend_location == 'right outside':
         lgd = ax.legend(loc='upper left', bbox_to_anchor=(1.04,1), fancybox=True, shadow=True, numpoints=1)
     elif args.legend_location == 'bottom outside':
-        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.18), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
+        lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=args.legend_ncol, numpoints=1)
     elif args.legend_location == 'nolegend':
         lgd = None
     else:
@@ -777,12 +777,13 @@ if __name__ == '__main__':
     parser.add_argument('--no-ylabel', action='store_true', default=False) 
     parser.add_argument('--font-size', type=float, default=10)
     parser.add_argument('--legend-font-size', type=float, default=10)
-    parser.add_argument('--marker-size', type=float, default=4)
+    parser.add_argument('--marker-size', type=float, default=2)
     parser.add_argument('--line-width', type=float, default=1.5)
     parser.add_argument('--fig-height', type=float, default=3)
     parser.add_argument('--fig-width', type=float, default=4)
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--image-name', type=str, default='')
+    parser.add_argument('--plot-note', type=str, default=None)
     parser.add_argument('-fgwa', '--fix-gauges-with-average', action='store_true', default=False) 
     parser.add_argument('--no-pk-legend', action='store_true', default=False) 
     parser.add_argument('--no-legend', action='store_true', default=False) 
@@ -874,6 +875,13 @@ if __name__ == '__main__':
     lgd, name_suffix = set_ax_parameters(ax, args)
 
     if args.no_legend: lgd.remove()
+
+    if args.plot_note is not None:
+        props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+
+        # place a text box in upper left in axes coords
+        plt.text(0.95, 0.95, args.plot_note, transform=ax.transAxes, fontsize=10,
+        horizontalalignment='right', verticalalignment='top', bbox=props)
 
     if not args.print_final_stresses:
         if args.show_plot:
