@@ -456,7 +456,8 @@ def plot_mtbop_data(mtbop_data, args=None):
             dx = max_x-fit_lower_limit
             xfit_extension = np.linspace(max_x,fit_upper_limit,int(dindex/dx*(max_x-fit_upper_limit)))
             xfit = np.concatenate([xdata[lower_index:],xfit_extension])
-            ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
+            if args.fit_show:
+                ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
         if mtbop_data['no_markers']:
             curveline, = ax.plot(xdata[0::jump_points],ydata[0::jump_points], color=mtbop_data['color'], linestyle=linestyle, label=curve_label, linewidth=args.line_width, markersize=args.marker_size)
         else:
@@ -2018,6 +2019,7 @@ if __name__ == '__main__':
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
+        parser.add_argument('--fit-show', action='store_true', default=False)
         parser.add_argument('--fit-range', type=str)
         parser.add_argument('--cut-ranges', type=str, nargs='+', default=None)
         parser.add_argument('--cut-range-name', type=str, nargs='+', default='Time')
