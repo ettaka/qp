@@ -608,12 +608,21 @@ def plot_tf(ax, times_called, filepath, args):
             if args.fit2: fit = fit_data(ax, xdata, ydata, args.fit2_range, data_label+' fit 2', args)
 
             if args.fit or args.fit2:
-                if args.key_shell or args.key_pole:
-                    fit_text = 'Fitted initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
-                    fit_text += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
-                else: 
-                    fit_text = 'Fitted initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
-                    fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
+                fit_text = ''
+                if args.fit:
+                    if args.key_shell or args.key_pole:
+                        fit_text += 'Fitted initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
+                        fit_text += 'Fitted slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
+                    else: 
+                        fit_text += 'Fitted initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
+                        fit_text += 'Fitted slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
+                if args.fit2:
+                    if args.key_shell or args.key_pole:
+                        fit_text += 'Fitted2 initial thickness = {:2.2f}'.format(fit.r[0])+' mm\n'
+                        fit_text += 'Fitted2 slope = {:2.0f}'.format(fit[1]) + ' MPa/mm\n'
+                    else: 
+                        fit_text += 'Fitted2 initial stress = {:2.2f}'.format(fit.r[0])+' MPa\n'
+                        fit_text += 'Fitted2 slope = {:2.2f}'.format(fit[1]) + ' MPa/MPa\n'
                 fitfilename = plotname + '.fit'
                 fitfile = open(fitfilename, 'w')
                 print("writing fit parameters to file: ", fitfilename)
