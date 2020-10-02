@@ -361,8 +361,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                         ax.axvline(x=x_nominal, color='black', linestyle='dashed')
                         ax.axvline(x=1.0, color='black', linestyle='dashed')
                         ax.set_xlim((0,1.2))
-                        ax.text(x_nominal/1.2, 0.05, 'Nominal', rotation=90, transform = ax.transAxes, ha='right')
-                        ax.text(1/1.2, 0.05, 'Ultimate', rotation=90, transform = ax.transAxes, ha='right')
+                        ax.text(x_nominal/1.2-0.008, 0.05, 'Nominal', rotation=90, transform = ax.transAxes, ha='right')
+                        ax.text(1/1.2-0.008, 0.05, 'Ultimate', rotation=90, transform = ax.transAxes, ha='right')
                     else:
                         ax_dict['label'] = ax_dict['name'] + '(' + ax_dict['unit'] + '$^2$)'
                 else:
@@ -390,6 +390,15 @@ def plot_mtbop_data(mtbop_data, args=None):
         ydata = y_axis_dict['raw_data']
         ax.set_xlabel(x_axis_dict['label'])
         ax.set_ylabel(y_axis_dict['label'])
+
+        if args.no_xlabel: 
+            ax.set_xlabel('')
+        if args.no_ylabel: 
+            ax.set_ylabel('')
+        if args.no_xticklabels: 
+            ax.set_xticklabels([])
+        if args.no_yticklabels: 
+            ax.set_yticklabels([])
 
         linestyle = '-'
         jump_points = 100
@@ -2011,6 +2020,10 @@ if __name__ == '__main__':
         parser.add_argument('--set-yticks', type=str)
         parser.add_argument('--set-xlim', type=str)
         parser.add_argument('--set-ylim', type=str)
+        parser.add_argument('--no-xlabel', action='store_true', default=False) 
+        parser.add_argument('--no-ylabel', action='store_true', default=False) 
+        parser.add_argument('--no-xticklabels', action='store_true', default=False) 
+        parser.add_argument('--no-yticklabels', action='store_true', default=False) 
         parser.add_argument('--comment', type=str)
         parser.add_argument('--channel-computation', type=str, default=None)
         parser.add_argument('--grid', action='store_true', default=True) 
@@ -2236,6 +2249,8 @@ if __name__ == '__main__':
             else:
                 if args.legend_location == 'nolegend':
                     lgd = None 
+                elif args.legend_location == 'upper left':
+                    lgd = ax.legend(loc='upper left')
                 else:
                     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
             #ax.legend()
