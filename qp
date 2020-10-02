@@ -2195,8 +2195,11 @@ if __name__ == '__main__':
                 for name in args.y_axis:
                     if 'Coil' in name:
                         ans_yname = 'spole'
+                        ydatas_category = 'Coil'
                     elif 'Shell' in name:
                         ans_yname = 'scyl'
+                        ydatas_category = 'Shell'
+                ydatas={}
                 for i,file_df in enumerate(ansys_file_df_list):
                     color=colors[i%len(colors)]
                     name = file_df['name']
@@ -2206,7 +2209,10 @@ if __name__ == '__main__':
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
+                        ydatas[name]=ydata.values
                         if args.plot_delta: 
+                            if i==0:
+                                ydatas_category = 'Delta ' + ydatas_category
                             loc = 0
                             if args.delta_zero_location is not None:
                                 loc = np.abs(xdata.values-args.delta_zero_location).argmin()
@@ -2215,6 +2221,19 @@ if __name__ == '__main__':
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
                         ax.plot(xdata, df[ans_yname], marker='d', label=name, color=color, linewidth=args.line_width, markersize=args.marker_size)
+                
+                ydatas_df = pd.DataFrame(ydatas)
+                ydatas_max = ydatas_df.max(axis=0) 
+                ydatas_min = ydatas_df.min(axis=0) 
+                print ("ANSYS2D:", ydatas_category, "max: Q1", ydatas_max['Q1'], )
+                print ("ANSYS2D:", ydatas_category, "max: Q2", ydatas_max['Q2'], )
+                print ("ANSYS2D:", ydatas_category, "max: Q3", ydatas_max['Q3'], )
+                print ("ANSYS2D:", ydatas_category, "max: Q4", ydatas_max['Q4'], )
+                print ("ANSYS2D:", ydatas_category, "min: Q1", ydatas_min['Q1'], )
+                print ("ANSYS2D:", ydatas_category, "min: Q2", ydatas_min['Q2'], )
+                print ("ANSYS2D:", ydatas_category, "min: Q3", ydatas_min['Q3'], )
+                print ("ANSYS2D:", ydatas_category, "min: Q4", ydatas_min['Q4'], )
+
             if args.ansys_3d_files is not None:
                 ansys_file_df_list = parse_ansys_3d_files(args)
                 print ("plot ansys 3d files")
