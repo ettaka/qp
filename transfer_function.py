@@ -690,23 +690,23 @@ def fit_data(ax, xdata, ydata, fit_range, fit_label, args):
 def set_ax_parameters(ax, args):
     name_suffix = ''
     if args.no_xaxis:
-        ax.get_xaxis().set_visible()
-        name_suffix += '_no-xaxis'
+        ax.get_xaxis().set_visible(False)
+        #name_suffix += '_no-xaxis'
     if args.no_yaxis:
-        ax.get_yaxis().set_visible()
-        name_suffix += '_no-yaxis'
+        ax.get_yaxis().set_visible(False)
+        #name_suffix += '_no-yaxis'
     if args.no_xticklabels: 
         ax.set_xticklabels([])
-        name_suffix += '_no-xticklabels'
+        #name_suffix += '_no-xticklabels'
     if args.no_yticklabels: 
         ax.set_yticklabels([])
-        name_suffix += '_no-yticklabels'
+        #name_suffix += '_no-yticklabels'
     if args.no_xlabel: 
         ax.set_xlabel('')
-        name_suffix += '_no-xlabel'
+        #name_suffix += '_no-xlabel'
     if args.no_ylabel: 
         ax.set_ylabel('')
-        name_suffix += '_no-ylabel'
+        #name_suffix += '_no-ylabel'
     ax.grid()
 
     if args.set_xticks != None:
