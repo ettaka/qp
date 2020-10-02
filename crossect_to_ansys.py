@@ -124,7 +124,7 @@ def read_cs(filename, quadrant, args):
 
 def produce_figure(show=False, figname='test.png'):
     if not show:
-        plt.savefig(figname)
+        plt.savefig(figname, bbox_inches='tight', numpoints=1, dpi=200)
     else:
         plt.show()
 
