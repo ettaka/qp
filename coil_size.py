@@ -348,15 +348,17 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
                 location_start = coil_size_dict['raw_data'][0,0]
                 location_end = coil_size_dict['raw_data'][-1,0]
                 location_area = np.linspace(location_start, location_end, location_length_points)
-                collar_gap = np.average(gaps_interp(1e3*location_area))
-                pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
+                if gaps is not None:
+                    collar_gap = np.average(gaps_interp(1e3*location_area))
+                    pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
             else:
                 location_start = location-location_length/2.
                 location_end = location+location_length/2.
                 location_area = np.linspace(location_start, location_end, location_length_points)
                 coil_size = 1e6*(np.average(coil_size_dict['interp'][col_inds['L+R']](location_area)))
-                collar_gap = np.average(gaps_interp(1e3*location_area))
-                pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
+                if gaps is not None:
+                    collar_gap = np.average(gaps_interp(1e3*location_area))
+                    pole_key_gap = (collar_gap - 4*nominal_GI - nominal_polekey)/2
                 shimming_info['Location'].append(1e3*location)
                 shimming_info['Loc len'].append(1e3*location_length)
 
@@ -370,7 +372,10 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
             coil_pack = shimming_info['Coilpack'][-1]
             shimming_info['Coil average sector length'].append(coil_size+mshim+rshim*math.pi/2.)
             shimming_info['Coilpack e'].append(2./math.pi *(coil_size+mshim)+rshim+coilpackdiff)
-            shimming_info['Pole key gap'].append(1e3*pole_key_gap)
+            if gaps is not None:
+                shimming_info['Pole key gap'].append(1e3*pole_key_gap)
+            else:
+                shimming_info['Pole key gap'].append(None)
 
 
     sort_values = ['Loc len', 'Location']
