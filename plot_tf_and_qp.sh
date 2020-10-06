@@ -79,6 +79,7 @@ awk '/max points/,/done/' plot_tf_and_qp.log > plot_tf_and_qp_data.txt
 awk '/min points/,/done/' plot_tf_and_qp.log >> plot_tf_and_qp_data.txt
 awk '/last points/,/done/' plot_tf_and_qp.log >> plot_tf_and_qp_data.txt
 awk '/qp fit:/,/done/' plot_tf_and_qp.log >> plot_tf_and_qp_data.txt
+awk '/ANSYS2D output:/' plot_tf_and_qp.log > plot_tf_and_qp_data_2d_fem.txt
 
 logit "Processing images"
 montage -tile 3x1 -mode concatenate TF2.png \
