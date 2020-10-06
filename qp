@@ -457,8 +457,8 @@ def plot_mtbop_data(mtbop_data, args=None):
                 delta_add = ''
 
             fit_label=mtbop_data['filepath'].replace(FILETYPE, '').replace('.txt','')+' varname = "'+ delta_add+' '+ y_axis_dict['longname']+'"'
-            fit_text = 'qp fit: '+fit_label+' initial = {:2.4f}'.format(fit.r[0])+'\n'
-            fit_text += 'qp fit: '+fit_label+' slope = {:2.4f}'.format(fit[1]) + '\n'
+            fit_text = 'qp fit: '+fit_label+' initial = {:2.4f}'.format(fit.c[1])+'\n'
+            fit_text += 'qp fit: '+fit_label+' slope = {:2.4f}'.format(fit.c[0]) + '\n'
             print (fit_text)
 
             dindex=len(xdata)-lower_index
@@ -2209,6 +2209,7 @@ if __name__ == '__main__':
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
+
                         ydatas[name]=ydata.values
                         if args.plot_delta: 
                             if i==0:
@@ -2220,6 +2221,28 @@ if __name__ == '__main__':
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
+
+                        if args.fit:
+                            max_x = np.max(xdata)
+                            max_y = np.max(ydata)
+                            fit_upper_limit = 1.6 * max_x
+                            fit_lower_limit = max_x*0.8
+                            upper_index = np.argmax(xdata>fit_upper_limit)
+                            if not args.no_current_squared:
+                                fit_lower_limit = -0.5
+                                fit_upper_y_limit = max_y * 0.8
+                                upper_index = np.argmax(ydata.values>fit_upper_y_limit)
+                                fit_upper_limit = xdata.values[upper_index]
+                            lower_index = np.argmax(xdata.values>fit_lower_limit)
+                            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+                            print ("ANSYS2d fit debug: upper_index", upper_index)
+                            print ("ANSYS2d fit debug: lower_index", lower_index)
+                            print ("ANSYS2d fit debug: xdata", xdata)
+                            print ("ANSYS2D output:", ydatas_category, "initial:",name, fit.c[1])
+                            print ("ANSYS2D output:", ydatas_category, "slope:",name, fit.c[0])
+                            if args.fit_show:
+                                ax.plot(xdata, fit(xdata), label=name, color=color, linewidth=args.line_width, markersize=args.marker_size)
+
                         ax.plot(xdata, df[ans_yname], marker='d', label=name, color=color, linewidth=args.line_width, markersize=args.marker_size)
                 
                 ydatas_df = pd.DataFrame(ydatas)
@@ -2243,7 +2266,7 @@ if __name__ == '__main__':
                     elif 'Shell' in name:
                         ans_yname = 'scyl'
                     elif 'Rod' in name:
-                        ans_yname = 'erod'
+                        ans_yname = 'srod'
                         print ("Choosing rod data because that is plotted as the experimental data.")
                 for file_df in ansys_file_df_list:
                     name = file_df['name']
