@@ -338,10 +338,10 @@ def plot_ansys_data(ax, args):
                         name = octname_to_Qname(name)
                         data_color=args.curve_colors[j%len(args.curve_colors)]
                         data_marker=markers[j%len(markers)]
-                        ax.plot(13.+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
+                        ax.plot(13.00+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
-                    ax.plot(13.+interf['average']/1000., spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
-                    _ = make_error_boxes(ax, 13.+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                    ax.plot(13.00+interf['average']/1000., spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
+                    _ = make_error_boxes(ax, 13.00+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
                 if args.ansys_single_coils:
                     for j in range(4):
@@ -349,10 +349,10 @@ def plot_ansys_data(ax, args):
                         name = octname_to_Qname(name)
                         data_color=args.curve_colors[j%len(args.curve_colors)]
                         data_marker=markers[j%len(markers)]
-                        ax.plot(13.+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
+                        ax.plot(13.00+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
-                    ax.plot(13.+interf['average']/1000., scyl['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
-                    _ = make_error_boxes(ax, 13.+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                    ax.plot(13.00+interf['average']/1000., scyl['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
+                    _ = make_error_boxes(ax, 13.00+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
                 if args.ansys_single_coils:
                     for j in range(4):
