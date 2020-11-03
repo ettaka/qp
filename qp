@@ -370,7 +370,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             elif ax_dict['name'].lower() == 'data point': 
                 ax_dict['label'] = 'Data Point'
             else:
-                ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + '(' + ax_dict['unit'] + ')'
+                ax_dict['label'] = ax_dict['direction'] + ' ' + ax_dict['physical_quantity'] + ' (' + ax_dict['unit'] + ')'
 
         if not mtbop_data['common location'] == '':
             y_axis_dict['label'] = mtbop_data['common location'] + ' ' + y_axis_dict['label']
@@ -438,7 +438,7 @@ def plot_mtbop_data(mtbop_data, args=None):
             args.line_width = 0.5
             print ("mark every 1, changing line width to ", args.line_width)
 
-        if args.fit:
+        if args.fit or args.fit_3d:
             max_x = np.max(xdata)
             max_y = np.max(ydata)
             fit_upper_limit = 1.6 * max_x
@@ -450,7 +450,11 @@ def plot_mtbop_data(mtbop_data, args=None):
                 upper_index = np.argmax(ydata>fit_upper_y_limit)
                 fit_upper_limit = xdata[upper_index]
             lower_index = np.argmax(xdata>fit_lower_limit)
-            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+            if args.fit_rod:
+                fit = np.poly1d(np.polyfit(xdata, ydata, deg=1))
+            else: 
+                print (lower_index,upper_index)
+                fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
             if mtbop_data['plot delta']:
                 delta_add = 'Delta'
             else:
@@ -461,10 +465,13 @@ def plot_mtbop_data(mtbop_data, args=None):
             fit_text += 'qp fit: '+fit_label+' slope = {:2.4f}'.format(fit.c[0]) + '\n'
             print (fit_text)
 
-            dindex=len(xdata)-lower_index
-            dx = max_x-fit_lower_limit
-            xfit_extension = np.linspace(max_x,fit_upper_limit,int(dindex/dx*(max_x-fit_upper_limit)))
-            xfit = np.concatenate([xdata[lower_index:],xfit_extension])
+            if args.fit_rod:
+                xfit = xdata
+            else:
+                dindex=len(xdata)-lower_index
+                dx = max_x-fit_lower_limit
+                xfit_extension = np.linspace(max_x,fit_upper_limit,int(dindex/dx*(max_x-fit_upper_limit)))
+                xfit = np.concatenate([xdata[lower_index:],xfit_extension])
             if args.fit_show:
                 ax.plot(xfit[0::jump_points],fit(xfit[0::jump_points]), color=mtbop_data['color'], linestyle='--', label=curve_label+' fit', linewidth=args.line_width, markersize=args.marker_size)
         if mtbop_data['no_markers']:
@@ -1613,6 +1620,15 @@ def compute_stresses(plot_dict, args):
 #                               computed_dicts[-1]['direction'] = 'Longitudinal'
 #                               mtbop_data['channel_names'].append(channel_name)
 
+def get_rod_diameter(channel_dict):
+    d_rod = 0.036
+    if 'rod diameter' in channel_dict:
+        d_rod = channel_dict['rod diameter']
+    else:
+        print ("Rod diameter was not found in the channel dict which could be due to old pickle file. I'm using the default.")
+
+    print("Rod diameter:", d_rod)
+    return d_rod
 
 def compute_rod_forces(plot_dict, args):
     mtbop_data_list = plot_dict['mtbop_data_list'] 
@@ -1626,13 +1642,8 @@ def compute_rod_forces(plot_dict, args):
 
                 material = channel_dict['material']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
-                d_rod = 0.036
-                if 'rod diameter' in channel_dict:
-                    d_rod = channel_dict['rod diameter']
-                else:
-                    print ("Rod diameter was not found in the channel dict which could be due to old pickle file. I'm using the default.")
-
-                print("Rod diameter:", d_rod)
+                
+                d_rod = get_rod_diameter(channel_dict)
                 A_rod = np.pi * (d_rod/2.)**2.
 
                 try:
@@ -2032,6 +2043,8 @@ if __name__ == '__main__':
         parser.add_argument('-sp', '--show-plot', action='store_true', default=False) 
         parser.add_argument('-rc', '--replace-channels', action='store_true', default=False)
         parser.add_argument('--fit', action='store_true', default=False)
+        parser.add_argument('--fit-3d', action='store_true', default=False)
+        parser.add_argument('--fit-rod', action='store_true', default=False)
         parser.add_argument('--fit-show', action='store_true', default=False)
         parser.add_argument('--fit-range', type=str)
         parser.add_argument('--cut-ranges', type=str, nargs='+', default=None)
@@ -2056,6 +2069,7 @@ if __name__ == '__main__':
         parser.add_argument('--old-format', action='store_true', default=False)
         parser.add_argument('--no-meas-label', action='store_true', default=False)
         parser.add_argument('--font-size', type=float, default=10)
+        parser.add_argument('--legend-font-size', type=float, default=10)
         parser.add_argument('--gradient-filter', type=float, default=None)
         parser.add_argument('--ntp-start-time', type=float, default=None)
         parser.add_argument('--store-data-time', type=str, default='Time')
@@ -2083,6 +2097,7 @@ if __name__ == '__main__':
             args.last_points = True
 
         plt.rcParams.update({'font.size':args.font_size})
+        plt.rcParams.update({'legend.fontsize':args.legend_font_size})
         plt.rcParams.update({'axes.labelsize':'large'})
         plt.rcParams.update({'axes.titlesize':args.font_size})
 
@@ -2222,22 +2237,27 @@ if __name__ == '__main__':
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
 
-                        if args.fit:
+                        if args.fit and not args.fit_3d:
                             max_x = np.max(xdata)
                             max_y = np.max(ydata)
+                            xdata_interp = np.linspace(xdata.values[0], xdata.values[-1], 100)
+                            ydata_interp = np.interp(xdata_interp, xdata, ydata) 
                             fit_upper_limit = 1.6 * max_x
                             fit_lower_limit = max_x*0.8
                             upper_index = np.argmax(xdata>fit_upper_limit)
                             if not args.no_current_squared:
                                 fit_lower_limit = -0.5
                                 fit_upper_y_limit = max_y * 0.8
-                                upper_index = np.argmax(ydata.values>fit_upper_y_limit)
-                                fit_upper_limit = xdata.values[upper_index]
-                            lower_index = np.argmax(xdata.values>fit_lower_limit)
-                            fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+                                upper_index = np.argmax(ydata_interp>fit_upper_y_limit)
+                                fit_upper_limit = xdata_interp[upper_index]
+                            lower_index = np.argmax(xdata_interp>fit_lower_limit)
+                            fit = np.poly1d(np.polyfit(xdata_interp[lower_index:upper_index], ydata_interp[lower_index:upper_index], deg=1))
                             print ("ANSYS2d fit debug: upper_index", upper_index)
                             print ("ANSYS2d fit debug: lower_index", lower_index)
                             print ("ANSYS2d fit debug: xdata", xdata)
+                            print ("ANSYS3D fit debug: ydata", ydata)
+                            print ("ANSYS3D fit debug: fit_upper_y_limit", fit_upper_y_limit)
+                            print ("ANSYS2d fit debug: xdata(lower_index:upper_index)", xdata[lower_index:upper_index])
                             print ("ANSYS2D output:", ydatas_category, "initial:",name, fit.c[1])
                             print ("ANSYS2D output:", ydatas_category, "slope:",name, fit.c[0])
                             if args.fit_show:
@@ -2263,19 +2283,31 @@ if __name__ == '__main__':
                 for name in args.y_axis:
                     if 'Coil' in name:
                         ans_yname = 'spole'
+                        ydatas_category = 'Coil'
                     elif 'Shell' in name:
                         ans_yname = 'scyl'
+                        ydatas_category = 'Shell'
                     elif 'Rod' in name:
                         ans_yname = 'srod'
+                        rod_force = 'Force' in name
+                        ydatas_category = 'Rod'
                         print ("Choosing rod data because that is plotted as the experimental data.")
-                for file_df in ansys_file_df_list:
+                for i, file_df in enumerate(ansys_file_df_list):
                     name = file_df['name']
                     df = file_df['DataFrame']
-                    df = df[df['Step']!='1warm']
+                    df = df[~df['Step'].str.contains('warm')]
+                    df = df[~df['Step'].str.contains('rod')]
                     if ans_yname in df and 'coilcur' in df:
                         xdata = df['coilcur']
                         ydata = df[ans_yname]
+                        if rod_force:
+                            print("computing rod forces for FEM3D data")
+                            d_rod = 0.036
+                            A_rod = np.pi * (d_rod/2.)**2.
+                            ydata = 1000 * A_rod * ydata
                         if args.plot_delta: 
+                            if i==0:
+                                ydatas_category = 'Delta ' + ydatas_category
                             loc = 0
                             if args.delta_zero_location is not None:
                                 loc = np.abs(xdata.values-args.delta_zero_location).argmin()
@@ -2283,7 +2315,36 @@ if __name__ == '__main__':
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
                             xdata = xdata/float(plot_dict['normalize x'])
-                        ax.plot(xdata, df[ans_yname], marker='d', label='3DFEM '+name, linewidth=args.line_width, markersize=args.marker_size)
+
+                        if args.fit_3d:
+                            max_x = np.max(xdata)
+                            max_y = np.max(ydata)
+                            fit_upper_limit = 1.6 * max_x
+                            fit_lower_limit = max_x*0.8
+                            upper_index = np.argmax(xdata>fit_upper_limit)
+                            if not args.no_current_squared:
+                                fit_lower_limit = -0.5
+                                fit_upper_y_limit = max_y * 0.8
+                                upper_index = np.argmax(ydata.values>fit_upper_y_limit)
+                                fit_upper_limit = xdata.values[upper_index]
+                            lower_index = np.argmax(xdata.values>fit_lower_limit)
+                            if 'Rod' not in ydatas_category:
+                                fit = np.poly1d(np.polyfit(xdata[lower_index:upper_index], ydata[lower_index:upper_index], deg=1))
+                            else:
+                                fit = np.poly1d(np.polyfit(xdata, ydata, deg=1))
+                            print ("ANSYS3D fit debug: upper_index", upper_index)
+                            print ("ANSYS3D fit debug: lower_index", lower_index)
+                            print ("ANSYS3D fit debug: xdata", xdata)
+                            print ("ANSYS3D fit debug: ydata", ydata)
+                            print ("ANSYS3D output:", ydatas_category, "min:",name, np.min(ydata))
+                            print ("ANSYS3D output:", ydatas_category, "max:",name, max_y)
+                            print ("ANSYS3D output:", ydatas_category, "initial:",name, fit.c[1])
+                            print ("ANSYS3D output:", ydatas_category, "slope:",name, fit.c[0])
+
+                            if args.fit_show:
+                                ax.plot(xdata, fit(xdata), label=name, color=color, linewidth=args.line_width, markersize=args.marker_size)
+
+                        ax.plot(xdata, ydata, marker='d', label='3DFEM '+name, linewidth=args.line_width, markersize=args.marker_size)
 
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
