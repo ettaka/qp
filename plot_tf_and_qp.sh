@@ -64,7 +64,7 @@ qp $QPFILES -y "Rod" --normalize-x 320.0521 --gradient-filter 100 --save-fig tem
 logit "Processing Rod Stress"
 qp $QPFILES -y "Rod Stress" --normalize-x 320.0521 -s --gradient-filter 100 --save-fig temp_rod_stress.png --last-points --y-sort-labels "A B C D" --fig-width $FIGWIDTH --fig-height $FIGHEIGHT -rc --legend-location $LEGEND $MEAS_LEGEND --line-width 1 --marker-size 3 $NO_XLABEL >> plot_tf_and_qp.log
 logit "Processing Rod Force"
-qp $QPFILES -y "Rod Force" --normalize-x 320.0521 -s --rod-force --gradient-filter 100 --save-fig temp_rod_stress.png --last-points --y-sort-labels "A B C D" --fig-width $FIGWIDTH --fig-height $FIGHEIGHT -rc --legend-location $LEGEND $MEAS_LEGEND --line-width 1 --marker-size 3 $NO_XLABEL >> plot_tf_and_qp.log
+qp $QPFILES -y "Rod Force" --normalize-x 320.0521 -s --rod-force --gradient-filter 100 --save-fig temp_rod_stress.png --last-points --y-sort-labels "A B C D" --fig-width $FIGWIDTH --fig-height $FIGHEIGHT -rc --legend-location $LEGEND $MEAS_LEGEND --line-width 1 --marker-size 3 $NO_XLABEL --fit-3d --fit-rod >> plot_tf_and_qp.log
 
 logit "Processing TF2"
 transfer_function.py -pk $PKNPK2 $TF_FILE --ansys-2d-files $FILES  --operations Idling Keys Initial approx "Insert" --operations-ignore Warm 293 nominal SM18 --legend-location "bottom outside" -nerr --set-ylim "-200 0" --set-xlim "0 200" --set-yticks "0 -40 -80 -120 -160 -200" -uf 1 --image-name "TF2" --TF2 --fig-width $FIGWIDTH --fig-height $FIGHEIGHT --legend-location $LEGEND --line-width 1 --marker-size 3 --plot-note $MAGNETNAME $NO_XLABEL>> plot_tf_and_qp.log
