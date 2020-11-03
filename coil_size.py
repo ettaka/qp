@@ -116,7 +116,10 @@ def plot_coil_sizes(coil_size_dicts, args):
     plt.show()
 
 def plot_station_vertical_lines():
-    if not args.short_magnet:
+    if args.short_magnet:
+        CE = 1.55/2.
+        ax.axvline(x=CE, color='black', linestyle='dashed')
+    else:
         LE = .607
         CE = 3.407
         RE = 7.007
@@ -302,14 +305,19 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
     if info_locations == None:
         short_shell = 0.3415
         long_shell = 2. * short_shell
-        l = 2*short_shell + 10*long_shell
         #LE = short_shell + long_shell
         #CE = l / 2.
         #RE = l - LE
-        LE = .607
-        CE = 3.407
-        RE = 7.007
-        info_locations = {'AVG':None, 'LE':LE, 'CE':CE, 'RE':RE}
+        if args.short_magnet:
+            l = 1.510
+            CE = l/2.
+            info_locations = {'AVG':None, 'CE':CE}
+        else:
+            l = 2*short_shell + 10*long_shell
+            LE = .607
+            CE = 3.407
+            RE = 7.007
+            info_locations = {'AVG':None, 'LE':LE, 'CE':CE, 'RE':RE}
 
     shimming_info = {"Location name":[],
                     "Location":[],
@@ -389,12 +397,12 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
     avg_table = df.groupby(['Location name','Location'], as_index=False, group_keys=True).mean()
     avg_table['Coil'] = ['AVG' for dR in avg_table['dR']]
     #print(avg_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
-    avg_table.to_csv('shimming_info_avg.csv')
+    avg_table.to_csv('shimming_info_avg_rshim'+str(rshim)+'.csv')
 
     joined_table = df_out.append(avg_table)
 
     #print(joined_table[cols].sort_values(sort_values).to_string(float_format="{:0.0f}".format, index=False))
-    joined_table[cols].sort_values(sort_values).to_csv('shimming_info_joined.csv')
+    joined_table[cols].sort_values(sort_values).to_csv('shimming_info_joined'+str(rshim)+'.csv')
 
     return df
 
