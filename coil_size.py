@@ -129,7 +129,7 @@ def plot_station_vertical_lines():
         ax.axvline(x=CE, color='black', linestyle='dashed')
         ax.axvline(x=RE, color='black', linestyle='dashed')
 
-def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None):
+def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None):
     plt.cla()
     totnum = 0
 
@@ -161,8 +161,8 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
     ax.set_ylabel("L+R ($\mu$m)", fontsize=args.font_size)
     if av_interp != None:
         ax.plot(xdata* args.xunit_plot_scaling,av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av', linewidth=3)
-    #if shimmed_av_interp != None:
-        #ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,'-r'+markers[totnum],label='av+mshim', linewidth=5)
+    #if mshimmed_av_interp != None:
+        #ax.plot(xdata* args.xunit_plot_scaling,mshimmed_av_interp(xdata)* args.yunit_plot_scaling,'-r'+markers[totnum],label='av+mshim', linewidth=5)
     #if shimmed_rsr_av_interp != None and args.radial_size_reduction != 0:
         #ax.plot(xdata* args.xunit_plot_scaling,shimmed_rsr_av_interp(xdata)* args.yunit_plot_scaling,'-y'+markers[totnum],label='av+mshim-rsr', linewidth=5)
     ax.legend(loc=args.legend_location)
@@ -172,7 +172,7 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_in
         save_fig = 'coil_size.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None):
+def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None):
     plt.cla()
     totnum = 0
 
@@ -195,8 +195,8 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimm
     plot_station_vertical_lines()
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("L+R ($\mu$m)")
-    if shimmed_av_interp != None:
-        ax.plot(xdata* args.xunit_plot_scaling,shimmed_av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av+mshim', linewidth=3)
+    if mshimmed_av_interp != None:
+        ax.plot(xdata* args.xunit_plot_scaling,mshimmed_av_interp(xdata)* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='av+mshim', linewidth=3)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -204,7 +204,7 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, shimm
         save_fig = 'coil_size_shimmed.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shimmed_av_interp=None, shimmed_rsr_av_interp=None, shell_slope=0.12, pole_slope=-0.20):
+def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None, shell_slope=0.12, pole_slope=-0.20):
     plt.cla()
     totnum = 0
 
@@ -232,9 +232,9 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, shi
     ax3.set_ylabel("Azimuthal pole compression w.r.t. min. (MPa)")
     ax3.spines["right"].set_position(("axes", 1.2))
     fig.subplots_adjust(right=0.75)
-    if shimmed_av_interp != None:
-        ax.plot(xdata* args.xunit_plot_scaling,2./np.pi*(np.max(shimmed_av_interp(xdata)) - shimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
-        ax2.plot(xdata* args.xunit_plot_scaling, shell_slope * 2./np.pi*(np.max(shimmed_av_interp(xdata)) - shimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+    if mshimmed_av_interp != None:
+        ax.plot(xdata* args.xunit_plot_scaling,2./np.pi*(np.max(mshimmed_av_interp(xdata)) - mshimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+        ax2.plot(xdata* args.xunit_plot_scaling, shell_slope * 2./np.pi*(np.max(mshimmed_av_interp(xdata)) - mshimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
         mn, mx = ax.get_ylim()
         ax2.set_ylim(shell_slope * mn, shell_slope * mx)
         ax3.set_ylim(-pole_slope * mn, -pole_slope * mx)
@@ -686,16 +686,16 @@ if __name__ == '__main__':
     coil_size_dicts = read_coil_size_dicts(args)
     #plot_coil_sizes(coil_size_dicts, args)
     average_coil_size_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R',)
-    average_coil_size_shim_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim')
+    mshimmed_av_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim')
     average_coil_size_shim_rsr_interp, av_xdata = get_average_coil_size_interp(coil_size_dicts,args,col_name='L+R+mshim-rsr')
     print("plot coil sizes")
-    plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
-    plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
+    plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
+    plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
     plot_interpolated_coil_pack_z(coil_size_dicts, args, average_coil_size_interp, gaps)
     plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, average_coil_size_interp, gaps)
     plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, average_coil_size_interp, gaps)
     plot_interpolated_collar_gaps(coil_size_dicts, args, average_coil_size_interp, gaps)
-    plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, shimmed_av_interp=average_coil_size_shim_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
+    plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
 
     shimming_info = get_shimming_info(coil_size_dicts, gaps=gaps)
     print(shimming_info)
@@ -703,7 +703,7 @@ if __name__ == '__main__':
     avdata = np.c_[av_xdata, average_coil_size_interp(av_xdata)]
     np.savetxt('average_coil.size', avdata, header='Y\n Average coil size')
     print("Store shimmed coil size to average_shimmed_coil.size")
-    avshimdata = np.c_[av_xdata, average_coil_size_shim_interp(av_xdata)]
+    avshimdata = np.c_[av_xdata, mshimmed_av_interp(av_xdata)]
     np.savetxt('average_shimmed_coil.size', avshimdata, header='Y\n Average shimmed coil size')
 
     if args.radial_size_reduction != 0:
