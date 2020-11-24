@@ -246,7 +246,7 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, msh
         save_fig = 'theoretical_load_key.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_coil_pack_z(coil_size_dicts, args, av_interp, gaps=None):
+def plot_interpolated_coil_pack_z(coil_size_dicts, args, mshimmed_av_interp, gaps=None):
     plt.cla()
     totnum = 0
     if args.set_xlim != None: ax.set_xlim(args.set_gaps_xlim)
@@ -267,7 +267,7 @@ def plot_interpolated_coil_pack_z(coil_size_dicts, args, av_interp, gaps=None):
         #totnum = i + 1
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("Size w.r.t. nominal ($\mu$m)")
-    ax.plot(xdata * args.xunit_plot_scaling, (av_interp(xdata)+ mshim + rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
+    ax.plot(xdata * args.xunit_plot_scaling, (mshimmed_av_interp(xdata)+ rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
     if gaps is not None:
         for j, gap_data in enumerate(gaps):
             gap_file_name = gap_data['file name']
@@ -299,7 +299,7 @@ def plot_interpolated_coil_pack_z(coil_size_dicts, args, av_interp, gaps=None):
         save_fig = 'coil_average_sector_length.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, av_interp, gaps=None):
+def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, mshimmed_av_interp, gaps=None):
     plt.cla()
     totnum = 0
     #if args.set_xlim != None: ax.set_xlim(args.set_gaps_xlim)
@@ -323,7 +323,7 @@ def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, av_inter
     #ax.set_xlabel("Longitudinal location (m)")
     ax.set_xlabel("Coil sector length w.r.t. nominal ($\mu$m)")
     ax.set_ylabel("Collar gap w.r.t. nominal ($\mu$m)")
-    #ax.plot(xdata * args.xunit_plot_scaling, (av_interp(xdata)+ mshim + rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
+    #ax.plot(xdata * args.xunit_plot_scaling, (mshimmed_av_interp(xdata)+ rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
     if gaps is not None:
         for j, gap_data in enumerate(gaps):
             gap_file_name = gap_data['file name']
@@ -335,7 +335,7 @@ def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, av_inter
             gap_data_average = gap_df['Gap AVG'] 
             xdata_gap = (gap_df['Y']-coilpack_to_pad)/1000. * args.xunit_plot_scaling
             ydata_gap = (gap_data_average-theoretical_gap)/1000. * args.yunit_plot_scaling 
-            ydata_coil_len = (coil_size_dict['interp'][col_inds['L+R']](xdata_gap) + mshim + rshim*math.pi/2.)*1e6
+            ydata_coil_len = (mshimmed_av_interp(xdata_gap) + rshim*math.pi/2.)*1e6
 
             coef,cov = np.polyfit(ydata_coil_len, ydata_gap, deg=1,cov=True)
             slope, intercept, r_value, p_value, std_err = linregress(ydata_coil_len, ydata_gap)
@@ -364,7 +364,7 @@ def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, av_inter
         save_fig = 'collar_gap_vs_coil_len.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, av_interp, gaps=None):
+def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, mshimmed_av_interp, gaps=None):
     plt.cla()
     totnum = 0
     #if args.set_xlim != None: ax.set_xlim(args.set_gaps_xlim)
@@ -388,7 +388,7 @@ def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, av_
     #ax.set_xlabel("Longitudinal location (m)")
     ax.set_xlabel("Coil pack size w.r.t. nominal ($\mu$m)")
     ax.set_ylabel("Collar radius w.r.t. nominal ($\mu$m)")
-    #ax.plot(xdata * args.xunit_plot_scaling, (av_interp(xdata)+ mshim + rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
+    #ax.plot(xdata * args.xunit_plot_scaling, (mshimmed_av_interp(xdata)+ rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
     if gaps is not None:
         for j, gap_data in enumerate(gaps):
             gap_file_name = gap_data['file name']
@@ -400,7 +400,7 @@ def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, av_
             gap_data_average = gap_df['Gap AVG'] 
             xdata_gap = (gap_df['Y']-coilpack_to_pad)/1000. * args.xunit_plot_scaling
             ydata_gap = (gap_data_average-theoretical_gap)/1000. * args.yunit_plot_scaling 
-            ydata_coil_len = (coil_size_dict['interp'][col_inds['L+R']](xdata_gap) + mshim + rshim*math.pi/2.)*1e6
+            ydata_coil_len = (mshimmed_av_interp(xdata_gap) + rshim*math.pi/2.)*1e6
 
             ydata_coil_pack_size = 2. * ydata_coil_len/math.pi
             collar_radius = 2. * ydata_gap/math.pi
@@ -430,7 +430,7 @@ def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, av_
         save_fig = 'collar_radius_vs_coil_pack_size.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_collar_gaps(coil_size_dicts, args, av_interp, gaps=None):
+def plot_interpolated_collar_gaps(coil_size_dicts, args, mshimmed_av_interp, gaps=None):
     plt.cla()
     totnum = 0
     #if args.set_xlim != None: ax.set_xlim(args.set_gaps_xlim)
@@ -453,7 +453,7 @@ def plot_interpolated_collar_gaps(coil_size_dicts, args, av_interp, gaps=None):
         #totnum = i + 1
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("Gap size (mm)")
-    #ax.plot(xdata * args.xunit_plot_scaling, (av_interp(xdata)+ mshim + rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
+    #ax.plot(xdata * args.xunit_plot_scaling, (mshimmed_av_interp(xdata)+ rshim*math.pi/2.) * args.yunit_plot_scaling,color='red', marker=markers[totnum],label='Shimmed coil average sector length', linewidth=3)
     if gaps is not None:
         for j, gap_data in enumerate(gaps):
             gap_file_name = gap_data['file name']
@@ -691,10 +691,10 @@ if __name__ == '__main__':
     print("plot coil sizes")
     plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
     plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp)
-    plot_interpolated_coil_pack_z(coil_size_dicts, args, average_coil_size_interp, gaps)
-    plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, average_coil_size_interp, gaps)
-    plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, average_coil_size_interp, gaps)
-    plot_interpolated_collar_gaps(coil_size_dicts, args, average_coil_size_interp, gaps)
+    plot_interpolated_coil_pack_z(coil_size_dicts, args, mshimmed_av_interp, gaps)
+    plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, mshimmed_av_interp, gaps)
+    plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, mshimmed_av_interp, gaps)
+    plot_interpolated_collar_gaps(coil_size_dicts, args, mshimmed_av_interp, gaps)
     plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
 
     shimming_info = get_shimming_info(coil_size_dicts, gaps=gaps)
