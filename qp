@@ -2349,13 +2349,12 @@ if __name__ == '__main__':
             plot_data(plot_dict, args)
             if x_axis == 'NTP Time':
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
-            else:
-                if args.legend_location == 'nolegend':
-                    lgd = None 
-                elif args.legend_location == 'upper left':
-                    lgd = ax.legend(loc='upper left')
-                else:
-                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
+            if args.legend_location == 'nolegend':
+                lgd = None 
+            elif args.legend_location == 'bottom outside':
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5,-.23), fancybox=True, shadow=True, ncol=2)
+            elif args.legend_location is not None:
+                lgd = ax.legend(loc=args.legend_location)
             #ax.legend()
             #ax.show()
             autoscale_y(args)
