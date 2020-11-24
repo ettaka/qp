@@ -177,6 +177,11 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                                 channel_dict['location'] = 'Coil ' + channel_name[2:5]
                                 channel_dict['physical_quantity'] = 'Strain'
                                 channel_dict['material'] = 'titanium'
+                        elif channel_name[0:4] == 'Coil':
+                                channel_dict['location'] = 'Coil ' + channel_name[4:7]
+                                channel_dict['physical_quantity'] = 'Strain'
+                                channel_dict['material'] = 'titanium'
+                                channel_dict['unit'] = '$\mu$m'
                         elif channel_name == 'Current':
                                 channel_dict['physical_quantity'] = 'Current'
                                 channel_dict['location'] = 'None'
