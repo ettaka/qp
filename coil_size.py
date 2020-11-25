@@ -494,6 +494,78 @@ def plot_interpolated_collar_gaps(coil_size_dicts, args, mshimmed_av_interp, gap
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
 
+def plot_interpolated_pole_key_gaps(coil_size_dicts, args, mshimmed_av_interp, gaps=None):
+    plt.cla()
+    totnum = 0
+    #if args.set_xlim != None: ax.set_xlim(args.set_gaps_xlim)
+    #if args.set_ylim != None: ax.set_ylim(args.set_gaps_ylim)
+    if args.set_xlim != None: ax.set_xlim(auto=True)
+    if args.set_ylim != None: ax.set_ylim(auto=True)
+    ax.set_ylim((0,700))
+    ax.grid(args.grid)
+
+    ax.set_xlabel("Longitudinal location (m)")
+    ax.set_ylabel("Gap size (mm)")
+    if gaps is not None:
+        for j, gap_data in enumerate(gaps):
+            gap_file_name = gap_data['file name']
+            data_name = gap_file_name.replace('.size', '').replace('gaps','').replace('_','')
+            gap_df = gap_data['DataFrame']
+            totnum = totnum + 1
+            theoretical_gap = 15.
+            pole_key_size = 13.9
+            coilpack_to_pad = 10.
+
+            nominal_polekey = 13.9
+            nominal_GI = 0.125
+            nominal_polekey_gap = (theoretical_gap - nominal_polekey - 4*nominal_GI)/2.
+
+            gap_data_a = gap_df['Gap A'] 
+            gap_data_b = gap_df['Gap B'] 
+            gap_data_c = gap_df['Gap C'] 
+            gap_data_d = gap_df['Gap D'] 
+            gap_data_avg = gap_df['Gap AVG'] 
+            gap_data_all = gap_df[['Gap A', 'Gap B', 'Gap C', 'Gap D']]
+            gap_data_max = gap_data_all.max(axis=1)
+            gap_data_min = gap_data_all.min(axis=1)
+            xdata_gap = (gap_df['Y']-coilpack_to_pad)/1000. * args.xunit_plot_scaling
+            pole_key_gap_a = (gap_data_a-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_b = (gap_data_b-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_c = (gap_data_c-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_d = (gap_data_d-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_avg = (gap_data_avg-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_max = (gap_data_max-nominal_polekey-4*nominal_GI)/2.*1e3
+            pole_key_gap_min = (gap_data_min-nominal_polekey-4*nominal_GI)/2.*1e3
+            theoretical_pole_key_gap = nominal_polekey_gap*1e3
+
+            #ax.plot(xdata_gap, pole_key_gap_a, '-'+markers[0],color=colors[0],label='A', linewidth=1)
+            #ax.plot(xdata_gap, pole_key_gap_b, '-'+markers[1],color=colors[1],label='B', linewidth=1)
+            #ax.plot(xdata_gap, pole_key_gap_c, '-'+markers[2],color=colors[2],label='C', linewidth=1)
+            #ax.plot(xdata_gap, pole_key_gap_d, '-'+markers[3],color=colors[3],label='D', linewidth=1)
+
+            ax.plot(xdata_gap, pole_key_gap_max, '-',color='black',linestyle = 'dashed', label='Max.', linewidth=3)
+            ax.plot(xdata_gap, pole_key_gap_avg, '-',color='black',label='Avg.', linewidth=3)
+            ax.plot(xdata_gap, pole_key_gap_min, '-',color='black',linestyle = 'dashed', label='Min.', linewidth=3)
+            
+            ax.plot(xdata_gap, np.zeros_like(xdata_gap)+theoretical_pole_key_gap, '-',color='green',linestyle = 'dashed', label='Nom.', linewidth=2)
+
+            #if 'Boltnr' in gap_df:
+            #    for i in range(len(xdata)):
+            #        x0 = xdata[i]
+            #        y0 = ydata[i]+50
+            #        ax.annotate(gap_df['Boltnr'][i], (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
+            #elif j == 0:
+            #    for i in range(len(xdata)):
+            #        x0 = xdata[i]
+            #        y0 = ydata[i]+50
+            #        ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
+    #plot_station_vertical_lines()
+    ax.legend(loc=args.legend_location)
+    if args.show_plot:
+        plt.show()
+    else:
+        save_fig = 'polekey_gaps.png'
+        plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
 def get_average_coil_size_interp(coil_size_dicts, args, col_name='L+R'):
     for i,coil_size_dict in enumerate(coil_size_dicts):
@@ -695,6 +767,7 @@ if __name__ == '__main__':
     plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, mshimmed_av_interp, gaps)
     plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, mshimmed_av_interp, gaps)
     plot_interpolated_collar_gaps(coil_size_dicts, args, mshimmed_av_interp, gaps)
+    plot_interpolated_pole_key_gaps(coil_size_dicts, args, mshimmed_av_interp, gaps)
     plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp = average_coil_size_interp, mshimmed_av_interp=mshimmed_av_interp, shimmed_rsr_av_interp=average_coil_size_shim_rsr_interp, shell_slope = args.shell_slope, pole_slope = args.pole_slope)
 
     shimming_info = get_shimming_info(coil_size_dicts, gaps=gaps)
