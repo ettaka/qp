@@ -689,12 +689,17 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
     joined_table[cols].sort_values(sort_values).to_csv('shimming_info_joined'+str(rshim)+'.csv')
 
     LpR = {}
-    locations = ['AVG','LE','CE','RE']
-    LpR['Coil'] = list(joined_table[joined_table['Location name'].str.contains('LE')]['Coil'])
+
+    if args.short_magnet:
+        locations = ['AVG','CE']
+        LpR['Coil'] = list(joined_table[joined_table['Location name'].str.contains('CE')]['Coil'])
+    else:
+        locations = ['AVG','LE','CE','RE']
+        LpR['Coil'] = list(joined_table[joined_table['Location name'].str.contains('LE')]['Coil'])
+
     for loc in locations:
         LpR[loc] = list(joined_table[joined_table['Location name'].str.contains(loc)]['L+R'])
 
-    
     df_LpR = pd.DataFrame(LpR)
 
     df_LpR.to_csv('LplusR_out'+str(rshim)+'.csv')
