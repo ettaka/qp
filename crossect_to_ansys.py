@@ -70,8 +70,8 @@ def read_cs(filename, quadrant, args):
             args.ymin = CE-20
             args.ymax = CE+20
         elif args.longitudinal_position == 'RE': 
-            args.ymin = RE-50
-            args.ymax = RE+200
+            args.ymin = RE-20
+            args.ymax = RE+20
         elif args.longitudinal_position == 'Station1': 
             args.ymin = 50.
             args.ymax = 1800.
