@@ -1362,7 +1362,7 @@ def add_stress_channel_data(plot_dict):
     #location_dict = {}
     channel_dict_list = plot_dict['channel_dict_list']
     for channel_dict in channel_dict_list:
-        if channel_dict['physical_quantity'] == 'Strain':
+        if 'Vessel' not in channel_dict['name'] and channel_dict['physical_quantity'] == 'Strain':
             added_dicts.append(dict(channel_dict))
             added_dict = added_dicts[-1]
             added_dict['physical_quantity'] = 'Stress'
@@ -1539,6 +1539,13 @@ def compute_stresses(plot_dict, args):
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
 
+                if 'MQXFS' in mtbop_data['filepath']:
+                    material = 'aluminium'
+                    d_rod = 0.036
+                else:
+                    material = 'stainless steel'
+                    d_rod = 0.035
+
                 try:
                     if not azimuthal_dict == None:
                             azimuthal_strain = get_raw_data_by_name(mtbop_data, azimuthal_dict['name']) 
@@ -1644,6 +1651,14 @@ def compute_rod_forces(plot_dict, args):
                 longitudinal_dict = channel_dict['strain']['longitudinal']
                 
                 d_rod = get_rod_diameter(channel_dict)
+
+                if 'MQXFS' in mtbop_data['filepath']:
+                    material = 'aluminium'
+                    d_rod = 0.036
+                else:
+                    material = 'stainless steel'
+                    d_rod = 0.035
+
                 A_rod = np.pi * (d_rod/2.)**2.
 
                 try:
@@ -2288,7 +2303,10 @@ if __name__ == '__main__':
                         ans_yname = 'scyl'
                         ydatas_category = 'Shell'
                     elif 'Rod' in name:
-                        ans_yname = 'srod'
+                        if 'Stress' in name or 'Force' in name:
+                            ans_yname = 'srod'
+                        else:
+                            ans_yname = 'erod'
                         rod_force = 'Force' in name
                         ydatas_category = 'Rod'
                         print ("Choosing rod data because that is plotted as the experimental data.")
@@ -2302,7 +2320,7 @@ if __name__ == '__main__':
                         ydata = df[ans_yname]
                         if rod_force:
                             print("computing rod forces for FEM3D data")
-                            d_rod = 0.036
+                            d_rod = 0.035
                             A_rod = np.pi * (d_rod/2.)**2.
                             ydata = 1000 * A_rod * ydata
                         if args.plot_delta: 
@@ -2311,6 +2329,8 @@ if __name__ == '__main__':
                             loc = 0
                             if args.delta_zero_location is not None:
                                 loc = np.abs(xdata.values-args.delta_zero_location).argmin()
+                            xdata = xdata[1:]
+                            ydata = ydata[1:]
                             ydata -= ydata.values[loc]
                         if not args.no_current_squared: xdata **= 2.
                         if not args.normalize_x is None:
