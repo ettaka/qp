@@ -170,7 +170,6 @@ def load_csv(filepath, times_called, args):
     else:
         keys_data = df_out.filter(regex='Keys.*$|C...T$|SH.T')
 
-
     raw_data = keys_data.astype(float).values
     col_names = keys_data.columns
     channel_dict_list = create_channel_dict_list(col_names, col_names, old_format=False)
@@ -341,7 +340,8 @@ def plot_ansys_data(ax, args):
                         ax.plot(13.00+interf['average']/1000., spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
                     ax.plot(13.00+interf['average']/1000., spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
-                    _ = make_error_boxes(ax, 13.00+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                    if args.no_ansys_error:
+                        _ = make_error_boxes(ax, 13.00+interf['average']/1000., spole['average'], interf['error']/1000., spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
             elif args.key_shell:
                 if args.ansys_single_coils:
                     for j in range(4):
@@ -352,7 +352,8 @@ def plot_ansys_data(ax, args):
                         ax.plot(13.00+interf['average']/1000., scyl['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
                     ax.plot(13.00+interf['average']/1000., scyl['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
-                    _ = make_error_boxes(ax, 13.00+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                    if args.no_ansys_error:
+                        _ = make_error_boxes(ax, 13.00+interf['average']/1000., scyl['average'], interf['error']/1000., scyl['error'], facecolor='b', edgecolor='None', alpha=0.3)
             else:
                 if args.ansys_single_coils:
                     for j in range(4):
@@ -363,7 +364,8 @@ def plot_ansys_data(ax, args):
                         ax.plot(scyl['raw_data'][:,j], spole['raw_data'][:,j], marker=data_marker, markersize=args.marker_size, label=name, color=data_color, linewidth=args.line_width, linestyle='-')
                 else:
                     ax.plot(scyl['average'], spole['average'], marker='d', markersize=args.marker_size, label=parent_name, color=data_color, linewidth=args.line_width)
-                    _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
+                    if args.no_ansys_error:
+                        _ = make_error_boxes(ax, scyl['average'], spole['average'], scyl['error'], spole['error'], facecolor='b', edgecolor='None', alpha=0.3)
 
         for i, data in enumerate(ansys_file_data_list):
             name = data['name']
@@ -477,7 +479,7 @@ def plot_tf(ax, times_called, filepath, args):
             ax.plot(df_fit[key], df_fit[fbg_key], color='red', linestyle="None", marker='d', markersize=args.marker_size, label='__nolegend__')  
             ax.set_xlabel(key)
             ax.set_ylabel(fbg_key)
-            plt.title(args.title)
+            #plt.title(args.title)
             imagename = filepath+'_sg-vs-fbg_' + key
             imagename = imagename.replace('.','_').replace(' ','_')
             print("creating image file", imagename+'.png')
@@ -758,6 +760,7 @@ if __name__ == '__main__':
     parser.add_argument('--TF2', action='store_true', default=False) 
     parser.add_argument('-nav', '--no-average', action='store_false', default=True) 
     parser.add_argument('-nerr', '--no-average-error', action='store_false', default=True) 
+    parser.add_argument('-nerra', '--no-ansys-error', action='store_false', default=True) 
     parser.add_argument('-nshav', '--no-neighbour-shell-averages', action='store_false', default=True) 
     parser.add_argument('-ll', '--legend-location', type=str, default='best')
     parser.add_argument('-perm', '--coil-permutation', nargs=4, type=int)
