@@ -74,7 +74,7 @@ def create_ss_channel(channel_dict):
 
     return ss_channel, channel_dict
 
-def create_channel_dict_list(channel_names, channel_units, old_format=False, long_magnet=True):
+def create_channel_dict_list(channel_names, channel_units, old_format=False, long_magnet=True, mtbop_data=None):
         channel_dict_list = []
         for i, channel_name in enumerate(channel_names):
                 channel_dict_list.append({})
@@ -92,6 +92,8 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                 if 'FBG_' in channel_name:
                     channel_name = channel_name.replace('FBG_','')+'_FBG'
 
+                channel_dict['long magnet'] = long_magnet
+                channel_dict['filepath'] = mtbop_data['filepath']
 
                 if '_inter' in channel_name:
                     channel_dict['interpolation'] = True
@@ -162,6 +164,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                                 elif channel_name[3] == 'T': channel_dict['direction'] = 'Azimuthal'
                                 channel_dict['location'] = 'Shell ' + shell_location
                                 channel_dict['physical_quantity'] = 'Strain'
+                                channel_dict['unit'] = '$\mu$e'
                                 channel_dict['material'] = 'aluminium'
                         elif channel_name[0] == 'R' and 'n' not in channel_name: 
                                 channel_dict['location'] = 'Rod ' + channel_name[1]
@@ -169,6 +172,7 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                                 channel_dict['material'] = 'aluminium'
                                 channel_dict['direction'] =  'Longitudinal'
                                 channel_dict['rod diameter'] = 0.036
+                                channel_dict['unit'] = '$\mu$e'
                                 if long_magnet: 
                                     print ("Long magnets have stainless steel rods, setting material for:", channel_name)
                                     channel_dict['material'] = 'stainless steel'
@@ -177,11 +181,12 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                                 channel_dict['location'] = 'Coil ' + channel_name[2:5]
                                 channel_dict['physical_quantity'] = 'Strain'
                                 channel_dict['material'] = 'titanium'
+                                channel_dict['unit'] = '$\mu$e'
                         elif channel_name[0:4] == 'Coil':
                                 channel_dict['location'] = 'Coil ' + channel_name[4:7]
                                 channel_dict['physical_quantity'] = 'Strain'
                                 channel_dict['material'] = 'titanium'
-                                channel_dict['unit'] = '$\mu$m'
+                                channel_dict['unit'] = '$\mu$e'
                         elif channel_name == 'Current':
                                 channel_dict['physical_quantity'] = 'Current'
                                 channel_dict['location'] = 'None'
