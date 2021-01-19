@@ -16,6 +16,7 @@ from matplotlib.patches import Rectangle
 import odr_fit
 
 
+#fig = plt.figure(figsize=(8,6))
 fig = plt.figure()
 ax = fig.add_subplot(111)
 #ax.autoscale(enable=True, axis='y', tight=True)
@@ -122,9 +123,13 @@ def plot_station_vertical_lines():
         CE = 1.55/2.
         ax.axvline(x=CE, color='black', linestyle='dashed')
     else:
-        LE = .607
-        CE = 3.407
-        RE = 7.007
+        #LE = .607
+        LE = .646
+        #CE = 3.407
+        CE = 4.246
+        #RE = 7.007
+        RE = 7.046
+
         ax.axvline(x=LE, color='black', linestyle='dashed')
         ax.axvline(x=CE, color='black', linestyle='dashed')
         ax.axvline(x=RE, color='black', linestyle='dashed')
@@ -204,7 +209,7 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, mshim
         save_fig = 'coil_size_shimmed.png'
         plt.savefig(save_fig, bbox_inches='tight', numpoints=1, dpi=200)
 
-def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None, shell_slope=0.12, pole_slope=-0.20):
+def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None, shell_slope=0.12, pole_slope=-0.20, GK_data=None):
     plt.cla()
     totnum = 0
 
@@ -232,14 +237,45 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, msh
     ax3.set_ylabel("Azimuthal pole compression w.r.t. min. (MPa)")
     ax3.spines["right"].set_position(("axes", 1.2))
     fig.subplots_adjust(right=0.75)
+    MQXFBMT2 = True
+    if MQXFBMT2 is not None:
+        GK_data = {}
+        GK1 = 1.84
+        GK2 = 2
+        #LE = .607
+        LE = .646
+        #CE = 3.407
+        CE = 4.246
+        #RE = 7.007
+        RE = 7.046
+        offset = ((LE+RE)/2.-GK1-GK2)
+        GK1 += offset
+        GK2 += offset
+        GK_data['size'] = np.array([150,150,0.,150,150])
+        GK_data['z'] = np.array([0,GK1,GK1+GK2,2*GK1+GK2,2*GK1+2*GK2])
+        GK_data['meas pole'] = np.array([28,11,26])
+        GK_data['meas shell'] = np.array([21,5,22])
+        GK_data['meas z'] = np.array([LE, CE, RE])
+
     if mshimmed_av_interp != None:
-        ax.plot(xdata* args.xunit_plot_scaling,2./np.pi*(np.max(mshimmed_av_interp(xdata)) - mshimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
-        ax2.plot(xdata* args.xunit_plot_scaling, shell_slope * 2./np.pi*(np.max(mshimmed_av_interp(xdata)) - mshimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+        ln1=ax.plot(xdata* args.xunit_plot_scaling,2./np.pi*(np.max(mshimmed_av_interp(xdata)) - mshimmed_av_interp(xdata))* args.yunit_plot_scaling,color='black', marker=markers[totnum],label='Theoretical load key', linewidth=3)
+        if GK_data is not None:
+            ln1b=ax.plot(GK_data['z'], GK_data['size'], color='black', linestyle='--', label='Load key', linewidth=3)
         mn, mx = ax.get_ylim()
         ax2.set_ylim(shell_slope * mn, shell_slope * mx)
         ax3.set_ylim(-pole_slope * mn, -pole_slope * mx)
+        if GK_data is not None:
+            ln2=ax2.plot(GK_data['meas z'], GK_data['meas shell'], color='green', marker='d', markersize=12, linestyle='None', label='Shell reaction', linewidth=3)
+            ln3=ax3.plot(GK_data['meas z'], GK_data['meas pole'], color='red', marker='p', markersize=12, linestyle='None', label='Pole reaction', linewidth=3)
     plot_station_vertical_lines()
+
+    if GK_data is not None:
+        lns = ln1+ln1b+ln2+ln3
+        lall = [l.get_label() for l in lns]
+        ax.legend(lns,lall,loc=args.legend_location)
+
     ax.legend(loc=args.legend_location)
+
     if args.show_plot:
         plt.show()
     else:
@@ -598,9 +634,12 @@ def get_shimming_info(coil_size_dicts, info_locations=None, location_length=.05,
             info_locations = {'AVG':None, 'CE':CE}
         else:
             l = 2*short_shell + 10*long_shell
-            LE = .607
-            CE = 3.407
-            RE = 7.007
+            #LE = .607
+            LE = .646
+            #CE = 3.407
+            CE = 4.246
+            #RE = 7.007
+            RE = 7.046
             info_locations = {'AVG':None, 'LE':LE, 'CE':CE, 'RE':RE}
 
     shimming_info = {"Location name":[],
