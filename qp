@@ -337,6 +337,9 @@ def plot_mtbop_data(mtbop_data, args=None):
         x_axis_dict = mtbop_data['x_axis']
         y_axis_dict = mtbop_data['y_axis']
 
+        xlabel_out = str(x_axis_dict['name'])
+        ylabel_out = str(y_axis_dict['name'])
+
         ax_dicts = [x_axis_dict, y_axis_dict]
         for ax_dict in ax_dicts:
             if x_axis == 'Current':
@@ -492,6 +495,8 @@ def plot_mtbop_data(mtbop_data, args=None):
 
         mtbop_data['min_points_data'][mtbop_data['y_axis']['name']].append(ydata.min())
         mtbop_data['min_points_data']['filepath'].append(mtbop_data['filepath'])
+
+        return xdata,ydata,xlabel_out,ylabel_out,mtbop_data['filepath']
 
 @timeit
 def plot_selected_list(plot_dict):
@@ -1853,6 +1858,7 @@ def plot_data(plot_dict, args=None):
     max_points_data_list = []
     min_points_data_list = []
     find_common_location(plot_dict)
+    plot_dict['curve_data'] = []
     for j, y_axis in enumerate(y_axis_list):
         for i, mtbop_data in enumerate(plot_dict['mtbop_data_list']):
             mtbop_data['last_points_data'] = {}
@@ -1895,7 +1901,7 @@ def plot_data(plot_dict, args=None):
                 mtbop_data['label type'] = plot_dict['label type']
                 mtbop_data['common location'] = plot_dict['common location']
                 mtbop_data['show_min_max_labels'] = plot_dict['show_min_max_labels']
-                plot_mtbop_data(mtbop_data, args)
+                plot_dict['curve_data'].append(plot_mtbop_data(mtbop_data, args))
 
     if args.last_points:
         print("Printing out information about the first and last points:")
@@ -1978,7 +1984,6 @@ def plot_data(plot_dict, args=None):
                 pass
         print("Printing out information about the min points: done")
 
-
 def search_channel_names_for_y_axis(plot_dict, args):
     print("search_channel_names_for_y_axis: I'm trying to search for all the channel names that contain the words given with --y-axis")
     print("search_channel_names_for_y_axis: y_axis: = ", args.y_axis)
@@ -2014,6 +2019,9 @@ def search_channel_names_for_y_axis(plot_dict, args):
             exit()
     print("search_channel_names_for_y_axis: this is what I found:", args.y_axis)
 
+def safe_path(filename):
+    return "".join([c for c in filename if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+
 if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Plot mtbop strain data')
         parser.add_argument('paths', nargs='+', type=str)
@@ -2021,6 +2029,7 @@ if __name__ == '__main__':
         parser.add_argument('-i', '--info', action='store_true', default=False)
         parser.add_argument('-c', '--channels-json', nargs='?', type=str)
         parser.add_argument('-p', '--plot', action='store_true', default=False) 
+        parser.add_argument('--save-plot-data', action='store_true', default=False) 
         parser.add_argument('-x', '--x-axis', type=str)
         parser.add_argument('-y', '--y-axis', nargs='+', type=str)
         parser.add_argument('-icw', '--ignore-channels-filewise', nargs='+', type=str)
@@ -2096,6 +2105,7 @@ if __name__ == '__main__':
         parser.add_argument('--fig-width', type=float, default=4)
         parser.add_argument('--line-width', type=float, default=2)
         parser.add_argument('--marker-size', type=float, default=2)
+        
         #parser.add_argument('--rod-diametre', type=float, help='give the rod diameter')
 
         args = parser.parse_args()
@@ -2392,6 +2402,22 @@ if __name__ == '__main__':
                     plt.savefig(args.save_fig, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
                 else:
                     plt.savefig(args.save_fig, dpi=200, bbox_inches='tight')
+            
+            if args.save_plot_data:
+                for dat in plot_dict['curve_data']:
+                    curve_data = {}
+                    xdata, ydata, xlabel, ylabel, filepath = dat
+                    curve_data[xlabel] = xdata
+                    curve_data[ylabel] = ydata
+                    save_plot_file_name = safe_path(filepath + ylabel) + '.csv'
+                    print ("Saving plot data: ", save_plot_file_name)
+                    pd.DataFrame(curve_data).to_csv(save_plot_file_name)
+
+
+                    
+
+
+
 
 
 
