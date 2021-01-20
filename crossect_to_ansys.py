@@ -60,9 +60,12 @@ def read_cs(filename, quadrant, args):
         cs['dx'] = -cs['dx']
         cs['dy'] = -cs['dy']
         cs['dz'] = -cs['dz']
-        LE = 607
-        CE = 3407
-        RE = 7007
+#        LE = 607
+#        CE = 3407
+#        RE = 7007
+        LE = 646
+        CE = 4246
+        RE = 7046
         if args.longitudinal_position == 'LE': 
             args.ymin = LE-20
             args.ymax = LE+20
