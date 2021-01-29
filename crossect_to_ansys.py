@@ -64,6 +64,7 @@ def read_cs(filename, quadrant, args):
 #        CE = 3407
 #        RE = 7007
         LE = 646
+        CE6 = 3415
         CE = 4246
         RE = 7046
         if args.longitudinal_position == 'LE': 
@@ -71,7 +72,10 @@ def read_cs(filename, quadrant, args):
             args.ymax = LE+20
         elif args.longitudinal_position == 'CE': 
             args.ymin = CE-20
-            args.ymax = CE+20
+            args.ymax = CE+200
+        elif args.longitudinal_position == 'CE6': 
+            args.ymin = CE6-20
+            args.ymax = CE6+20
         elif args.longitudinal_position == 'RE': 
             args.ymin = RE-20
             args.ymax = RE+20

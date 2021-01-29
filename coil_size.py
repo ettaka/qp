@@ -115,23 +115,25 @@ def plot_coil_sizes(coil_size_dicts, args):
         ydata = coil_size_dict['raw_data'][:,1] * args.yunit_plot_scaling
         label = coil_size_dict['filepath'] + coil_size_dict['column_names'][1]
         ax.plot(xdata,ydata,'--'+colors[i]+markers[i],label=label)
-    plot_station_vertical_lines()
+    plot_station_vertical_lines(args.plot_CE6)
     plt.show()
 
-def plot_station_vertical_lines():
+def plot_station_vertical_lines(plot_CE6):
     if args.short_magnet:
         CE = 1.55/2.
         ax.axvline(x=CE, color='black', linestyle='dashed')
     else:
         #LE = .607
         LE = .646
-        #CE = 3.407
+        CE6 = 3.407
         CE = 4.246
         #RE = 7.007
         RE = 7.046
 
         ax.axvline(x=LE, color='black', linestyle='dashed')
         ax.axvline(x=CE, color='black', linestyle='dashed')
+        if args.plot_CE6:
+            ax.axvline(x=CE6, color='black', linestyle='dashed')
         ax.axvline(x=RE, color='black', linestyle='dashed')
 
 def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, mshimmed_av_interp=None, shimmed_rsr_av_interp=None):
@@ -153,7 +155,7 @@ def plot_interpolated_coil_sizes(coil_size_dicts, args, av_interp, mshimmed_av_i
         label += " ({:2.0f} $\mu$m)".format(coil_size_dict['L+R average'])
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
-    plot_station_vertical_lines()
+    plot_station_vertical_lines(args.plot_CE6)
 
     if args.plot_note is not None:
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
@@ -197,7 +199,7 @@ def plot_interpolated_shimmed_coil_sizes(coil_size_dicts, args, av_interp, mshim
         label += '+mshim ({:2.0f} $\mu$m)'.format(coil_size_dict['L+R average']+1e6*mshim)
         ax.plot(xdata* args.xunit_plot_scaling,ydata* args.yunit_plot_scaling,'--'+colors[i]+markers[i],label=label)
         totnum = i + 1
-    plot_station_vertical_lines()
+    plot_station_vertical_lines(args.plot_CE6)
     ax.set_xlabel("Longitudinal location (m)")
     ax.set_ylabel("L+R ($\mu$m)")
     if mshimmed_av_interp != None:
@@ -237,8 +239,8 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, msh
     ax3.set_ylabel("Azimuthal pole compression w.r.t. min. (MPa)")
     ax3.spines["right"].set_position(("axes", 1.2))
     fig.subplots_adjust(right=0.75)
-    MQXFBMT2 = True
-    if MQXFBMT2 is not None:
+    MQXFBMT2 = False
+    if MQXFBMT2:
         GK_data = {}
         GK1 = 1.84
         GK2 = 2
@@ -267,7 +269,7 @@ def plot_interpolated_theoretical_load_key(coil_size_dicts, args, av_interp, msh
         if GK_data is not None:
             ln2=ax2.plot(GK_data['meas z'], GK_data['meas shell'], color='green', marker='d', markersize=12, linestyle='None', label='Shell reaction', linewidth=3)
             ln3=ax3.plot(GK_data['meas z'], GK_data['meas pole'], color='red', marker='p', markersize=12, linestyle='None', label='Pole reaction', linewidth=3)
-    plot_station_vertical_lines()
+    plot_station_vertical_lines(args.plot_CE6)
 
     if GK_data is not None:
         lns = ln1+ln1b+ln2+ln3
@@ -327,7 +329,7 @@ def plot_interpolated_coil_pack_z(coil_size_dicts, args, mshimmed_av_interp, gap
                     x0 = xdata[i]
                     y0 = ydata[i]+50
                     ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
-    plot_station_vertical_lines()
+    plot_station_vertical_lines(args.plot_CE6)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -392,7 +394,7 @@ def plot_interpolated_collar_gap_vs_coil_sec_len(coil_size_dicts, args, mshimmed
             #        x0 = xdata[i]
             #        y0 = ydata[i]+50
             #        ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
-    #plot_station_vertical_lines()
+    #plot_station_vertical_lines(args.plot_CE6)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -458,7 +460,7 @@ def plot_interpolated_collar_radius_vs_coil_pack_size(coil_size_dicts, args, msh
             #        x0 = xdata[i]
             #        y0 = ydata[i]+50
             #        ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
-    #plot_station_vertical_lines()
+    #plot_station_vertical_lines(args.plot_CE6)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -521,7 +523,7 @@ def plot_interpolated_collar_gaps(coil_size_dicts, args, mshimmed_av_interp, gap
             #        x0 = xdata[i]
             #        y0 = ydata[i]+50
             #        ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
-    #plot_station_vertical_lines()
+    #plot_station_vertical_lines(args.plot_CE6)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -595,7 +597,7 @@ def plot_interpolated_pole_key_gaps(coil_size_dicts, args, mshimmed_av_interp, g
             #        x0 = xdata[i]
             #        y0 = ydata[i]+50
             #        ax.annotate(str(i+1), (x0, y0),  ha='center', va='center')#, fontsize=annotation_font_size)
-    #plot_station_vertical_lines()
+    #plot_station_vertical_lines(args.plot_CE6)
     ax.legend(loc=args.legend_location)
     if args.show_plot:
         plt.show()
@@ -771,6 +773,7 @@ if __name__ == '__main__':
     parser.add_argument('--gaps', nargs='+', type=str, default=['gaps_FUJI.size','gaps_final.size'])
     parser.add_argument('--font-size', type=float, default=12)
     parser.add_argument('--short-magnet', action='store_true', default=False) 
+    parser.add_argument('--plot-CE6', action='store_true', default=False) 
     parser.add_argument('--fix-gaps-kapton-size', type=float, default =None)
 
 

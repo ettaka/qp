@@ -93,7 +93,10 @@ def create_channel_dict_list(channel_names, channel_units, old_format=False, lon
                     channel_name = channel_name.replace('FBG_','')+'_FBG'
 
                 channel_dict['long magnet'] = long_magnet
-                channel_dict['filepath'] = mtbop_data['filepath']
+                if mtbop_data is not None and 'filepath' in mtbop_data:
+                    channel_dict['filepath'] = mtbop_data['filepath']
+                else:
+                    channel_dict['filepath'] = None
 
                 if '_inter' in channel_name:
                     channel_dict['interpolation'] = True
