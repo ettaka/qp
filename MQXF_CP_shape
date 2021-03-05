@@ -1,0 +1,294 @@
+#!/bin/env python
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import argparse
+import matplotlib.dates as mdates
+import sys
+import os
+import json
+sys.path.insert(0, "/home/eetakala/git/textemplator/")
+from textemplator import TexTemplator
+
+
+SCOLS = ['s1','s2','s3','s4','s5','s6','s7','s8']
+SPAIRS = {
+        'p1' : ('s1','s6'),
+        'p2' : ('s2','s5'),
+        'p3' : ('s3','s8'),
+        'p4' : ('s4','s7')
+        }
+PPAIRS = {
+        'pp1' : ('p1','p2'), 
+        'pp2' : ('p3','p4')
+        }
+
+class Report(TexTemplator):
+
+    def __init__(self, path, template_path, args):
+        TexTemplator.__init__(self, path, template_path)
+        self.tables={}
+        self.figures={}
+        self.temp_image_paths = []
+        self.args = args
+
+    def store_table(self, table, label, caption=None, resize_textwidth=False):
+        self.tables[label] = self.table(table, label, caption, resize_textwidth)
+
+    def store_figure(self, path, label, caption=None,doc_fig_width=None):
+        self.figures[label] = self.figure(path, label, caption, doc_fig_width=doc_fig_width)
+
+    def write_report(self, CP_data):
+        self.doc_data = {}
+        args = CP_data['args']
+
+        with open(args.basename + '.json') as json_file:
+            self.doc_data = json.load(json_file)
+
+        d = {}
+        for key in self.doc_data:
+            if '%' in key:
+                d[key] = self.doc_data[key]
+
+#        param_table_keys = ['Start date', 'End date', 'Furnace', 'Cable type', 'CSV file']
+#        param_table = OrderedDict({'Start date': [CP_data['start date']],
+#            'End date': [CP_data['end date']],
+#            'Furnace': ['Gero GLO 10000KE/09-1'],
+#            'Cable type': [d['%CABLE_ID'] + ' (' + d['%STRAND_TYPE']+ ')'],
+#            'CSV file': [d['%CSV_files']]})
+#
+#        d['%FIG_DWELL_PLOT'] = self.figures['fig:dwell_plot']
+#        d['%TAB_PARAM'] = self.table(to_math(pd.DataFrame(param_table)[param_table_keys].transpose().to_latex(header=False)), 'table:data', caption='General RHT parameters')
+#        d['%TAB_SUMMARY'] = self.tables['table:summary']
+#
+        d['%FIG_ALL_DATA'] = self.figures['fig:all_data']
+        d['%FIG_TRIGGERS'] = self.figures['fig:triggers']
+        d['%FIG_SCOLS'] = self.figures['fig:scols']
+        d['%FIG_SPAIRS'] = self.figures['fig:spairs']
+        d['%FIG_PPAIRS_AV'] = self.figures['fig:ppairs_av']
+        d['%FIG_PPAIRS_DIFF'] = self.figures['fig:ppairs_diff']
+        report.write(d)
+
+    def compile_report(self):
+        cmd = 'pdflatex ' + self.report_path
+        print("Compiling report with pdflatex: ", cmd)
+        os.system(cmd)
+        print("Removing all the temporary files.")
+        #for temp_image_path in self.temp_image_paths:
+            #os.remove(temp_image_path)
+
+def plot_data(df, CP_data):
+    args = CP_data['args']
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    df_range = CP_data['df_range']
+    ax.text(df_range['Datetime'].iloc[0], 1, 'Selected span of scan data')
+    ax.plot(df['Datetime'],df['s1'], label='s1')
+    ax.plot(df['Datetime'],df['grad_s1'], label='grad s1')
+    ax.axvspan(df_range['Datetime'].iloc[0], df_range['Datetime'].iloc[-1], facecolor='green', alpha=0.4, zorder=100)
+    myFmt = mdates.DateFormatter('%y%m%d %H')
+    ax.xaxis.set_major_formatter(myFmt)
+    plt.xlabel('Date (ymd H)')
+    plt.ylabel('Sensor signal')
+    plt.xticks(rotation=25)
+    lgd=plt.legend()
+    fig_filename = "all_shape_data_" + args.basename+".png"
+    if args.inspect_data:
+        plt.show()
+        exit()
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:all_data', 'All shape data of sensor s1 that is used for triggering the bolt locations, the green horizontal highligh represents the span of selected scan data.', doc_fig_width='0.8')
+
+def plot_triggers(df, CP_data):
+    args = CP_data['args']
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    ax.plot(df['Datetime'],df['s1'], label='s1')
+    ax.plot(df['Datetime'],df['grad_s1'], label='grad s1')
+    ax.plot(df['Datetime'],df['triggers'], label='triggers')
+    nofbolts = len(df[df['triggers']==1])
+    if nofbolts == 32:
+        facecolor = 'green'
+        alpha = 0.5
+        boltsfoundtext = 'nof bolts found: {}, OK!'.format(str(nofbolts))
+        if args.scan_LE_to_RE:
+            boltsfoundtext += '\n scanning is set from LE to RE!'
+        else:
+            boltsfoundtext += '\n scanning is set from RE to LE!'
+    else:
+        facecolor = 'red'
+        alpha = 1.
+        boltsfoundtext = 'nof bolts found: {}, should be 32!!! \n check the trigger setup!'.format(str(nofbolts))
+
+    props = dict(boxstyle='round', facecolor=facecolor, alpha=alpha)
+    ax.text(0.3,0.1,boltsfoundtext, horizontalalignment='center', transform=ax.transAxes, bbox=props)
+
+    myFmt = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    plt.xlabel('Date (H:M)')
+    plt.ylabel('Sensor signal')
+    plt.xticks(rotation=25)
+
+    lgd = plt.legend(loc='upper right')
+    fig_filename = "triggers_" + args.basename+".png"
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:triggers', 'The selected data with trigger signal', doc_fig_width='0.8')
+
+def plot_scols(df, CP_data):
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    for s in SCOLS:
+        ax.plot(df['bolt number'], df[s], label=s)
+    lgd = plt.legend()
+    plt.xlabel('Bolt number')
+    plt.ylabel('Sensor signal($\mu m$)')
+    fig_filename = "scols_" + args.basename+".png"
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:scols', 'The sensor deviations.', doc_fig_width='0.8')
+
+def plot_spairs(df, CP_data):
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    for spair_name in SPAIRS.keys():
+        ax.plot(df['bolt number'], df[spair_name], label=spair_name)
+    lgd = plt.legend()
+    plt.xlabel('Bolt number')
+    plt.ylabel('Sensor signal($\mu m$)')
+    fig_filename = "spairs_" + args.basename+".png"
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:spairs', 'The sensor pair deviations.', doc_fig_width='0.8')
+
+def plot_ppairs_av(df, CP_data):
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    for ppair_name in PPAIRS.keys():
+        ax.plot(df['bolt number'], df['av ' + ppair_name], label='av ' + ppair_name)
+    lgd = plt.legend()
+    plt.xlabel('Bolt number')
+    plt.ylabel('Sensor signal($\mu m$)')
+    fig_filename = "spairs_av" + args.basename+".png"
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:ppairs_av', 'The sensor pair averages.', doc_fig_width='0.8')
+
+def plot_ppairs_diff(df, CP_data):
+    plt.cla()
+    fig, ax = plt.subplots()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    for ppair_name in PPAIRS.keys():
+        ax.plot(df['bolt number'], df['diff ' + ppair_name], label='diff ' + ppair_name)
+    lgd = plt.legend()
+    plt.xlabel('Bolt number')
+    plt.ylabel('Sensor signal($\mu m$)')
+    fig_filename = "spairs_diff" + args.basename+".png"
+    plt.savefig(fig_filename, dpi=200, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    report.store_figure(fig_filename, 'fig:ppairs_diff', 'The sensor pair differences.', doc_fig_width='0.8')
+
+def find_bolt_triggers(df, s1_high_value = 3.):
+    old_value = 0.
+    s1_been_high = False
+    triggers = []
+    for i, value in enumerate(df['s1raw']):
+        grad = df['grad_s1'].iloc[i]
+        if grad > 0.:
+            going_up = True
+            going_down = False
+        else:
+            going_up = False
+            going_down = True
+
+        triggered = False
+
+        if value > s1_high_value:
+            s1_been_high = True
+        elif s1_been_high and np.isclose(grad,0):
+            triggered = True
+            s1_been_high = False
+
+        if triggered: triggers.append(1)
+        else: triggers.append(0)
+
+        old_value = value
+    df['triggers'] = np.array(triggers)
+
+def compute_spairs(df):
+    for i,spair_name in enumerate(SPAIRS.keys()):
+        initial_dev = args.initial_pi[i]-args.default_p
+        df[spair_name] = df[SPAIRS[spair_name][0]]+df[SPAIRS[spair_name][1]]+initial_dev
+
+def compute_ppairs(df):
+    for ppair_name in PPAIRS.keys():
+        df['av ' + ppair_name] = (df[PPAIRS[ppair_name][0]]+df[PPAIRS[ppair_name][1]])/2.
+        df['diff ' + ppair_name] = (df[PPAIRS[ppair_name][0]]-df[PPAIRS[ppair_name][1]])
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='MQXF shape data extraction program.')
+    parser.add_argument('path', type=str, default='MQXFshape.csv')
+    parser.add_argument('--scan-LE-to-RE-switches', nargs='+', action='store_true', default=[False]) 
+    parser.add_argument('--inspect-data', action='store_true', default=False) 
+    parser.add_argument('--scan-start-datetimes', nargs='+', type=str, default=['2020-11-24 15:44:00'])
+    parser.add_argument('--scan-end-datestimes', nargs='+', type=str, default=['2020-11-24 16:00:00'])
+    parser.add_argument('--magnet-name', type=str, default='MQXFB')
+    parser.add_argument('--initial-pi', nargs=4, type=float)
+    args = parser.parse_args()
+    pathlist = os.path.splitext(args.path)
+    basename = pathlist[0]
+    filetype = pathlist[1]
+    args.basename = basename
+    report = Report(args.basename + '.tex', 'hllhcedms_template_short.tex', args)
+    args.report = report
+    args.default_p = 319 # mm
+
+    for i, scan_LE_to_RE in enumerate(args.scan_LE_to_RE_switches):
+        CP_data = {}
+
+        df_names = ['data', 'df_range', 'df_bolts']
+        CP_data['report'] = report
+        CP_data['args'] = args
+        CP_data['data'] = pd.read_csv(args.path,header=0)
+        CP_data['data'].columns = ['Datetime','Datapoint','s1raw','s2raw','s3raw','s4raw','s5raw','s6raw','s7raw','s8raw']
+
+        CP_data['data']['Datetime'] = pd.to_datetime(CP_data['data']['Datetime'],format='%d/%m/%y %H:%M:%S.%f')
+        CP_data['data']['grad_s1'] = np.gradient(CP_data['data']['s1raw'].values)
+
+        drange = (CP_data['data']['Datetime']>args.scan_start) & (CP_data['data']['Datetime']<args.scan_end)
+
+        CP_data['df_range'] = CP_data['data'][drange]
+        find_bolt_triggers(CP_data['df_range'], s1_high_value = 3.)
+        df_bolts = CP_data['df_range'].copy()
+        df_bolts = df_bolts[df_bolts['triggers']==1]
+        CP_data['df_bolts'] = df_bolts
+        for df_name in df_names:
+            for s in SCOLS:
+                calibration = -df_bolts[s+'raw'].iloc[0]
+                CP_data[df_name][s] = CP_data[df_name][s+'raw'] + calibration
+        if not args.scan_LE_to_RE:
+            df_bolts['bolt number'] = np.flip(np.arange(len(df_bolts))+1)
+        else:
+            df_bolts['bolt number'] = np.arange(len(df_bolts))+1
+
+
+        compute_spairs(CP_data['df_bolts'])
+        compute_ppairs(CP_data['df_bolts'])
+
+        plot_data(CP_data['data'], CP_data)
+        plot_triggers(CP_data['df_range'], CP_data)
+        plot_scols(CP_data['df_bolts'], CP_data)
+        plot_spairs(CP_data['df_bolts'], CP_data)
+        plot_ppairs_av(CP_data['df_bolts'], CP_data)
+        plot_ppairs_diff(CP_data['df_bolts'], CP_data)
+
+        report.write_report(CP_data)
+        report.close()
+        report.compile()
