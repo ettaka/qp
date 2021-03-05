@@ -207,7 +207,7 @@ def parse_ansys_3d_files(args):
             df_raw_rod = pd.DataFrame(rod_dict)
 
             df_shell = df_raw[df_raw['position'].str.contains('shell_15')]
-            df_pole = df_raw[df_raw['position'].str.contains('pole')]
+            df_pole = df_raw[df_raw['position'].str.contains('pole1in')]
             df_rod = df_raw_rod[df_raw_rod['position'].str.contains('rod')]
             df = dict()
             df['Step'] = list(df_pole.sort_values('Step')['Step'].values)
@@ -218,7 +218,12 @@ def parse_ansys_3d_files(args):
             df['ecyl'] = list(df_shell.sort_values('Step')['ETH_Z0'].values*1e6)
             df['epole'] = list(df_pole.sort_values('Step')['ETH_Z0'].values*1e6)
             df['erod'] = list(df_rod.sort_values('Step')['EZ_Z0'].values*1e6)
-            df = pd.DataFrame(df)
+            try:
+                df = pd.DataFrame(df)
+            except Exception as e:
+                print ("Something happened with the convertion of dataframe:")
+                print (df)
+                print (e)
                 #'DataFrame':pd.DataFrame(file_dict),
 
             parsed_file_data_list.append({

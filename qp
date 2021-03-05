@@ -1544,12 +1544,13 @@ def compute_stresses(plot_dict, args):
                 azimuthal_dict = channel_dict['strain']['azimuthal']
                 longitudinal_dict = channel_dict['strain']['longitudinal']
 
-                if 'MQXFS' in mtbop_data['filepath']:
-                    material = 'aluminium'
-                    d_rod = 0.036
-                else:
-                    material = 'stainless steel'
-                    d_rod = 0.035
+                if 'Rod' in channel_dict['name']:
+                    if 'MQXFS' in mtbop_data['filepath']:
+                        material = 'aluminium'
+                        d_rod = 0.036
+                    else:
+                        material = 'stainless steel'
+                        d_rod = 0.035
 
                 try:
                     if not azimuthal_dict == None:
@@ -2087,6 +2088,7 @@ if __name__ == '__main__':
         parser.add_argument('--rod-force', action='store_true', default=False)
         parser.add_argument('--rods', action='store_true', default=False)
         parser.add_argument('--ansys-show-x', action='store_true', default=False)
+        parser.add_argument('--remove-from-ansys-label', type=str, nargs='+', default=None)
         parser.add_argument('--warm', action='store_true', default=False)
         parser.add_argument('--ntp-to-date', action='store_true', default=False)
         parser.add_argument('--ntp-to-dsec', action='store_true', default=False)
@@ -2322,6 +2324,9 @@ if __name__ == '__main__':
                         print ("Choosing rod data because that is plotted as the experimental data.")
                 for i, file_df in enumerate(ansys_file_df_list):
                     name = file_df['name']
+                    if args.remove_from_ansys_label is not None:
+                        for rstring in args.remove_from_ansys_label:
+                            name = name.replace(rstring, '')
                     df = file_df['DataFrame']
                     df = df[~df['Step'].str.contains('warm')]
                     df = df[~df['Step'].str.contains('rod')]
