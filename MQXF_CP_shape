@@ -235,10 +235,10 @@ def compute_ppairs(df):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='MQXF shape data extraction program.')
     parser.add_argument('path', type=str, default='MQXFshape.csv')
-    parser.add_argument('--scan-LE-to-RE-switches', nargs='+', action='store_true', default=[False]) 
+    parser.add_argument('--scan-LE-to-RE', action='store_true', default=True) 
     parser.add_argument('--inspect-data', action='store_true', default=False) 
-    parser.add_argument('--scan-start-datetimes', nargs='+', type=str, default=['2020-11-24 15:44:00'])
-    parser.add_argument('--scan-end-datestimes', nargs='+', type=str, default=['2020-11-24 16:00:00'])
+    parser.add_argument('--scan-start', type=str, default='2020-11-24 15:44:00')
+    parser.add_argument('--scan-end', type=str, default='2020-11-24 16:00:00')
     parser.add_argument('--magnet-name', type=str, default='MQXFB')
     parser.add_argument('--initial-pi', nargs=4, type=float)
     args = parser.parse_args()
@@ -250,45 +250,44 @@ if __name__ == '__main__':
     args.report = report
     args.default_p = 319 # mm
 
-    for i, scan_LE_to_RE in enumerate(args.scan_LE_to_RE_switches):
-        CP_data = {}
+    CP_data = {}
 
-        df_names = ['data', 'df_range', 'df_bolts']
-        CP_data['report'] = report
-        CP_data['args'] = args
-        CP_data['data'] = pd.read_csv(args.path,header=0)
-        CP_data['data'].columns = ['Datetime','Datapoint','s1raw','s2raw','s3raw','s4raw','s5raw','s6raw','s7raw','s8raw']
+    df_names = ['data', 'df_range', 'df_bolts']
+    CP_data['report'] = report
+    CP_data['args'] = args
+    CP_data['data'] = pd.read_csv(args.path,header=0)
+    CP_data['data'].columns = ['Datetime','Datapoint','s1raw','s2raw','s3raw','s4raw','s5raw','s6raw','s7raw','s8raw']
 
-        CP_data['data']['Datetime'] = pd.to_datetime(CP_data['data']['Datetime'],format='%d/%m/%y %H:%M:%S.%f')
-        CP_data['data']['grad_s1'] = np.gradient(CP_data['data']['s1raw'].values)
+    CP_data['data']['Datetime'] = pd.to_datetime(CP_data['data']['Datetime'],format='%d/%m/%y %H:%M:%S.%f')
+    CP_data['data']['grad_s1'] = np.gradient(CP_data['data']['s1raw'].values)
 
-        drange = (CP_data['data']['Datetime']>args.scan_start) & (CP_data['data']['Datetime']<args.scan_end)
+    drange = (CP_data['data']['Datetime']>args.scan_start) & (CP_data['data']['Datetime']<args.scan_end)
 
-        CP_data['df_range'] = CP_data['data'][drange]
-        find_bolt_triggers(CP_data['df_range'], s1_high_value = 3.)
-        df_bolts = CP_data['df_range'].copy()
-        df_bolts = df_bolts[df_bolts['triggers']==1]
-        CP_data['df_bolts'] = df_bolts
-        for df_name in df_names:
-            for s in SCOLS:
-                calibration = -df_bolts[s+'raw'].iloc[0]
-                CP_data[df_name][s] = CP_data[df_name][s+'raw'] + calibration
-        if not args.scan_LE_to_RE:
-            df_bolts['bolt number'] = np.flip(np.arange(len(df_bolts))+1)
-        else:
-            df_bolts['bolt number'] = np.arange(len(df_bolts))+1
+    CP_data['df_range'] = CP_data['data'][drange]
+    find_bolt_triggers(CP_data['df_range'], s1_high_value = 3.)
+    df_bolts = CP_data['df_range'].copy()
+    df_bolts = df_bolts[df_bolts['triggers']==1]
+    CP_data['df_bolts'] = df_bolts
+    for df_name in df_names:
+        for s in SCOLS:
+            calibration = -df_bolts[s+'raw'].iloc[0]
+            CP_data[df_name][s] = CP_data[df_name][s+'raw'] + calibration
+    if not args.scan_LE_to_RE:
+        df_bolts['bolt number'] = np.flip(np.arange(len(df_bolts))+1)
+    else:
+        df_bolts['bolt number'] = np.arange(len(df_bolts))+1
 
 
-        compute_spairs(CP_data['df_bolts'])
-        compute_ppairs(CP_data['df_bolts'])
+    compute_spairs(CP_data['df_bolts'])
+    compute_ppairs(CP_data['df_bolts'])
 
-        plot_data(CP_data['data'], CP_data)
-        plot_triggers(CP_data['df_range'], CP_data)
-        plot_scols(CP_data['df_bolts'], CP_data)
-        plot_spairs(CP_data['df_bolts'], CP_data)
-        plot_ppairs_av(CP_data['df_bolts'], CP_data)
-        plot_ppairs_diff(CP_data['df_bolts'], CP_data)
+    plot_data(CP_data['data'], CP_data)
+    plot_triggers(CP_data['df_range'], CP_data)
+    plot_scols(CP_data['df_bolts'], CP_data)
+    plot_spairs(CP_data['df_bolts'], CP_data)
+    plot_ppairs_av(CP_data['df_bolts'], CP_data)
+    plot_ppairs_diff(CP_data['df_bolts'], CP_data)
 
-        report.write_report(CP_data)
-        report.close()
-        report.compile()
+    report.write_report(CP_data)
+    report.close()
+    report.compile()
